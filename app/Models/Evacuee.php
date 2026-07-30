@@ -14,7 +14,6 @@ class Evacuee extends Model
         'is_indigenous_person', 'is_4ps_beneficiary', 'is_head_of_family',
         'remote_id', 'synced_at',
     ];
-
     protected $casts = [
         'date_of_birth' => 'date',
         'is_pwd' => 'boolean',
