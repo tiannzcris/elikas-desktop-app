@@ -4,7 +4,7 @@
 @section('nav-register', 'active')
 
 @section('content')
-    <h1 class="text-xl font-semibold mb-1">Register a family</h1>
+    <h1 class="text-xl font-bold text-brand mb-1">Register a family</h1>
     <p class="text-sm text-gray-500 mb-6">Saved to this device immediately -- no internet needed. Sync later when you're back online.</p>
 
     <form method="POST" action="{{ route('families.store') }}" class="flex flex-col gap-4 max-w-3xl">
@@ -58,7 +58,7 @@
             <div id="members-container" class="flex flex-col gap-4"></div>
         </div>
 
-        <button type="submit" class="bg-brand hover:bg-brand-dark text-white text-sm font-medium rounded-lg px-4 py-2.5 w-fit">
+        <button type="submit" class="bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg px-4 py-2.5 w-fit">
             Save family (offline)
         </button>
     </form>

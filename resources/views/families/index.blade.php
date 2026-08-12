@@ -6,7 +6,7 @@
 @section('content')
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-xl font-semibold mb-1">Registered families</h1>
+            <h1 class="text-xl font-bold text-brand mb-1">Registered families</h1>
             <p class="text-sm text-gray-500">Everything registered on this device, synced or not.</p>
         </div>
         <div class="flex gap-3">
@@ -16,7 +16,7 @@
                     <i class="ti ti-cloud-upload" style="font-size: 15px;" aria-hidden="true"></i> Sync now
                 </button>
             </form>
-            <a href="{{ route('families.create') }}" class="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-medium rounded-lg px-4 py-2.5">
+            <a href="{{ route('families.create') }}" class="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg px-4 py-2.5">
                 <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
             </a>
         </div>

@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>E-LIKAS Offline Companion</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#2F5496', dark: '#1F3A6E' } } } } };
+        tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#1E3D73', dark: '#0F2447', light: '#5B8FD6', red: '#C8102E', green: '#178A43' } } } } };
     </script>
     <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }</style>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
     <div class="w-full max-w-sm bg-white border border-gray-200 rounded-xl p-8">
         <div class="flex flex-col items-center text-center mb-6">
-            <div class="w-11 h-11 rounded-lg bg-blue-500 flex items-center justify-center mb-3">
-                <i class="ti ti-shield-check text-white" style="font-size: 22px;" aria-hidden="true"></i>
-            </div>
-            <p class="text-brand font-semibold text-xl">E-LIKAS</p>
+            <img src="{{ asset('images/logo-full.png') }}" alt="E-LIKAS - Electronic Ligao Kaligtasan Sistema" class="w-48 object-contain mb-2">
             <p class="text-xs text-gray-400 mt-1">Offline Companion &middot; First-time login requires internet</p>
         </div>
 
@@ -40,15 +38,17 @@
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
             </div>
             <button type="submit"
-                class="flex items-center justify-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-medium rounded-lg py-2.5 mt-2">
+                class="flex items-center justify-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg py-2.5 mt-2">
                 <i class="ti ti-login-2" style="font-size: 15px;" aria-hidden="true"></i> Log in
             </button>
         </form>
 
         <p class="text-xs text-gray-400 text-center mt-6">
-            This connects to your CSWDO account the same way the web dashboard does.
-            Once logged in, this device stays logged in for offline use --
-            you won't need to do this again unless you log out.
+            This connects using your E-LIKAS staff account -- the same one you
+            use for the web dashboard, whether you're CSWD personnel or a
+            barangay official. Once logged in, this device stays logged in
+            for offline use -- you won't need to do this again unless you
+            log out.
         </p>
     </div>
 </body>

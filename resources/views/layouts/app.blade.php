@@ -3,28 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <title>@yield('title', 'E-LIKAS Offline Companion')</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#2F5496', dark: '#1F3A6E' } } } } };
+        tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#1E3D73', dark: '#0F2447', light: '#5B8FD6', red: '#C8102E', green: '#178A43' } } } } };
     </script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
-        .nav-link { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 13px; color: #A8C2E8; }
+        .nav-link { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #A8C2E8; }
         .nav-link:hover { background: rgba(255,255,255,0.08); color: white; }
-        .nav-link.active { background: rgba(255,255,255,0.15); color: white; font-weight: 500; }
+        .nav-link.active { background: rgba(255,255,255,0.15); color: white; font-weight: 700; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
-    <div class="flex items-center justify-between px-6 py-3" style="background: #1F3A6E;">
+    <div class="flex items-center justify-between px-6 py-3" style="background: #0F2447;">
         <div class="flex items-center gap-6">
             <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
-                    <i class="ti ti-shield-check text-white" style="font-size: 16px;" aria-hidden="true"></i>
-                </div>
+                <img src="{{ asset('images/logo-icon.png') }}" alt="E-LIKAS" class="w-9 h-9 object-contain shrink-0">
                 <div class="leading-tight">
-                    <p class="text-white font-semibold text-sm">E-LIKAS</p>
-                    <p class="text-xs" style="color: #A8C2E8;">Offline Companion</p>
+                    <p class="text-white font-extrabold text-sm tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
+                    <p class="text-xs font-medium" style="color: #A8C2E8;">Offline Companion</p>
                 </div>
             </div>
 
