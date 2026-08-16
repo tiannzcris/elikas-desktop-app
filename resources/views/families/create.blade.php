@@ -86,6 +86,11 @@
     // round-trip -- works identically whether the device is online or not.
     const allCenters = @json($centers ?? []);
 
+    // Same local cache the "All Evacuees" page reads from -- reused here
+    // for the inline duplicate-name warning below. No network call as
+    // staff type; this is the entire dataset already in memory.
+    const cachedEvacuees = @json($cachedEvacuees ?? []);
+
     let memberCount = 0;
 
     function memberRowHtml(index) {
@@ -96,9 +101,9 @@
                 ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-500 hover:underline">Remove</button>` : ''}
             </div>
             <div class="grid grid-cols-3 gap-3">
-                <input type="text" name="members[${index}][first_name]" placeholder="First name" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][first_name]" placeholder="First name" class="m-first_name border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
                 <input type="text" name="members[${index}][middle_name]" placeholder="Middle name" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                <input type="text" name="members[${index}][last_name]" placeholder="Last name" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][last_name]" placeholder="Last name" class="m-last_name border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
                 <select name="members[${index}][sex]" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
                     <option value="">Sex</option>
                     <option value="male">Male</option>
@@ -106,6 +111,10 @@
                 </select>
                 <input type="date" name="members[${index}][date_of_birth]" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
                 <input type="text" name="members[${index}][contact_number]" placeholder="Contact number" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div class="dup-warning mt-3 bg-amber-50 text-amber-700 text-xs rounded-lg p-2.5 items-start gap-2" style="display: none;">
+                <i class="ti ti-alert-triangle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>
+                <span class="dup-warning-text"></span>
             </div>
             <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-600 items-center">
                 <input type="hidden" name="members[${index}][is_head_of_family]" value="0">
@@ -152,6 +161,82 @@
         const filtered = allCenters.filter((c) => c.barangay_remote_id === barangayRemoteId);
         select.innerHTML = '<option value="">Select center</option>' +
             filtered.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
+    });
+
+    // Inline duplicate-name warning -- purely client-side against the
+    // already-loaded cachedEvacuees array, so it works identically whether
+    // the device is online or not. Never blocks submission; it's a nudge
+    // for staff to double-check, since two different people can share a
+    // name and registration still needs to be able to proceed.
+    function levenshteinDistance(a, b) {
+        const rows = a.length + 1;
+        const cols = b.length + 1;
+        const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+        for (let i = 0; i < rows; i++) dp[i][0] = i;
+        for (let j = 0; j < cols; j++) dp[0][j] = j;
+        for (let i = 1; i < rows; i++) {
+            for (let j = 1; j < cols; j++) {
+                dp[i][j] = a[i - 1] === b[j - 1]
+                    ? dp[i - 1][j - 1]
+                    : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+            }
+        }
+        return dp[rows - 1][cols - 1];
+    }
+
+    function nameSimilarity(a, b) {
+        a = a.toLowerCase().trim().replace(/\s+/g, ' ');
+        b = b.toLowerCase().trim().replace(/\s+/g, ' ');
+        if (!a || !b) return 0;
+        if (a === b) return 1;
+        if (a.length >= 4 && (a.includes(b) || b.includes(a))) return 0.9;
+        return 1 - (levenshteinDistance(a, b) / Math.max(a.length, b.length));
+    }
+
+    function findPossibleMatch(fullName) {
+        if (fullName.trim().length < 4) return null;
+        let best = null;
+        for (const evac of cachedEvacuees) {
+            if (!evac.head_name) continue;
+            const score = nameSimilarity(fullName, evac.head_name);
+            if (score >= 0.72 && (!best || score > best.score)) {
+                best = Object.assign({ score }, evac);
+            }
+        }
+        return best;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function checkRowForDuplicate(row) {
+        const warning = row.querySelector('.dup-warning');
+        if (!warning) return;
+
+        const first = row.querySelector('.m-first_name')?.value || '';
+        const last = row.querySelector('.m-last_name')?.value || '';
+        const match = findPossibleMatch(`${first} ${last}`);
+
+        if (match) {
+            const barangay = match.barangay_name || 'an unknown barangay';
+            const link = `{{ route('evacuees.index') }}?q=${encodeURIComponent(match.head_name)}`;
+            warning.querySelector('.dup-warning-text').innerHTML =
+                `Possible existing match: <strong>${escapeHtml(match.head_name)}</strong>, registered in ${escapeHtml(barangay)} -- `
+                + `<a href="${link}" target="_blank" class="underline font-medium">check All Evacuees</a> before continuing.`;
+            warning.style.display = 'flex';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+
+    document.getElementById('members-container').addEventListener('input', (e) => {
+        if (!e.target.classList.contains('m-first_name') && !e.target.classList.contains('m-last_name')) return;
+        const row = e.target.closest('.member-row');
+        clearTimeout(row._dupCheckTimer);
+        row._dupCheckTimer = setTimeout(() => checkRowForDuplicate(row), 400);
     });
 </script>
 @endsection

@@ -7,6 +7,7 @@ use App\Models\Barangay;
 use App\Models\Evacuee;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
+use App\Models\EvacueeRecord;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
@@ -28,6 +29,11 @@ class FamilyController extends Controller
             // server about client-side filtering for this exact reason.
             'events' => EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('name')->get(),
             'centers' => EvacuationCenter::all(['id', 'name', 'barangay_remote_id']),
+            // Same local cache the "All Evacuees" page reads from --
+            // reused here (not re-fetched) so the in-form duplicate warning
+            // works fully offline, matching against whatever was cached as
+            // of the last successful sync.
+            'cachedEvacuees' => EvacueeRecord::all(['head_name', 'barangay_name']),
         ]);
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EvacueeRecord;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
+use Illuminate\Http\Request;
 
 class EvacueeController extends Controller
 {
@@ -14,8 +15,12 @@ class EvacueeController extends Controller
      * from the last successful pull when offline, or when the server
      * rejects the request -- the page always has something to show; it
      * never hard-fails just because there's no internet right now.
+     *
+     * Accepts an optional ?q= filter so the registration form's inline
+     * duplicate warning can link straight to the matched name instead of
+     * dumping staff into the full, unfiltered roster.
      */
-    public function index(CentralApiService $api)
+    public function index(CentralApiService $api, Request $request)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
@@ -42,10 +47,16 @@ class EvacueeController extends Controller
         }
 
         $latest = EvacueeRecord::latest('updated_at')->first();
+        $search = trim((string) $request->query('q', ''));
 
         return view('evacuees.index', [
             'currentUser' => $auth,
-            'evacuees' => EvacueeRecord::orderBy('barangay_name')->orderBy('head_name')->get(),
+            'evacuees' => EvacueeRecord::query()
+                ->when($search !== '', fn ($q) => $q->where('head_name', 'like', "%{$search}%"))
+                ->orderBy('barangay_name')
+                ->orderBy('head_name')
+                ->get(),
+            'search' => $search,
             'lastSyncedAt' => $latest?->updated_at,
             'isStale' => $isStale,
         ]);

@@ -7,7 +7,13 @@
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-xl font-bold text-brand mb-1">All Evacuees</h1>
-            <p class="text-sm text-gray-500">Full roster from the central server, cached here for offline viewing.</p>
+            <p class="text-sm text-gray-500">
+                @if ($search !== '')
+                    Showing results for "{{ $search }}" &middot; <a href="{{ route('evacuees.index') }}" class="text-brand underline">clear filter</a>
+                @else
+                    Full roster from the central server, cached here for offline viewing.
+                @endif
+            </p>
         </div>
         <a href="{{ route('evacuees.index') }}" class="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-sm font-medium rounded-lg px-4 py-2.5">
             <i class="ti ti-refresh" style="font-size: 15px;" aria-hidden="true"></i> Refresh
@@ -35,7 +41,9 @@
         <div class="flex flex-col items-center text-center py-16">
             <i class="ti ti-users text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
             <p class="text-sm text-gray-400">
-                @if ($isStale)
+                @if ($search !== '')
+                    No cached match for "{{ $search }}".
+                @elseif ($isStale)
                     No cached evacuee data yet -- connect to the internet at least once to load it.
                 @else
                     No evacuees registered yet.
