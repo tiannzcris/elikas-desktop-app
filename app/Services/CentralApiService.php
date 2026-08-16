@@ -72,6 +72,30 @@ class CentralApiService
     }
 
     /**
+     * Pulls the full evacuee/family roster from the central server, for the
+     * "All Evacuees" page's local cache. Unlike fetchReferenceData() (only
+     * called at login + manual refresh), this is called on every visit to
+     * that page while online, since that page is meant to reflect what's
+     * currently on the server, not just what was true at last login.
+     */
+    public function fetchEvacuees(string $token): array
+    {
+        $headers = ['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'];
+
+        try {
+            $response = Http::withHeaders($headers)->timeout(10)->get("{$this->baseUrl()}/families");
+        } catch (ConnectionException $e) {
+            throw new \RuntimeException('Could not reach the central server to refresh the evacuee list. Check your internet connection.');
+        }
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('The central server rejected the request -- your login may have expired. Try logging in again while online.');
+        }
+
+        return $response->json('data');
+    }
+
+    /**
      * Pushes one locally-registered family to the CENTRAL server's existing
      * registration endpoint -- this IS the sync mechanism. No separate sync
      * protocol: it's the same authenticated request the web dashboard would
