@@ -49,13 +49,22 @@ class EvacueeController extends Controller
         $latest = EvacueeRecord::latest('updated_at')->first();
         $search = trim((string) $request->query('q', ''));
 
+        // Grouped by barangay for CSWD/admin accounts whose roster spans
+        // every barangay -- a barangay official's cache only ever contains
+        // their own barangay (per existing access scoping), so this is a
+        // no-op single group for that role, not a special case to handle.
+        // SQL already sorts both levels, so groupBy() just has to preserve
+        // that order, which Collection::groupBy() does.
+        $evacuees = EvacueeRecord::query()
+            ->when($search !== '', fn ($q) => $q->where('head_name', 'like', "%{$search}%"))
+            ->orderBy('barangay_name')
+            ->orderBy('head_name')
+            ->get()
+            ->groupBy(fn (EvacueeRecord $record) => $record->barangay_name ?: 'Unknown barangay');
+
         return view('evacuees.index', [
             'currentUser' => $auth,
-            'evacuees' => EvacueeRecord::query()
-                ->when($search !== '', fn ($q) => $q->where('head_name', 'like', "%{$search}%"))
-                ->orderBy('barangay_name')
-                ->orderBy('head_name')
-                ->get(),
+            'evacueesByBarangay' => $evacuees,
             'search' => $search,
             'lastSyncedAt' => $latest?->updated_at,
             'isStale' => $isStale,

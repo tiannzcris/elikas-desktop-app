@@ -37,7 +37,7 @@
         </div>
     @endif
 
-    @if ($evacuees->isEmpty())
+    @if ($evacueesByBarangay->isEmpty())
         <div class="flex flex-col items-center text-center py-16">
             <i class="ti ti-users text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
             <p class="text-sm text-gray-400">
@@ -51,14 +51,20 @@
             </p>
         </div>
     @else
-        <div class="flex flex-col gap-3">
-            @foreach ($evacuees as $record)
-                <div class="bg-white border border-gray-200 rounded-xl p-4">
-                    <p class="font-medium text-sm">{{ $record->head_name ?? 'Unnamed family' }}</p>
-                    <p class="text-xs text-gray-500">
-                        {{ $record->barangay_name ?? 'Unknown barangay' }} &middot;
-                        {{ $record->member_count }} member(s)
+        <div class="flex flex-col gap-6">
+            @foreach ($evacueesByBarangay as $barangayName => $records)
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        {{ $barangayName }} <span class="text-gray-400 font-normal normal-case">({{ $records->count() }})</span>
                     </p>
+                    <div class="flex flex-col gap-3">
+                        @foreach ($records as $record)
+                            <div class="bg-white border border-gray-200 rounded-xl p-4">
+                                <p class="font-medium text-sm">{{ $record->head_name ?? 'Unnamed family' }}</p>
+                                <p class="text-xs text-gray-500">{{ $record->member_count }} member(s)</p>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             @endforeach
         </div>
