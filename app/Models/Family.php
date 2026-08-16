@@ -10,7 +10,7 @@ class Family extends Model
 {
     protected $fillable = [
         'barangay_id', 'evacuation_event_id', 'evacuation_center_id',
-        'displacement_type', 'is_4ps_beneficiary',
+        'displacement_type', 'is_4ps_beneficiary', 'home_address',
         'remote_id', 'synced_at', 'sync_error',
     ];
 
@@ -60,6 +60,7 @@ class Family extends Model
             'evacuation_center_id' => $this->evacuationCenter?->remote_id,
             'displacement_type' => $this->displacement_type,
             'is_4ps_beneficiary' => $this->is_4ps_beneficiary,
+            'home_address' => $this->home_address,
             'members' => $this->evacuees->map(fn (Evacuee $e) => [
                 'first_name' => $e->first_name,
                 'middle_name' => $e->middle_name,

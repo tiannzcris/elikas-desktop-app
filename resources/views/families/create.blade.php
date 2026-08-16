@@ -31,6 +31,10 @@
                                 <option value="{{ $b->id }}" data-remote-id="{{ $b->remote_id }}">{{ $b->name }}</option>
                             @endforeach
                         </select>
+                        <div class="mt-3">
+                            <label class="text-sm text-gray-600 block mb-1">Street/Sitio Address <span class="text-gray-400">(optional)</span></label>
+                            <input type="text" name="home_address" value="{{ old('home_address') }}" placeholder="e.g. Purok 3, Sitio Malinao" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        </div>
                     </div>
                     <div>
                         <label class="text-sm text-gray-600 block mb-1">Disaster event</label>

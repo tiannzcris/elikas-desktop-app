@@ -24,6 +24,7 @@ class RegisterFamilyRequest extends FormRequest
         return [
             'evacuation_event_id' => ['required', 'integer', 'exists:evacuation_events,id'],
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
+            'home_address' => ['nullable', 'string', 'max:255'],
             'displacement_type' => ['required', 'in:inside_center,outside_center'],
             'evacuation_center_id' => ['nullable', 'required_if:displacement_type,inside_center', 'integer', 'exists:evacuation_centers,id'],
             'is_4ps_beneficiary' => ['boolean'],
