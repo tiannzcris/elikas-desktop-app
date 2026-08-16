@@ -11,6 +11,7 @@ use App\Models\EvacueeRecord;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
+use Illuminate\Database\QueryException;
 
 class FamilyController extends Controller
 {
@@ -21,6 +22,19 @@ class FamilyController extends Controller
             return redirect()->route('login');
         }
 
+        try {
+            // Same local cache the "All Evacuees" page reads from --
+            // reused here (not re-fetched) so the in-form duplicate warning
+            // works fully offline, matching against whatever was cached as
+            // of the last successful sync. The duplicate warning is a nice-
+            // to-have, not core to registration -- if this cache table isn't
+            // ready yet on this device (e.g. right after an app update),
+            // registration must still work, just without that warning.
+            $cachedEvacuees = EvacueeRecord::all(['head_name', 'barangay_name']);
+        } catch (QueryException $e) {
+            $cachedEvacuees = collect();
+        }
+
         return view('families.create', [
             'currentUser' => $auth,
             'barangays' => Barangay::orderBy('name')->get(),
@@ -29,11 +43,7 @@ class FamilyController extends Controller
             // server about client-side filtering for this exact reason.
             'events' => EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('name')->get(),
             'centers' => EvacuationCenter::all(['id', 'name', 'barangay_remote_id']),
-            // Same local cache the "All Evacuees" page reads from --
-            // reused here (not re-fetched) so the in-form duplicate warning
-            // works fully offline, matching against whatever was cached as
-            // of the last successful sync.
-            'cachedEvacuees' => EvacueeRecord::all(['head_name', 'barangay_name']),
+            'cachedEvacuees' => $cachedEvacuees,
         ]);
     }
 

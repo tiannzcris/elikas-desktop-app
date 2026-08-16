@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EvacueeRecord;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class EvacueeController extends Controller
@@ -31,6 +32,10 @@ class EvacueeController extends Controller
 
         try {
             foreach ($api->fetchEvacuees($auth->api_token) as $record) {
+                if (! isset($record['id'])) {
+                    continue;
+                }
+
                 EvacueeRecord::updateOrCreate(['remote_id' => $record['id']], [
                     'head_name' => $record['head_name'] ?? null,
                     'barangay_name' => $record['barangay_name'] ?? null,
@@ -39,28 +44,38 @@ class EvacueeController extends Controller
             }
 
             $isStale = false;
-        } catch (\RuntimeException $e) {
-            // No internet, or the server rejected the request -- fall
-            // through to whatever's already cached below, no error shown.
-            // This is an expected, normal state for an offline companion
-            // app, not a failure.
+        } catch (\RuntimeException|QueryException $e) {
+            // No internet, the server rejected the request, or the local
+            // cache table isn't ready yet on this device (e.g. a pending
+            // migration right after an app update) -- fall through to
+            // whatever's already cached below, no error shown. This is an
+            // expected, normal state for an offline companion app, not a
+            // failure that should ever take the whole page down.
         }
 
-        $latest = EvacueeRecord::latest('updated_at')->first();
         $search = trim((string) $request->query('q', ''));
 
-        // Grouped by barangay for CSWD/admin accounts whose roster spans
-        // every barangay -- a barangay official's cache only ever contains
-        // their own barangay (per existing access scoping), so this is a
-        // no-op single group for that role, not a special case to handle.
-        // SQL already sorts both levels, so groupBy() just has to preserve
-        // that order, which Collection::groupBy() does.
-        $evacuees = EvacueeRecord::query()
-            ->when($search !== '', fn ($q) => $q->where('head_name', 'like', "%{$search}%"))
-            ->orderBy('barangay_name')
-            ->orderBy('head_name')
-            ->get()
-            ->groupBy(fn (EvacueeRecord $record) => $record->barangay_name ?: 'Unknown barangay');
+        try {
+            $latest = EvacueeRecord::latest('updated_at')->first();
+
+            // Grouped by barangay for CSWD/admin accounts whose roster spans
+            // every barangay -- a barangay official's cache only ever contains
+            // their own barangay (per existing access scoping), so this is a
+            // no-op single group for that role, not a special case to handle.
+            // SQL already sorts both levels, so groupBy() just has to preserve
+            // that order, which Collection::groupBy() does.
+            $evacuees = EvacueeRecord::query()
+                ->when($search !== '', fn ($q) => $q->where('head_name', 'like', "%{$search}%"))
+                ->orderBy('barangay_name')
+                ->orderBy('head_name')
+                ->get()
+                ->groupBy(fn (EvacueeRecord $record) => $record->barangay_name ?: 'Unknown barangay');
+        } catch (QueryException $e) {
+            // Same local cache table issue as above -- show the page as
+            // "nothing cached yet" instead of a 500.
+            $latest = null;
+            $evacuees = collect();
+        }
 
         return view('evacuees.index', [
             'currentUser' => $auth,

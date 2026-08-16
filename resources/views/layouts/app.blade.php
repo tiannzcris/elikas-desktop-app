@@ -50,9 +50,6 @@
                 <a href="{{ route('dashboard') }}" class="nav-link @yield('nav-dashboard')">
                     <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard
                 </a>
-                <a href="{{ route('families.create') }}" class="nav-link @yield('nav-register')">
-                    <i class="ti ti-user-plus" aria-hidden="true"></i> Register a family
-                </a>
                 <a href="{{ route('families.index') }}" class="nav-link @yield('nav-families')">
                     <i class="ti ti-users" aria-hidden="true"></i> Registered families
                 </a>

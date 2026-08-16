@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @section('title', 'Register a family')
-@section('nav-register', 'active')
 
 @section('content')
     <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4" style="background: rgba(15, 36, 71, 0.55);">
