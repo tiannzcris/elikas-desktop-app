@@ -9,10 +9,14 @@
     <script>
         tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#1E3D73', dark: '#0F2447', light: '#5B8FD6', red: '#C8102E', green: '#178A43' } } } } };
     </script>
-    <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }</style>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+        .login-card { opacity: 0; transform: translateY(8px); transition: opacity 250ms ease, transform 250ms ease; }
+        .login-card.in { opacity: 1; transform: translateY(0); }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div class="w-full max-w-sm bg-white border border-gray-200 rounded-xl p-8">
+    <div class="login-card w-full max-w-sm bg-white border border-gray-200 rounded-xl p-8">
         <div class="flex flex-col items-center text-center mb-6">
             <img src="{{ asset('images/logo-full.png') }}" alt="E-LIKAS - Electronic Ligao Kaligtasan Sistema" class="w-48 object-contain mb-2">
             <p class="text-xs text-gray-400 mt-1">Offline Companion &middot; First-time login requires internet</p>
@@ -51,5 +55,9 @@
             log out.
         </p>
     </div>
+
+    <script>
+        requestAnimationFrame(() => document.querySelector('.login-card')?.classList.add('in'));
+    </script>
 </body>
 </html>

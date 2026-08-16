@@ -5,11 +5,11 @@
 
 @section('content')
     <div class="mb-6">
-        <h1 class="text-xl font-bold text-brand mb-1">Offline companion dashboard</h1>
-        <p class="text-sm text-gray-500">Logged in as {{ $currentUser->name }} &middot; {{ $currentUser->barangay_name ?? 'City-wide access' }}</p>
+        <h1 class="text-2xl font-extrabold text-gray-800 mb-1">Welcome back, {{ $currentUser->name }}!</h1>
+        <p class="text-sm text-gray-500">{{ $currentUser->barangay_name ?? 'City-wide access' }} &middot; Here's what's registered on this device.</p>
     </div>
 
-    <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl p-4 flex items-center justify-between" style="border-left: 4px solid #3B82F6;">
             <div>
                 <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Barangays</p>
@@ -35,6 +35,15 @@
             </div>
             <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center shrink-0">
                 <i class="ti ti-building text-purple-500" style="font-size: 20px;" aria-hidden="true"></i>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl p-4 flex items-center justify-between" style="border-left: 4px solid #C8102E;">
+            <div>
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Pending sync</p>
+                <p class="text-2xl font-bold text-gray-800">{{ $pendingSyncCount }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+                <i class="ti ti-cloud-upload" style="font-size: 20px; color: #C8102E;" aria-hidden="true"></i>
             </div>
         </div>
     </div>
