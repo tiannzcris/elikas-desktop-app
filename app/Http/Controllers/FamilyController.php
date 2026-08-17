@@ -12,10 +12,21 @@ use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 
 class FamilyController extends Controller
 {
-    public function create()
+    /**
+     * Serves two audiences with one route: a direct browser visit (e.g. a
+     * refresh while on this page) gets the full styled page, while the
+     * "Register a family" buttons on the Dashboard and Registered Families
+     * pages fetch this same route via JS and inject just the form as a
+     * true in-page modal over whatever page they were on -- see
+     * resources/js/app.js's openRegisterFamilyModal(). Both paths render
+     * the exact same families._form partial with the exact same data, so
+     * there is only one implementation to keep in sync, not two.
+     */
+    public function create(Request $request)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
@@ -35,7 +46,7 @@ class FamilyController extends Controller
             $cachedEvacuees = collect();
         }
 
-        return view('families.create', [
+        $data = [
             'currentUser' => $auth,
             'barangays' => Barangay::orderBy('name')->get(),
             // Cached events only ever include non-closed ones -- see
@@ -44,7 +55,13 @@ class FamilyController extends Controller
             'events' => EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('name')->get(),
             'centers' => EvacuationCenter::all(['id', 'name', 'barangay_remote_id']),
             'cachedEvacuees' => $cachedEvacuees,
-        ]);
+        ];
+
+        if ($request->header('X-Modal-Request')) {
+            return view('families._form', $data);
+        }
+
+        return view('families.create', $data);
     }
 
     /**

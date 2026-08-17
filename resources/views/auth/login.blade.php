@@ -4,16 +4,7 @@
     <meta charset="UTF-8">
     <title>E-LIKAS Offline Companion</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#1E3D73', dark: '#0F2447', light: '#5B8FD6', red: '#C8102E', green: '#178A43' } } } } };
-    </script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
-        .login-card { opacity: 0; transform: translateY(8px); transition: opacity 250ms ease, transform 250ms ease; }
-        .login-card.in { opacity: 1; transform: translateY(0); }
-    </style>
+    @vite('resources/css/app.css')
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center">
     <div class="login-card w-full max-w-sm bg-white border border-gray-200 rounded-xl p-8">

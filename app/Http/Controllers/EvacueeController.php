@@ -7,6 +7,7 @@ use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class EvacueeController extends Controller
 {
@@ -31,8 +32,13 @@ class EvacueeController extends Controller
         $isStale = true;
 
         try {
-            foreach ($api->fetchEvacuees($auth->api_token) as $record) {
+            $records = $api->fetchEvacuees($auth->api_token);
+            $skipped = 0;
+
+            foreach ($records as $record) {
                 if (! isset($record['id'])) {
+                    $skipped++;
+
                     continue;
                 }
 
@@ -41,6 +47,10 @@ class EvacueeController extends Controller
                     'barangay_name' => $record['barangay_name'] ?? null,
                     'member_count' => $record['member_count'] ?? 0,
                 ]);
+            }
+
+            if ($skipped > 0) {
+                Log::warning("EvacueeController::index skipped {$skipped} of ".count($records)." record(s) with no 'id' field -- see the fetchEvacuees response log entry just above this for the raw shape.");
             }
 
             $isStale = false;

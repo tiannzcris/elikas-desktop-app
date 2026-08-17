@@ -20,20 +20,31 @@
         </a>
     </div>
 
-    @if ($lastSyncedAt)
-        <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-            <div class="flex items-center gap-2 mb-2">
-                <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style="background: {{ $isStale ? '#FEF3C7' : '#DCFCE7' }};">
-                    <i class="ti ti-{{ $isStale ? 'cloud-off' : 'cloud-check' }}" style="font-size: 15px; color: {{ $isStale ? '#D97706' : '#178A43' }};" aria-hidden="true"></i>
-                </div>
-                <p class="text-sm font-medium">Showing data as of {{ $lastSyncedAt->format('M j, Y g:i A') }}</p>
+    {{-- Always shown when offline/stale, even with nothing cached yet --
+         staff should never mistake an empty offline view for "there is
+         truly no data" when the real reason is just "never loaded". --}}
+    @if ($isStale)
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <div class="flex items-center gap-2">
+                <i class="ti ti-cloud-off text-amber-600" style="font-size: 16px;" aria-hidden="true"></i>
+                <p class="text-sm font-medium text-amber-800">This list needs an internet connection to fully update.</p>
             </div>
-            @if ($isStale)
-                <p class="text-xs text-amber-600 mt-2 flex items-center gap-1.5">
-                    <i class="ti ti-alert-circle" style="font-size: 14px;" aria-hidden="true"></i>
-                    Couldn't reach the central server -- showing the last successfully synced data instead.
-                </p>
-            @endif
+            <p class="text-xs text-amber-700 mt-1.5">
+                @if ($lastSyncedAt)
+                    Showing what was last loaded: {{ $lastSyncedAt->format('M j, Y g:i A') }}.
+                @else
+                    Nothing has been loaded on this device yet -- connect to the internet at least once to load the list.
+                @endif
+            </p>
+        </div>
+    @elseif ($lastSyncedAt)
+        <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style="background: #DCFCE7;">
+                    <i class="ti ti-cloud-check" style="font-size: 15px; color: #178A43;" aria-hidden="true"></i>
+                </div>
+                <p class="text-sm font-medium">Up to date, refreshed {{ $lastSyncedAt->format('M j, Y g:i A') }}</p>
+            </div>
         </div>
     @endif
 
@@ -44,7 +55,7 @@
                 @if ($search !== '')
                     No cached match for "{{ $search }}".
                 @elseif ($isStale)
-                    No cached evacuee data yet -- connect to the internet at least once to load it.
+                    No families to show on this device yet.
                 @else
                     No evacuees registered yet.
                 @endif

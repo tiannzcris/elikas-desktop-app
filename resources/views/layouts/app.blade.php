@@ -4,28 +4,7 @@
     <meta charset="UTF-8">
     <title>@yield('title', 'E-LIKAS Offline Companion')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { brand: { DEFAULT: '#1E3D73', dark: '#0F2447', light: '#5B8FD6', red: '#C8102E', green: '#178A43' } } } } };
-    </script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
-
-        .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; color: #A8C2E8; }
-        .nav-link i { font-size: 18px; }
-        .nav-link:hover { background: rgba(255,255,255,0.08); color: white; }
-        .nav-link.active { background: #3B82F6; color: white; }
-
-        main.page-transition { opacity: 0; transition: opacity 200ms ease; }
-        main.page-transition.in { opacity: 1; }
-
-        .modal-pop { animation: modal-pop-in 220ms ease; }
-        @keyframes modal-pop-in {
-            from { opacity: 0; transform: scale(0.96) translateY(8px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50 text-gray-900 flex h-screen overflow-hidden">
     @php
@@ -75,7 +54,9 @@
                             <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background: #3B82F6;">{{ $initials }}</div>
                             <div class="text-left leading-tight">
                                 <p class="text-sm font-bold text-gray-800">{{ $currentUser->name }}</p>
-                                <p class="text-xs text-gray-400">{{ $currentUser->role }}</p>
+                                <span class="inline-block mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand bg-blue-50 rounded-full px-2 py-0.5">
+                                    {{ \Illuminate\Support\Str::headline($currentUser->role) }}
+                                </span>
                             </div>
                             <i class="ti ti-chevron-down text-gray-400" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>
@@ -103,62 +84,6 @@
             @yield('content')
         </main>
     </div>
-
-    <script>
-        function updateConnectionBadge() {
-            const badge = document.getElementById('connection-badge');
-            if (navigator.onLine) {
-                badge.textContent = 'Online';
-                badge.className = 'text-xs px-2.5 py-1 rounded-lg font-medium bg-green-500 text-white';
-            } else {
-                badge.textContent = 'Offline';
-                badge.className = 'text-xs px-2.5 py-1 rounded-lg font-medium bg-gray-500 text-white';
-            }
-        }
-        updateConnectionBadge();
-        window.addEventListener('online', updateConnectionBadge);
-        window.addEventListener('offline', updateConnectionBadge);
-
-        function updateClock() {
-            const el = document.getElementById('live-clock');
-            if (!el) return;
-            const formatted = new Date().toLocaleString('en-US', {
-                month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-            });
-            el.innerHTML = '<i class="ti ti-calendar" style="font-size: 15px;" aria-hidden="true"></i> ' + formatted;
-        }
-        updateClock();
-        setInterval(updateClock, 30000);
-
-        const userMenuBtn = document.getElementById('user-menu-btn');
-        const userMenu = document.getElementById('user-menu');
-        if (userMenuBtn && userMenu) {
-            userMenuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                userMenu.classList.toggle('hidden');
-            });
-            document.addEventListener('click', () => userMenu.classList.add('hidden'));
-        }
-
-        // Page transitions -- fades the content area out just before leaving
-        // for another page in this app, and back in once the new page loads,
-        // so navigation doesn't feel like an abrupt full-page reload.
-        document.addEventListener('DOMContentLoaded', () => {
-            requestAnimationFrame(() => document.querySelector('main')?.classList.add('in'));
-        });
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('a[href]');
-            if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-            const url = new URL(link.href, window.location.href);
-            if (url.origin !== window.location.origin || link.target === '_blank' || link.hasAttribute('download')) return;
-            e.preventDefault();
-            document.querySelector('main')?.classList.remove('in');
-            setTimeout(() => { window.location.href = link.href; }, 150);
-        });
-        document.addEventListener('submit', () => {
-            document.querySelector('main')?.classList.remove('in');
-        });
-    </script>
 
     @yield('scripts')
 </body>

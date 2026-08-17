@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CentralApiService
 {
@@ -88,11 +89,20 @@ class CentralApiService
             throw new \RuntimeException('Could not reach the central server to refresh the evacuee list. Check your internet connection.');
         }
 
+        // Logged deliberately (not just on failure) -- the "All Evacuees"
+        // list has previously come back empty for some accounts with no
+        // visible error, which is impossible to diagnose after the fact
+        // without seeing exactly what the server actually sent back.
+        Log::info('CentralApiService::fetchEvacuees response', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
         if (! $response->successful()) {
             throw new \RuntimeException('The central server rejected the request -- your login may have expired. Try logging in again while online.');
         }
 
-        return $response->json('data');
+        return $response->json('data') ?? [];
     }
 
     /**
