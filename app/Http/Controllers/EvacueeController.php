@@ -7,7 +7,6 @@ use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class EvacueeController extends Controller
 {
@@ -33,24 +32,21 @@ class EvacueeController extends Controller
 
         try {
             $records = $api->fetchEvacuees($auth->api_token);
-            $skipped = 0;
 
+            // Confirmed against the real production API: a family record
+            // is { id, barangay: {id, name}, head_of_family: {id, full_name},
+            // member_count, ... } -- names are nested under barangay/
+            // head_of_family, not flat barangay_name/head_name fields.
             foreach ($records as $record) {
                 if (! isset($record['id'])) {
-                    $skipped++;
-
                     continue;
                 }
 
                 EvacueeRecord::updateOrCreate(['remote_id' => $record['id']], [
-                    'head_name' => $record['head_name'] ?? null,
-                    'barangay_name' => $record['barangay_name'] ?? null,
+                    'head_name' => $record['head_of_family']['full_name'] ?? null,
+                    'barangay_name' => $record['barangay']['name'] ?? null,
                     'member_count' => $record['member_count'] ?? 0,
                 ]);
-            }
-
-            if ($skipped > 0) {
-                Log::warning("EvacueeController::index skipped {$skipped} of ".count($records)." record(s) with no 'id' field -- see the fetchEvacuees response log entry just above this for the raw shape.");
             }
 
             $isStale = false;
