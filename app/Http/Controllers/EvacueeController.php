@@ -60,6 +60,7 @@ class EvacueeController extends Controller
         }
 
         $search = trim((string) $request->query('q', ''));
+        $barangayFilter = trim((string) $request->query('barangay', ''));
 
         try {
             $latest = EvacueeRecord::latest('updated_at')->first();
@@ -72,20 +73,35 @@ class EvacueeController extends Controller
             // that order, which Collection::groupBy() does.
             $evacuees = EvacueeRecord::query()
                 ->when($search !== '', fn ($q) => $q->where('head_name', 'like', "%{$search}%"))
+                ->when($barangayFilter !== '', fn ($q) => $q->where('barangay_name', $barangayFilter))
                 ->orderBy('barangay_name')
                 ->orderBy('head_name')
                 ->get()
                 ->groupBy(fn (EvacueeRecord $record) => $record->barangay_name ?: 'Unknown barangay');
+
+            // Picking a single barangay from the dropdown is exactly what
+            // multi-barangay (CSWD/admin) accounts need to avoid scrolling
+            // through every section -- the options list itself only makes
+            // sense to show when there's more than one barangay to pick
+            // from, which a barangay official's own scoped cache never has.
+            $barangayOptions = EvacueeRecord::query()
+                ->whereNotNull('barangay_name')
+                ->distinct()
+                ->orderBy('barangay_name')
+                ->pluck('barangay_name');
         } catch (QueryException $e) {
             // Same local cache table issue as above -- show the page as
             // "nothing cached yet" instead of a 500.
             $latest = null;
             $evacuees = collect();
+            $barangayOptions = collect();
         }
 
         return view('evacuees.index', [
             'currentUser' => $auth,
             'evacueesByBarangay' => $evacuees,
+            'barangayOptions' => $barangayOptions,
+            'barangayFilter' => $barangayFilter,
             'search' => $search,
             'lastSyncedAt' => $latest?->updated_at,
             'isStale' => $isStale,

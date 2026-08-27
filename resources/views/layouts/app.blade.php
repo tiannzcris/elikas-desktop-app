@@ -16,16 +16,16 @@
     @endphp
 
     @if($currentUser ?? null)
-        <aside class="w-60 shrink-0 h-screen flex flex-col px-3 py-4" style="background: linear-gradient(180deg, {{ '#0F2447' }} 0%, {{ '#152F5C' }} 100%);">
-            <div class="flex items-center gap-2.5 px-2 mb-6">
-                <img src="{{ asset('images/logo-icon.png') }}" alt="E-LIKAS" class="w-9 h-9 object-contain shrink-0">
+        <aside class="w-64 shrink-0 h-screen flex flex-col px-4 py-5" style="background: linear-gradient(180deg, {{ '#0F2447' }} 0%, {{ '#152F5C' }} 100%);">
+            <div class="flex items-center gap-3 px-2 mb-8">
+                <img src="{{ asset('images/logo-icon.png') }}" alt="E-LIKAS" class="w-10 h-10 object-contain shrink-0">
                 <div class="leading-tight">
-                    <p class="text-white font-extrabold text-sm tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
+                    <p class="text-white font-extrabold text-base tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
                     <p class="text-xs font-medium" style="color: #A8C2E8;">Offline Companion</p>
                 </div>
             </div>
 
-            <nav class="flex flex-col gap-1">
+            <nav class="flex flex-col gap-1.5">
                 <a href="{{ route('dashboard') }}" class="nav-link @yield('nav-dashboard')">
                     <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard
                 </a>
@@ -40,18 +40,18 @@
     @endif
 
     <div class="flex-1 flex flex-col min-w-0">
-        <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
+        <header class="bg-white px-6 py-3.5 flex items-center justify-between shrink-0" style="box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);">
             <div class="flex items-center gap-4 text-sm text-gray-500">
                 <span id="live-clock" class="flex items-center gap-1.5"><i class="ti ti-calendar" style="font-size: 15px;" aria-hidden="true"></i></span>
                 <span class="flex items-center gap-1.5"><i class="ti ti-map-pin" style="font-size: 15px;" aria-hidden="true"></i> Ligao City, Albay</span>
             </div>
 
             <div class="flex items-center gap-4">
-                <span id="connection-badge" class="text-xs px-2.5 py-1 rounded-lg font-medium"></span>
+                <span id="connection-badge" class="text-xs px-2.5 py-1 rounded-full font-semibold"></span>
                 @if($currentUser ?? null)
                     <div class="relative">
                         <button type="button" id="user-menu-btn" class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background: #3B82F6;">{{ $initials }}</div>
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background: linear-gradient(135deg, #3B82F6, #2563EB);">{{ $initials }}</div>
                             <div class="text-left leading-tight">
                                 <p class="text-sm font-bold text-gray-800">{{ $currentUser->name }}</p>
                                 <span class="inline-block mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand bg-blue-50 rounded-full px-2 py-0.5">
@@ -60,7 +60,7 @@
                             </div>
                             <i class="ti ti-chevron-down text-gray-400" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>
-                        <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
+                        <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-40 card-modern overflow-hidden z-50">
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50">

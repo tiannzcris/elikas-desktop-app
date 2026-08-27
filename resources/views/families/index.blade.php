@@ -12,11 +12,11 @@
         <div class="flex gap-3">
             <form method="POST" action="{{ route('families.sync') }}">
                 @csrf
-                <button type="submit" class="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-sm font-medium rounded-lg px-4 py-2.5">
+                <button type="submit" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
                     <i class="ti ti-cloud-upload" style="font-size: 15px;" aria-hidden="true"></i> Sync now
                 </button>
             </form>
-            <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg px-4 py-2.5">
+            <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="btn-modern btn-primary-modern flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5">
                 <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
             </a>
         </div>
@@ -30,11 +30,11 @@
     @else
         <div class="flex flex-col gap-3">
             @foreach ($families as $family)
-                <div class="bg-white border border-gray-200 rounded-xl p-4">
+                <div class="card-modern p-4">
                     <div class="flex items-start justify-between">
                         <div>
-                            <p class="font-medium text-sm">{{ $family->barangay->name ?? 'Unknown barangay' }}</p>
-                            <p class="text-xs text-gray-500">
+                            <p class="font-bold text-sm text-gray-800">{{ $family->barangay->name ?? 'Unknown barangay' }}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">
                                 {{ $family->evacuationEvent->name ?? '' }} &middot;
                                 {{ $family->evacuees->count() }} member(s) &middot;
                                 {{ $family->displacement_type === 'inside_center' ? 'Inside center' : 'Outside center' }}
@@ -42,11 +42,11 @@
                             <p class="text-xs text-gray-400 mt-1">Registered {{ $family->created_at->format('M j, Y g:i A') }}</p>
                         </div>
                         @if ($family->synced_at)
-                            <span class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-green-50 text-green-700">
+                            <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-50 text-green-700">
                                 <i class="ti ti-check" style="font-size: 12px;" aria-hidden="true"></i> Synced
                             </span>
                         @else
-                            <span class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-amber-50 text-amber-700">
+                            <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
                                 <i class="ti ti-clock" style="font-size: 12px;" aria-hidden="true"></i> Waiting to sync
                             </span>
                         @endif

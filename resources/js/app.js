@@ -11,10 +11,10 @@ function updateConnectionBadge() {
     if (!badge) return;
     if (navigator.onLine) {
         badge.textContent = 'Online';
-        badge.className = 'text-xs px-2.5 py-1 rounded-lg font-medium bg-green-500 text-white';
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-semibold bg-green-500 text-white';
     } else {
         badge.textContent = 'Offline';
-        badge.className = 'text-xs px-2.5 py-1 rounded-lg font-medium bg-gray-500 text-white';
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-semibold bg-gray-500 text-white';
     }
 }
 
@@ -169,24 +169,24 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
 
     function memberRowHtml(index) {
         return `
-        <div class="member-row bg-white border border-gray-200 rounded-xl p-4" data-index="${index}">
+        <div class="member-row card-modern p-4" data-index="${index}">
             <div class="flex items-center justify-between mb-3">
-                <p class="text-sm font-medium text-gray-600">Member ${index + 1}</p>
-                ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-500 hover:underline">Remove</button>` : ''}
+                <p class="text-sm font-semibold text-gray-600">Member ${index + 1}</p>
+                ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-500 font-medium hover:underline">Remove</button>` : ''}
             </div>
             <div class="grid grid-cols-3 gap-3">
-                <input type="text" name="members[${index}][first_name]" placeholder="First name" class="m-first_name border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][middle_name]" placeholder="Middle name" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                <input type="text" name="members[${index}][last_name]" placeholder="Last name" class="m-last_name border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
-                <select name="members[${index}][sex]" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][first_name]" placeholder="First name" class="m-first_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][middle_name]" placeholder="Middle name" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <input type="text" name="members[${index}][last_name]" placeholder="Last name" class="m-last_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <select name="members[${index}][sex]" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
                     <option value="">Sex</option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
                 </select>
-                <input type="date" name="members[${index}][date_of_birth]" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][contact_number]" placeholder="Contact number" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <input type="date" name="members[${index}][date_of_birth]" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][contact_number]" placeholder="Contact number" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
             </div>
-            <div class="dup-warning mt-3 bg-amber-50 text-amber-700 text-xs rounded-lg p-2.5 items-start gap-2" style="display: none;">
+            <div class="dup-warning mt-3 bg-amber-50 text-amber-700 text-xs rounded-xl p-2.5 items-start gap-2" style="display: none;">
                 <i class="ti ti-alert-triangle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>
                 <span class="dup-warning-text"></span>
             </div>
