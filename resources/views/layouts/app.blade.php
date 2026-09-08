@@ -18,7 +18,9 @@
     @if($currentUser ?? null)
         <aside class="w-64 shrink-0 h-screen flex flex-col px-4 py-5" style="background: linear-gradient(180deg, {{ '#0F2447' }} 0%, {{ '#152F5C' }} 100%);">
             <div class="flex items-center gap-3 px-2 mb-8">
-                <img src="{{ asset('images/logo-icon.png') }}" alt="E-LIKAS" class="w-10 h-10 object-contain shrink-0">
+                <div class="w-11 h-11 rounded-full bg-white flex items-center justify-center shrink-0 p-1.5" style="box-shadow: 0 2px 6px rgba(0,0,0,0.25);">
+                    <img src="{{ asset('images/logo-icon.png') }}" alt="E-LIKAS" class="w-full h-full object-contain">
+                </div>
                 <div class="leading-tight">
                     <p class="text-white font-extrabold text-base tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
                     <p class="text-xs font-medium" style="color: #A8C2E8;">Offline Companion</p>
