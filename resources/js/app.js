@@ -160,6 +160,9 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
     const allCenters = data.centers;
     const cachedEvacuees = data.cachedEvacuees;
     const evacueesIndexUrl = data.evacueesIndexUrl;
+    // Both null/absent on a plain create() form -- only edit() passes them.
+    const existingMembers = data.existingMembers || null;
+    const currentCenterId = data.currentCenterId ?? null;
 
     wireModalClose(modalRoot);
     wireModalSubmit(modalRoot);
@@ -167,7 +170,18 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
     const membersContainer = modalRoot.querySelector('#members-container');
     let memberCount = 0;
 
-    function memberRowHtml(index) {
+    // `member` is optional -- omitted (plain create()) every field just
+    // starts blank/unchecked, exactly as before. When editing, it carries
+    // this row's current values so the row starts pre-filled instead of
+    // empty; see the `existingMembers` loop below.
+    function memberRowHtml(index, member) {
+        const v = (field, fallback = '') => (member && member[field] != null ? member[field] : fallback);
+        const checked = (field) => (member && member[field] ? 'checked' : '');
+        const selected = (field, option) => (member && member[field] === option ? 'selected' : '');
+        const escAttr = (s) => String(s).replace(/"/g, '&quot;');
+        const isHead = member ? !!member.is_head_of_family : false;
+        const isPwd = member ? !!member.is_pwd : false;
+
         return `
         <div class="member-row card-modern p-4" data-index="${index}">
             <div class="flex items-center justify-between mb-3">
@@ -175,16 +189,16 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
                 ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-500 font-medium hover:underline">Remove</button>` : ''}
             </div>
             <div class="grid grid-cols-3 gap-3">
-                <input type="text" name="members[${index}][first_name]" placeholder="First name" class="m-first_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][middle_name]" placeholder="Middle name" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
-                <input type="text" name="members[${index}][last_name]" placeholder="Last name" class="m-last_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][first_name]" value="${escAttr(v('first_name'))}" placeholder="First name" class="m-first_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][middle_name]" value="${escAttr(v('middle_name'))}" placeholder="Middle name" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <input type="text" name="members[${index}][last_name]" value="${escAttr(v('last_name'))}" placeholder="Last name" class="m-last_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
                 <select name="members[${index}][sex]" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
                     <option value="">Sex</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
+                    <option value="male" ${selected('sex', 'male')}>Male</option>
+                    <option value="female" ${selected('sex', 'female')}>Female</option>
                 </select>
-                <input type="date" name="members[${index}][date_of_birth]" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][contact_number]" placeholder="Contact number" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <input type="date" name="members[${index}][date_of_birth]" value="${escAttr(v('date_of_birth'))}" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][contact_number]" value="${escAttr(v('contact_number'))}" placeholder="Contact number" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
             </div>
             <div class="dup-warning mt-3 bg-amber-50 text-amber-700 text-xs rounded-xl p-2.5 items-start gap-2" style="display: none;">
                 <i class="ti ti-alert-triangle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>
@@ -192,24 +206,29 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
             </div>
             <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-600 items-center">
                 <input type="hidden" name="members[${index}][is_head_of_family]" value="0">
-                <label class="flex items-center gap-1.5"><input type="radio" name="members[${index}][is_head_of_family]" value="1"> Head of family</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" class="m-is_pwd" name="members[${index}][is_pwd]" value="1"> PWD</label>
-                <input type="text" placeholder="PWD type" class="m-pwd_type hidden border border-gray-300 rounded-lg px-2 py-1 text-xs" name="members[${index}][pwd_type]">
-                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_pregnant]" value="1"> Pregnant</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_lactating]" value="1"> Lactating</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_solo_parent]" value="1"> Solo parent</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_indigenous_person]" value="1"> Indigenous person</label>
+                <label class="flex items-center gap-1.5"><input type="radio" name="members[${index}][is_head_of_family]" value="1" ${isHead ? 'checked' : ''}> Head of family</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="m-is_pwd" name="members[${index}][is_pwd]" value="1" ${checked('is_pwd')}> PWD</label>
+                <input type="text" placeholder="PWD type" value="${escAttr(v('pwd_type'))}" class="m-pwd_type ${isPwd ? '' : 'hidden'} border border-gray-300 rounded-lg px-2 py-1 text-xs" name="members[${index}][pwd_type]">
+                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_pregnant]" value="1" ${checked('is_pregnant')}> Pregnant</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_lactating]" value="1" ${checked('is_lactating')}> Lactating</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_solo_parent]" value="1" ${checked('is_solo_parent')}> Solo parent</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_indigenous_person]" value="1" ${checked('is_indigenous_person')}> Indigenous person</label>
             </div>
         </div>`;
     }
 
-    function addMemberRow() {
-        membersContainer.insertAdjacentHTML('beforeend', memberRowHtml(memberCount));
+    function addMemberRow(member) {
+        membersContainer.insertAdjacentHTML('beforeend', memberRowHtml(memberCount, member));
         memberCount++;
     }
 
-    modalRoot.querySelector('#add-member-btn').addEventListener('click', addMemberRow);
-    addMemberRow();
+    modalRoot.querySelector('#add-member-btn').addEventListener('click', () => addMemberRow());
+
+    if (existingMembers && existingMembers.length > 0) {
+        existingMembers.forEach((member) => addMemberRow(member));
+    } else {
+        addMemberRow();
+    }
 
     membersContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('remove-member')) {
@@ -228,14 +247,31 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
         modalRoot.querySelector('#center-field').style.display = e.target.value === 'inside_center' ? 'block' : 'none';
     });
 
-    modalRoot.querySelector('[name="barangay_id"]').addEventListener('change', (e) => {
-        const selectedOption = e.target.options[e.target.selectedIndex];
+    function populateCentersFor(barangaySelectEl, selectCenterId) {
+        const selectedOption = barangaySelectEl.options[barangaySelectEl.selectedIndex];
+        if (!selectedOption || !selectedOption.value) return;
         const barangayRemoteId = Number(selectedOption.dataset.remoteId);
         const select = modalRoot.querySelector('[name="evacuation_center_id"]');
         const filtered = allCenters.filter((c) => c.barangay_remote_id === barangayRemoteId);
         select.innerHTML = '<option value="">Select center</option>' +
             filtered.map((c) => `<option value="${c.id}">${c.name}</option>`).join('');
-    });
+        if (selectCenterId != null) {
+            select.value = String(selectCenterId);
+        }
+    }
+
+    const barangaySelect = modalRoot.querySelector('[name="barangay_id"]');
+    barangaySelect.addEventListener('change', (e) => populateCentersFor(e.target));
+
+    // Editing a family already inside a center: the barangay <select> comes
+    // pre-selected server-side (see _form.blade.php), but a pre-selected
+    // <select> never fires its own 'change' event on page load, so without
+    // this the center dropdown would stay empty even though a barangay is
+    // already chosen. Runs the exact same population logic once up front,
+    // then selects the family's current center in the now-populated list.
+    if (currentCenterId != null) {
+        populateCentersFor(barangaySelect, currentCenterId);
+    }
 
     // Inline duplicate-name warning -- purely client-side against the
     // already-loaded cachedEvacuees array, so it works identically whether

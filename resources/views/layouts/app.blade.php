@@ -76,6 +76,25 @@
         </header>
 
         <main class="page-transition flex-1 min-h-0 overflow-y-auto p-6 w-full max-w-6xl mx-auto">
+            @if (session('authExpired'))
+                {{-- Specifically for a 401 during sync (a dead/revoked token) -- kept visually and
+                     textually distinct from the green status banner below, which still covers
+                     ordinary per-record validation failures (a malformed field, a deleted reference)
+                     that have nothing to do with the session and need their own specific fix instead
+                     of a re-login. --}}
+                <div class="flex items-center justify-between gap-4 bg-amber-50 text-amber-800 text-sm rounded-lg p-3 mb-4">
+                    <span class="flex items-center gap-2">
+                        <i class="ti ti-lock-exclamation shrink-0" style="font-size: 16px;" aria-hidden="true"></i>
+                        {{ session('authExpired') }}
+                    </span>
+                    <form method="POST" action="{{ route('logout') }}" class="shrink-0">
+                        @csrf
+                        <button type="submit" class="btn-modern bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2">
+                            Log in again
+                        </button>
+                    </form>
+                </div>
+            @endif
             @if (session('status'))
                 <div class="bg-green-50 text-green-700 text-sm rounded-lg p-3 mb-4">{{ session('status') }}</div>
             @endif

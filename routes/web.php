@@ -21,5 +21,8 @@ Route::get('/families', [FamilyController::class, 'index'])->name('families.inde
 Route::get('/families/create', [FamilyController::class, 'create'])->name('families.create');
 Route::post('/families', [FamilyController::class, 'store'])->name('families.store');
 Route::post('/families/sync', [FamilyController::class, 'sync'])->name('families.sync');
+Route::get('/families/{family}/edit', [FamilyController::class, 'edit'])->name('families.edit');
+Route::put('/families/{family}', [FamilyController::class, 'update'])->name('families.update');
+Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->name('families.destroy');
 
 Route::get('/evacuees', [EvacueeController::class, 'index'])->name('evacuees.index');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\CentralApiAuthenticationException;
 use App\Http\Requests\RegisterFamilyRequest;
 use App\Models\Barangay;
 use App\Models\Evacuee;
@@ -33,6 +34,19 @@ class FamilyController extends Controller
             return redirect()->route('login');
         }
 
+        return $this->renderForm($request, $auth);
+    }
+
+    /**
+     * Shared by create() and edit() -- identical form data either way, the
+     * only difference is whether a $family is passed in for the view (and
+     * therefore the JS) to pre-fill. See resources/js/app.js's
+     * initRegisterFamilyForm() for how the presence of family data changes
+     * behavior (starts from its existing members instead of one blank row,
+     * pre-selects its current barangay/event/center/displacement type).
+     */
+    private function renderForm(Request $request, LocalAuth $auth, ?Family $family = null)
+    {
         try {
             // Same local cache the "All Evacuees" page reads from --
             // reused here (not re-fetched) so the in-form duplicate warning
@@ -48,6 +62,7 @@ class FamilyController extends Controller
 
         $data = [
             'currentUser' => $auth,
+            'family' => $family,
             'barangays' => Barangay::orderBy('name')->get(),
             // Cached events only ever include non-closed ones -- see
             // EvacuationEventController::index() note on the central
@@ -91,7 +106,26 @@ class FamilyController extends Controller
             'is_4ps_beneficiary' => $validated['is_4ps_beneficiary'] ?? false,
         ]);
 
-        foreach ($validated['members'] as $member) {
+        $this->replaceMembers($family, $validated['members']);
+
+        return redirect()->route('families.index')
+            ->with('status', 'Family saved on this device. Sync when you have internet.');
+    }
+
+    /**
+     * Shared by store() and update() -- (re)creates every evacuee row for a
+     * family from a validated members array. On an existing family, wipes
+     * its current members first rather than diffing/matching against the
+     * submitted array: simpler and more robust than reconciling per-row
+     * adds/edits/removals, and safe here because nothing downstream holds
+     * a reference to an individual evacuee row's id (toSyncPayload()
+     * re-reads the relationship fresh at sync time).
+     */
+    private function replaceMembers(Family $family, array $members): void
+    {
+        $family->evacuees()->delete();
+
+        foreach ($members as $member) {
             Evacuee::create([
                 'family_id' => $family->id,
                 'first_name' => $member['first_name'],
@@ -112,9 +146,6 @@ class FamilyController extends Controller
                 'is_head_of_family' => $member['is_head_of_family'] ?? false,
             ]);
         }
-
-        return redirect()->route('families.index')
-            ->with('status', 'Family saved on this device. Sync when you have internet.');
     }
 
     public function index()
@@ -160,6 +191,21 @@ class FamilyController extends Controller
                 $family->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null]);
                 $family->evacuees()->update(['synced_at' => now()]);
                 $successCount++;
+            } catch (CentralApiAuthenticationException $e) {
+                // The token itself is dead -- not a problem with this
+                // family's data, so it's left exactly as it was (still
+                // "Waiting to sync", no sync_error stamped on it) rather
+                // than being marked failed with a raw "Unauthenticated."
+                // message that would wrongly imply something about ITS
+                // data is wrong. Every other queued family would fail the
+                // exact same way with the same dead token, so stop here
+                // instead of repeating a doomed call for each one, and
+                // surface a distinct, actionable message instead of the
+                // generic sync summary below.
+                return redirect()->route('families.index')->with(
+                    'authExpired',
+                    'Your session has expired. Please log in again to continue syncing.'
+                );
             } catch (\RuntimeException $e) {
                 $family->update(['sync_error' => $e->getMessage()]);
                 $failCount++;
@@ -180,5 +226,85 @@ class FamilyController extends Controller
         }
 
         return redirect()->route('families.index')->with('status', $message);
+    }
+
+    /**
+     * Opens the exact same form used to register a family, pre-filled with
+     * this one's current data, so a staff member can fix a single mistake
+     * (a mistyped contact number, a since-deleted event) without deleting
+     * and fully re-entering the whole registration. Scoped to not-yet-
+     * synced families only -- once synced, the central server is the
+     * source of truth for that record, and this device's local copy is
+     * only ever a staging area on the way there, not a place to keep
+     * editing it after the fact.
+     */
+    public function edit(Request $request, Family $family)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        if ($family->isSynced()) {
+            return redirect()->route('families.index')
+                ->with('status', 'This family has already synced -- it can no longer be edited from this device.');
+        }
+
+        $family->load('evacuees');
+
+        return $this->renderForm($request, $auth, $family);
+    }
+
+    public function update(RegisterFamilyRequest $request, Family $family)
+    {
+        if ($family->isSynced()) {
+            return redirect()->route('families.index')
+                ->with('status', 'This family has already synced -- it can no longer be edited from this device.');
+        }
+
+        $validated = $request->validated();
+
+        $family->update([
+            'barangay_id' => $validated['barangay_id'],
+            'home_address' => $validated['home_address'] ?? null,
+            'evacuation_event_id' => $validated['evacuation_event_id'],
+            'evacuation_center_id' => $validated['evacuation_center_id'] ?? null,
+            'displacement_type' => $validated['displacement_type'],
+            'is_4ps_beneficiary' => $validated['is_4ps_beneficiary'] ?? false,
+            // Clears out whatever validation error sent this record back
+            // here in the first place -- it's about to get fresh data.
+            'sync_error' => null,
+        ]);
+
+        $this->replaceMembers($family, $validated['members']);
+
+        return redirect()->route('families.index')
+            ->with('status', 'Family updated on this device. Sync when you have internet.');
+    }
+
+    /**
+     * Removes a pending registration that can never sync as-is (data the
+     * user has no way to correct into validity, or one they've decided not
+     * to submit after all). Scoped to not-yet-synced families -- a synced
+     * one already exists on the central server, so deleting the local copy
+     * here wouldn't remove it there, it would just make this device's
+     * history of what it submitted incomplete.
+     */
+    public function destroy(Family $family)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        if ($family->isSynced()) {
+            return redirect()->route('families.index')
+                ->with('status', 'This family has already synced -- it can no longer be deleted from this device.');
+        }
+
+        $family->delete();
+
+        return redirect()->route('families.index')
+            ->with('status', 'Pending registration removed.');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\CentralApiAuthenticationException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
@@ -123,6 +124,18 @@ class CentralApiService
             ])->timeout(15)->post("{$this->baseUrl()}/families/register", $payload);
         } catch (ConnectionException $e) {
             throw new \RuntimeException('Could not reach the central server.');
+        }
+
+        // 401 specifically means the token itself is no good -- distinct
+        // from a 422 (this record's data is invalid) or any other status.
+        // Every other queued family will fail the exact same way with the
+        // same dead token, so this gets its own exception type rather than
+        // being folded into the generic message below: the caller needs to
+        // tell "your session is gone" apart from "this record has bad data"
+        // to show the right message and stop retrying with a token that
+        // will never start working again on its own.
+        if ($response->status() === 401) {
+            throw new CentralApiAuthenticationException($response->json('message') ?? 'Unauthenticated.');
         }
 
         if (! $response->successful()) {
