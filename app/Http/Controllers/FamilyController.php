@@ -53,7 +53,15 @@ class FamilyController extends Controller
             // EvacuationEventController::index() note on the central
             // server about client-side filtering for this exact reason.
             'events' => EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('name')->get(),
-            'centers' => EvacuationCenter::all(['id', 'name', 'barangay_remote_id']),
+            // Confirmed against the central server's actual enum
+            // (app/Models/EvacuationCenter.php's migration on that side):
+            // status is one of active|full|closed|on_standby, no soft
+            // deletes -- a center is simply gone once decommissioned there.
+            // Matches the same closed-exclusion pattern as events above,
+            // so a decommissioned/closed center can no longer be selected
+            // for a new registration even if a stale local copy briefly
+            // lingers before the next reference-data refresh prunes it.
+            'centers' => EvacuationCenter::where('status', '!=', 'closed')->get(['id', 'name', 'barangay_remote_id']),
             'cachedEvacuees' => $cachedEvacuees,
         ];
 

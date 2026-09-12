@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Barangay;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
+use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use Illuminate\Http\Request;
@@ -95,24 +96,70 @@ class AuthController extends Controller
     {
         $data = $api->fetchReferenceData($token);
 
+        $barangayRemoteIds = [];
         foreach ($data['barangays'] as $b) {
             Barangay::updateOrCreate(['remote_id' => $b['id']], ['name' => $b['name']]);
+            $barangayRemoteIds[] = $b['id'];
         }
+        $this->pruneStale(Barangay::class, $barangayRemoteIds, 'barangay_id');
 
+        $eventRemoteIds = [];
         foreach ($data['events'] as $e) {
             EvacuationEvent::updateOrCreate(['remote_id' => $e['id']], [
                 'name' => $e['name'],
                 'event_type' => $e['event_type'],
                 'status' => $e['status'],
             ]);
+            $eventRemoteIds[] = $e['id'];
         }
+        $this->pruneStale(EvacuationEvent::class, $eventRemoteIds, 'evacuation_event_id');
 
+        $centerRemoteIds = [];
         foreach ($data['centers'] as $c) {
             EvacuationCenter::updateOrCreate(['remote_id' => $c['id']], [
                 'barangay_remote_id' => $c['barangay_id'],
                 'name' => $c['name'],
                 'status' => $c['status'],
             ]);
+            $centerRemoteIds[] = $c['id'];
         }
+        $this->pruneStale(EvacuationCenter::class, $centerRemoteIds, 'evacuation_center_id');
+    }
+
+    /**
+     * Removes local cache rows the central server no longer returns --
+     * renamed away via a delete-and-reseed (new remote id), decommissioned,
+     * or otherwise deleted upstream. updateOrCreate() above only ever adds
+     * or updates, so without this step a removed remote record lives on in
+     * the local cache forever and keeps showing up (e.g. as a stale,
+     * no-longer-current evacuation center) in the registration form.
+     *
+     * Two safety guards:
+     *  - Skip entirely if the server returned zero ids for this batch.
+     *    whereNotIn() against an empty array matches every row (see
+     *    Grammar::whereNotIn), so acting on an empty response here would
+     *    wipe the whole local cache table -- far more likely a transient
+     *    or malformed response than "the server truly has zero barangays
+     *    now".
+     *  - Never delete a row a LOCAL family record still points to (synced
+     *    or not). families.*_id columns are foreign keys with no cascade
+     *    action defined, so deleting a still-referenced row would throw a
+     *    constraint violation -- and if it didn't, it would silently
+     *    detach that family's historical barangay/event/center the next
+     *    time its sync payload is built. A stale row still referenced by
+     *    an existing family is left in place; it prunes cleanly once that
+     *    family is gone or nothing local points to it anymore.
+     */
+    private function pruneStale(string $modelClass, array $currentRemoteIds, string $familyColumn): void
+    {
+        if (empty($currentRemoteIds)) {
+            return;
+        }
+
+        $referencedLocalIds = Family::whereNotNull($familyColumn)->pluck($familyColumn)->unique();
+
+        $modelClass::whereNotIn('remote_id', $currentRemoteIds)
+            ->whereNotIn('id', $referencedLocalIds)
+            ->delete();
     }
 }
