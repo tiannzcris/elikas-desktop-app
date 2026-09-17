@@ -4,21 +4,29 @@
 @section('nav-families', 'active')
 
 @section('content')
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-start justify-between mb-6">
         <div>
             <h1 class="text-xl font-bold text-brand mb-1">Registered families</h1>
             <p class="text-sm text-gray-500">Everything registered on this device, synced or not.</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex items-start gap-3">
             <form method="POST" action="{{ route('families.sync') }}">
                 @csrf
                 <button type="submit" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
                     <i class="ti ti-cloud-upload" style="font-size: 15px;" aria-hidden="true"></i> Sync now
                 </button>
             </form>
-            <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="btn-modern btn-primary-modern flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5">
-                <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
-            </a>
+            <div>
+                {{-- De-emphasized on purpose -- EC Board's "Add evacuee" is
+                     now the primary, fast-entry path for someone physically
+                     at a center (see the Dashboard's own "Go to EC Board"
+                     action). This stays fully functional for the cases it's
+                     still the right tool for -- see the helper text below. --}}
+                <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
+                    <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
+                </a>
+                <p class="text-xs text-gray-400 mt-1 max-w-[220px]">For households outside a center, or full detailed registration directly</p>
+            </div>
         </div>
     </div>
 
@@ -96,12 +104,26 @@
             @else
                 <div class="flex flex-col gap-3">
                     @foreach ($barangaySummary as $row)
+                        @php($ecBoardPending = $ecBoardPendingByBarangay[$row->barangay->remote_id ?? null] ?? 0)
                         <a href="{{ route('families.index', ['barangay' => $row->barangay_id]) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
                             <div>
                                 <p class="font-bold text-sm text-gray-800">{{ $row->barangay->name ?? 'Unknown barangay' }}</p>
                                 <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
                             </div>
-                            <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
+                            <div class="flex items-center gap-2 shrink-0">
+                                @if ($ecBoardPending > 0)
+                                    {{-- Aggregate only at this level (spans possibly
+                                         several centers within the barangay) -- not a
+                                         link itself, since there's no single EC Board
+                                         page to jump to yet; drilling into the barangay
+                                         below shows exactly which center(s). --}}
+                                    <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+                                        <i class="ti ti-clipboard-list" style="font-size: 12px;" aria-hidden="true"></i>
+                                        {{ $ecBoardPending }} EC Board pending
+                                    </span>
+                                @endif
+                                <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
+                            </div>
                         </a>
                     @endforeach
                 </div>
@@ -115,13 +137,29 @@
             @else
                 <div class="flex flex-col gap-3">
                     @foreach ($centerSummary as $row)
-                        <a href="{{ route('families.index', ['barangay' => $barangay->id, 'center' => $row->evacuation_center_id ?? 'none']) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
-                            <div>
-                                <p class="font-bold text-sm text-gray-800">{{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}</p>
-                                <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
+                        @php($ecBoardPending = $row->evacuation_center_id ? ($ecBoardPendingByCenter[$row->evacuation_center_id] ?? 0) : 0)
+                        <div class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+                            <a href="{{ route('families.index', ['barangay' => $barangay->id, 'center' => $row->evacuation_center_id ?? 'none']) }}" class="flex-1 flex items-center justify-between min-w-0">
+                                <div>
+                                    <p class="font-bold text-sm text-gray-800">{{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
+                                </div>
+                            </a>
+                            <div class="flex items-center gap-2 shrink-0 ml-3">
+                                {{-- A separate link, not nested inside the card's own
+                                     link above -- this one goes straight to the EC
+                                     Board page where these pending entries actually
+                                     live and can be managed, not to this drill-down's
+                                     own family list (which will never show them). --}}
+                                @if ($ecBoardPending > 0)
+                                    <a href="{{ route('evacuation-centers.ec-board', $row->evacuation_center_id) }}" class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100">
+                                        <i class="ti ti-clipboard-list" style="font-size: 12px;" aria-hidden="true"></i>
+                                        {{ $ecBoardPending }} EC Board pending
+                                    </a>
+                                @endif
+                                <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
                             </div>
-                            <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
-                        </a>
+                        </div>
                     @endforeach
                 </div>
             @endif

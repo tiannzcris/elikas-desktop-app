@@ -47,18 +47,30 @@
             </label>
         </div>
         <div class="household-existing-field" @if ($isEditing && ! $isExistingHousehold) style="display: none;" @endif>
-            <select name="household_family_local_id" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+            <select name="household_family_local_id" class="household-select w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
                 <option value="">Select household</option>
                 @foreach ($households as $h)
                     <option value="{{ $h->id }}" @selected($isEditing && $entry->household_family_local_id === $h->id)>
                         {{ $h->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? 'Household #'.$h->id }}
                     </option>
                 @endforeach
+                {{-- Households known on the central server but not yet
+                     cached locally (e.g. registered by another device) are
+                     appended here by JS after an on-demand fetch while
+                     online -- see initEcBoardEntryForm()'s loadRemoteHouseholds()
+                     in app.js. Never blocks this list from being usable
+                     offline; it just starts as this device's own local
+                     households until/unless that fetch succeeds. --}}
+                @if ($isEditing && $entry->existing_household_remote_id)
+                    <option value="remote-{{ $entry->existing_household_remote_id }}" selected>{{ $entry->new_household_head_name }}</option>
+                @endif
             </select>
-            @if ($households->isEmpty())
-                <p class="text-xs text-gray-400 mt-1">No households registered at this center yet.</p>
-            @endif
+            <p class="household-empty-hint text-xs text-gray-400 mt-1" @if ($households->isNotEmpty()) style="display: none;" @endif>No households registered at this center yet.</p>
+            <p class="household-loading-hint text-xs text-gray-400 mt-1" style="display: none;">Checking the central server for more households...</p>
         </div>
+        <input type="hidden" name="household_label" class="household-label-input" value="{{ $isEditing && $entry->existing_household_remote_id ? $entry->new_household_head_name : '' }}">
+        <input type="hidden" class="household-refresh-url" value="{{ route('evacuation-centers.households-refresh', $center) }}">
+        <input type="hidden" class="household-local-remote-ids" value="{{ $households->pluck('remote_id')->filter()->implode(',') }}">
         <div class="household-new-field" @if (! ($isEditing && ! $isExistingHousehold)) style="display: none;" @endif>
             <input type="text" name="new_household_head_name" value="{{ $isEditing ? $entry->new_household_head_name : '' }}" placeholder="New household head's full name" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
         </div>

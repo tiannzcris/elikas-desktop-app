@@ -34,9 +34,12 @@
                 <div class="flex items-center gap-2 mb-3">
                     <i class="ti ti-cloud-check text-gray-400" style="font-size: 16px;" aria-hidden="true"></i>
                     <p class="text-sm font-bold text-gray-700">As of last sync</p>
+                    <span id="breakdown-refreshing-badge" class="text-xs text-gray-400" style="display: none;">(refreshing…)</span>
                 </div>
-                <p class="text-xs text-gray-400 mb-3">The central server's own live tally, refreshed just now if this device is online -- otherwise showing whatever was last fetched for this center and event.</p>
-                @include('evacuation-centers._breakdown_table', ['matrix' => $lastKnownBreakdown, 'ageBrackets' => $breakdownAgeBrackets])
+                <p class="text-xs text-gray-400 mb-3">The central server's own live tally -- refreshes automatically a moment after this page loads if this device is online, otherwise shows whatever was last fetched for this center and event.</p>
+                <div id="last-known-breakdown-table">
+                    @include('evacuation-centers._breakdown_table', ['matrix' => $lastKnownBreakdown, 'ageBrackets' => $breakdownAgeBrackets])
+                </div>
             </div>
             <div class="card-modern p-4">
                 <div class="flex items-center gap-2 mb-3">
@@ -110,6 +113,23 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         window.ELIKAS.initEcBoardEntryForm(document.querySelector('[data-ec-board-entry-form]'));
+
+        // Fires AFTER this page (and its own CSS/JS/fonts) has already
+        // finished loading -- deliberately not part of the page's own
+        // server-side render. See EvacuationCenterController::ecBoard()'s
+        // docblock for the bug this fixes: a live network call blocking
+        // that render starved this page's own concurrent asset requests
+        // while offline, leaving it unstyled. Silently does nothing on
+        // any failure (offline, timeout, session expired) -- the
+        // server-rendered table already on screen is left exactly as is.
+        @if ($selectedEventId)
+            fetch('{{ route('evacuation-centers.breakdown-refresh', $center) }}?event={{ $selectedEventId }}')
+                .then((r) => (r.ok ? r.text() : null))
+                .then((html) => {
+                    if (html) document.getElementById('last-known-breakdown-table').innerHTML = html;
+                })
+                .catch(() => {});
+        @endif
     });
 </script>
 @endsection

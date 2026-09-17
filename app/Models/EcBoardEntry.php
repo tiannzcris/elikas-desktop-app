@@ -30,7 +30,7 @@ class EcBoardEntry extends Model
 
     protected $fillable = [
         'evacuation_center_id', 'evacuation_event_id', 'sex', 'age_bracket',
-        'household_family_local_id', 'new_household_head_name',
+        'household_family_local_id', 'existing_household_remote_id', 'new_household_head_name',
         'remote_id', 'synced_at', 'sync_error',
     ];
 
@@ -107,6 +107,23 @@ class EcBoardEntry extends Model
      */
     public function toSyncPayload(): array
     {
+        // A household picked from the LIVE central list (see
+        // EvacuationCenterController::refreshHouseholds()) has no local
+        // Family row at all -- it's already known-synced on the server by
+        // definition of having been fetched from there, so its remote id
+        // is used directly, skipping the local-row synced-check entirely.
+        if ($this->existing_household_remote_id) {
+            return [
+                'evacuation_event_id' => $this->evacuationEvent->remote_id,
+                'sex' => $this->sex,
+                'age_bracket' => $this->age_bracket,
+                'household_mode' => 'existing',
+                'family_id' => $this->existing_household_remote_id,
+                'barangay_id' => null,
+                'family_name' => null,
+            ];
+        }
+
         if ($this->household_family_local_id && ! $this->household?->isSynced()) {
             throw new \RuntimeException(
                 'The selected household has not synced yet -- sync it first, then sync this entry again.'

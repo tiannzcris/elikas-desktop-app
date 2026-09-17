@@ -177,4 +177,162 @@ class FamilyDrillDownTest extends TestCase
         $response->assertDontSee('data-remote-id="1" selected', false);
         $response->assertDontSee('data-remote-id="2" selected', false);
     }
+
+    // -----------------------------------------------------------------
+    // Part 1: pending EC Board entries visible in Registered Families
+    // -----------------------------------------------------------------
+
+    public function test_barangay_level_shows_a_pending_ec_board_count_badge(): void
+    {
+        $this->login();
+        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
+
+        // No Family record at all for this evacuee -- it lives only in
+        // ec_board_entries, which is exactly the visibility gap Part 1
+        // fixes. A real family in the same barangay is also seeded so the
+        // badge renders alongside a normal family count, not instead of it.
+        $this->seedFamily($barangay, $event, null, 'Existing', 'Family');
+        \App\Models\EcBoardEntry::create([
+            'evacuation_center_id' => $center->id,
+            'evacuation_event_id' => $event->id,
+            'sex' => 'male', 'age_bracket' => 'adult',
+            'new_household_head_name' => 'EC Board Only Evacuee',
+        ]);
+
+        $page = $this->get(route('families.index'));
+
+        $page->assertOk();
+        $page->assertSee('1 EC Board pending');
+    }
+
+    public function test_center_level_pending_ec_board_badge_links_directly_to_that_centers_ec_board_page(): void
+    {
+        $this->login();
+        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
+
+        $this->seedFamily($barangay, $event, $center);
+        \App\Models\EcBoardEntry::create([
+            'evacuation_center_id' => $center->id,
+            'evacuation_event_id' => $event->id,
+            'sex' => 'female', 'age_bracket' => 'teenage',
+            'new_household_head_name' => 'EC Board Only Evacuee',
+        ]);
+
+        $page = $this->get(route('families.index', ['barangay' => $barangay->id]));
+
+        $page->assertOk();
+        $page->assertSee('1 EC Board pending');
+        $page->assertSee(route('evacuation-centers.ec-board', $center), false);
+    }
+
+    public function test_a_synced_ec_board_entry_does_not_count_toward_the_pending_badge(): void
+    {
+        $this->login();
+        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
+
+        $this->seedFamily($barangay, $event, null);
+        \App\Models\EcBoardEntry::create([
+            'evacuation_center_id' => $center->id,
+            'evacuation_event_id' => $event->id,
+            'sex' => 'male', 'age_bracket' => 'adult',
+            'new_household_head_name' => 'Already Synced',
+            'synced_at' => now(), 'remote_id' => 5,
+        ]);
+
+        $page = $this->get(route('families.index'));
+
+        $page->assertOk();
+        $page->assertDontSee('EC Board pending');
+    }
+
+    // -----------------------------------------------------------------
+    // Part 4: Register-a-Family de-emphasized, EC Board promoted
+    // -----------------------------------------------------------------
+
+    public function test_dashboard_promotes_go_to_ec_board_and_de_emphasizes_register_a_family(): void
+    {
+        $this->login();
+
+        $page = $this->get(route('dashboard'));
+
+        $page->assertOk();
+        $page->assertSee('Go to EC Board');
+        // "Register a family" must no longer use the brand-colored primary
+        // button styling -- de-emphasized, not removed (still reachable).
+        $content = $page->getContent();
+        $registerPos = strpos($content, 'Register a family');
+        $this->assertNotFalse($registerPos);
+        $surroundingMarkup = substr($content, max(0, $registerPos - 400), 400);
+        $this->assertStringNotContainsString('btn-primary-modern', $surroundingMarkup);
+    }
+
+    public function test_dashboard_deep_links_straight_to_ec_board_when_staffs_barangay_has_exactly_one_center(): void
+    {
+        $this->login(barangayRemoteId: 1);
+        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Only Center', 'status' => 'active']);
+
+        $page = $this->get(route('dashboard'));
+
+        $page->assertOk();
+        $center = EvacuationCenter::where('remote_id', 1)->firstOrFail();
+        $page->assertSee(route('evacuation-centers.ec-board', $center), false);
+    }
+
+    public function test_dashboard_links_to_the_centers_list_when_no_single_obvious_center_exists(): void
+    {
+        $this->login(barangayRemoteId: 1);
+        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
+        EvacuationCenter::create(['remote_id' => 2, 'barangay_remote_id' => 1, 'name' => 'Center Two', 'status' => 'active']);
+
+        $page = $this->get(route('dashboard'));
+
+        $page->assertOk();
+        $page->assertSee(route('evacuation-centers.index'), false);
+    }
+
+    public function test_register_a_family_remains_fully_functional_despite_being_de_emphasized(): void
+    {
+        $this->login();
+        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+
+        $response = $this->post(route('families.store'), [
+            'barangay_id' => $barangay->id,
+            'evacuation_event_id' => $event->id,
+            'displacement_type' => 'outside_center',
+            'members' => [
+                ['first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'sex' => 'male', 'date_of_birth' => '1990-01-01', 'is_head_of_family' => true],
+            ],
+        ]);
+
+        $response->assertRedirect(route('families.index'));
+        $this->assertDatabaseHas('families', ['barangay_id' => $barangay->id]);
+    }
+
+    // -----------------------------------------------------------------
+    // Part 5: Evacuation Centers list grouped by barangay
+    // -----------------------------------------------------------------
+
+    public function test_evacuation_centers_list_is_grouped_by_barangay(): void
+    {
+        $this->login();
+        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        Barangay::create(['remote_id' => 2, 'name' => 'Barangay B']);
+        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
+        EvacuationCenter::create(['remote_id' => 2, 'barangay_remote_id' => 1, 'name' => 'Center Two', 'status' => 'active']);
+        EvacuationCenter::create(['remote_id' => 3, 'barangay_remote_id' => 2, 'name' => 'Center Three', 'status' => 'active']);
+
+        $page = $this->get(route('evacuation-centers.index'));
+
+        $page->assertOk();
+        // Both barangay headings render, and each center appears after
+        // its OWN barangay's heading, not just anywhere on the page.
+        $page->assertSeeInOrder(['Barangay A', 'Center One', 'Center Two', 'Barangay B', 'Center Three']);
+    }
 }

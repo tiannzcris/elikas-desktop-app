@@ -22,7 +22,7 @@ use Tests\TestCase;
  */
 class PendingMigrationUpdateTest extends TestCase
 {
-    private string $heldBackMigration = '2026_02_01_000010_create_ec_board_entries_table.php';
+    private string $heldBackMigration = '2026_02_01_000011_add_existing_household_remote_id_to_ec_board_entries_table.php';
 
     private string $heldBackPath;
 
@@ -34,8 +34,8 @@ class PendingMigrationUpdateTest extends TestCase
         // EXCEPT the most recent one has already run. Moving the actual
         // file out of database/migrations (rather than e.g. faking a row
         // in the migrations table) means a later `migrate` genuinely has
-        // a real table left to create -- matching today's real incident,
-        // not just a bookkeeping mismatch.
+        // a real schema change left to apply -- matching today's real
+        // incident, not just a bookkeeping mismatch.
         $this->heldBackPath = sys_get_temp_dir().'/'.$this->heldBackMigration;
         rename(database_path('migrations/'.$this->heldBackMigration), $this->heldBackPath);
 
@@ -70,7 +70,7 @@ class PendingMigrationUpdateTest extends TestCase
         // entire point: the block is a click-to-confirm gate, never a
         // background migration.
         $this->assertSame($countBefore, DB::table('migrations')->count());
-        $this->assertFalse(Schema::hasTable('ec_board_entries'));
+        $this->assertFalse(Schema::hasColumn('ec_board_entries', 'existing_household_remote_id'));
     }
 
     public function test_clicking_update_now_runs_the_pending_migration_and_shows_success(): void
@@ -85,7 +85,7 @@ class PendingMigrationUpdateTest extends TestCase
 
         $response->assertRedirect(route('dashboard'));
         $response->assertSessionHas('status', 'App updated successfully.');
-        $this->assertTrue(Schema::hasTable('ec_board_entries'));
+        $this->assertTrue(Schema::hasColumn('ec_board_entries', 'existing_household_remote_id'));
 
         // The app now behaves completely normally -- no more update
         // prompt, even for this unauthenticated request (it just falls
@@ -108,12 +108,12 @@ class PendingMigrationUpdateTest extends TestCase
     {
         rename($this->heldBackPath, database_path('migrations/'.$this->heldBackMigration));
 
-        // Sabotage: pre-create the table the pending migration is about
-        // to create, so its own Schema::create() call fails -- simulates
-        // a real migration failure (e.g. a conflicting/corrupt schema)
-        // rather than the happy path.
-        Schema::create('ec_board_entries', function ($table) {
-            $table->id();
+        // Sabotage: pre-add the column the pending migration is about to
+        // add, so its own alter-table call fails -- simulates a real
+        // migration failure (e.g. a conflicting/corrupt schema) rather
+        // than the happy path.
+        Schema::table('ec_board_entries', function ($table) {
+            $table->unsignedBigInteger('existing_household_remote_id')->nullable();
         });
 
         $response = $this->post(route('system.update-required.run'));

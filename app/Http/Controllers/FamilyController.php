@@ -196,6 +196,7 @@ class FamilyController extends Controller
             return view('families.index', $sharedData + [
                 'view' => 'barangay',
                 'barangaySummary' => $this->barangaySummary(),
+                'ecBoardPendingByBarangay' => $this->ecBoardPendingCountsByBarangay(),
             ]);
         }
 
@@ -213,6 +214,7 @@ class FamilyController extends Controller
                 'view' => 'center',
                 'barangay' => $barangay,
                 'centerSummary' => $this->centerSummary($barangay),
+                'ecBoardPendingByCenter' => $this->ecBoardPendingCountsByCenter($barangay),
             ]);
         }
 
@@ -270,6 +272,51 @@ class FamilyController extends Controller
         $withoutCenter = $rows->filter(fn ($row) => $row->evacuation_center_id === null)->values();
 
         return $withCenter->concat($withoutCenter)->values();
+    }
+
+    /**
+     * EC Board entries live in a completely separate table from Family
+     * (a lighter-weight fast-tally headcount, not a full household
+     * registration -- see EcBoardEntry's own migration comment), which
+     * made a real pending entry architecturally invisible on this page: a
+     * user could add one offline and never see it again here, only on the
+     * EC Board page itself. Rather than folding EcBoardEntry rows INTO
+     * this drill-down as fake "family" cards (they don't have most of a
+     * family's own fields -- home_address, displacement_type, full member
+     * details -- so faking that shape would be misleading), this surfaces
+     * them as a clearly-labeled, clickable count alongside the real
+     * family counts at each level -- visible without extra navigation,
+     * with a direct path to where they're actually managed.
+     *
+     * Keyed by barangay remote_id (not local id) -- EcBoardEntry only
+     * reaches a barangay indirectly, via its center's own
+     * barangay_remote_id, which is a remote id throughout this cache
+     * table (see evacuation_centers' own migration).
+     */
+    private function ecBoardPendingCountsByBarangay(): array
+    {
+        return EcBoardEntry::whereNull('synced_at')
+            ->with('evacuationCenter')
+            ->get()
+            ->groupBy(fn (EcBoardEntry $e) => optional($e->evacuationCenter)->barangay_remote_id)
+            ->map->count()
+            ->all();
+    }
+
+    /**
+     * Same as above, but keyed by this center's own LOCAL id (matching
+     * $row->evacuation_center_id in centerSummary()'s own rows), since at
+     * this level the badge links straight to one specific center's EC
+     * Board page, not just an aggregate count.
+     */
+    private function ecBoardPendingCountsByCenter(Barangay $barangay): array
+    {
+        return EcBoardEntry::whereNull('synced_at')
+            ->whereHas('evacuationCenter', fn ($q) => $q->where('barangay_remote_id', $barangay->remote_id))
+            ->get()
+            ->groupBy('evacuation_center_id')
+            ->map->count()
+            ->all();
     }
 
     /**

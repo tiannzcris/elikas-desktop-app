@@ -57,11 +57,11 @@ class EcBoardEntryManagementTest extends TestCase
             'synced_at' => null,
         ]);
 
-        // The EC Board page itself tries a live breakdown refresh while
-        // "online" -- faked to fail fast here (irrelevant to this test)
-        // rather than let a real, unfaked request slow the test down.
-        Http::fake(['*quick-count*' => Http::response([], 500)]);
-
+        // The page itself makes no live network call at all (see
+        // EvacuationCenterController::ecBoard()'s own docblock for why --
+        // that used to happen here and is exactly the bug that once broke
+        // this page's styling while offline) -- no Http::fake() needed to
+        // keep this test fast or deterministic.
         $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
         $page->assertSee('As of last sync');
@@ -91,12 +91,10 @@ class EcBoardEntryManagementTest extends TestCase
             'new_household_head_name' => 'Maria Santos',
         ]);
 
-        // The page's own on-demand live refresh is faked to fail here, so
-        // the pre-seeded "42" snapshot above is left untouched by this
-        // test -- the live-refresh mechanism itself has its own dedicated
-        // test below.
-        Http::fake(['*quick-count*' => Http::response([], 500)]);
-
+        // The page itself makes no live network call (see ecBoard()'s own
+        // docblock) -- the pre-seeded "42" snapshot below is read straight
+        // from the local cache, untouched by this request. The live
+        // refresh endpoint has its own dedicated test below.
         $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
 
@@ -132,7 +130,15 @@ class EcBoardEntryManagementTest extends TestCase
         $this->assertStringNotContainsString('>42<', $pendingSectionHtml, 'the pending section must show only this device\'s own 1 pending entry -- never merged with, or bumped by, the last-known 42');
     }
 
-    public function test_opening_a_centers_page_while_online_triggers_an_on_demand_live_breakdown_fetch(): void
+    /**
+     * The breakdown fetch moved OFF the EC Board page's own synchronous
+     * render (see ecBoard()'s docblock) and into a client-side fetch()
+     * that hits this dedicated endpoint after the page has already
+     * loaded. This test calls that endpoint directly -- exactly what the
+     * page's own JS does -- rather than expecting the page load itself to
+     * trigger it (it deliberately no longer does; that was the bug).
+     */
+    public function test_the_breakdown_refresh_endpoint_fetches_and_caches_the_live_breakdown(): void
     {
         [$barangay, $event, $center] = $this->seedBase();
 
@@ -151,15 +157,13 @@ class EcBoardEntryManagementTest extends TestCase
             ]]),
         ]);
 
-        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
-        $page->assertOk();
+        $response = $this->get(route('evacuation-centers.breakdown-refresh', $center).'?event='.$event->id);
+        $response->assertOk();
+        $response->assertSee('Adult');
 
         // Fetched from the REAL per-center+event endpoint, with the
         // event's remote id as a query param -- not a bulk "all centers"
-        // call. It's a GET, so the event id travels in the URL's query
-        // string, not the request body -- checked here on the URL itself
-        // rather than $request->data(), which only reflects a JSON/form
-        // body and would be empty for a GET.
+        // call.
         Http::assertSent(function ($request) use ($event) {
             return str_contains($request->url(), '/evacuation-centers/1/quick-count')
                 && str_contains($request->url(), 'evacuation_event_id='.$event->remote_id);
@@ -181,6 +185,82 @@ class EcBoardEntryManagementTest extends TestCase
             'age_bracket' => 'adult',
             'count' => 2,
         ]);
+    }
+
+    public function test_opening_the_ec_board_page_makes_no_live_network_call_at_all(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        // Faked with NO matching pattern at all -- Http::fake() with an
+        // empty array still activates request recording, so
+        // Http::assertNothingSent() below is meaningful: any real request
+        // would be recorded (and, since nothing matches, would otherwise
+        // attempt a real network call and likely fail/hang in a test
+        // environment).
+        Http::fake();
+
+        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
+
+        $page->assertOk();
+        Http::assertNothingSent();
+    }
+
+    public function test_the_households_refresh_endpoint_appends_remote_only_households_not_already_local(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        // Already known locally (synced, remote_id set) -- must NOT be
+        // duplicated in the live-fetched result.
+        $localHousehold = Family::create([
+            'barangay_id' => $barangay->id, 'evacuation_event_id' => $event->id,
+            'evacuation_center_id' => $center->id, 'displacement_type' => 'inside_center',
+            'synced_at' => now(), 'remote_id' => 10,
+        ]);
+        Evacuee::create([
+            'family_id' => $localHousehold->id, 'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
+            'sex' => 'male', 'date_of_birth' => '1990-01-01', 'is_head_of_family' => true,
+        ]);
+
+        Http::fake([
+            '*/evacuation-centers/1/families*' => Http::response(['data' => [
+                ['id' => 10, 'head_of_family' => ['full_name' => 'Juan Dela Cruz']],
+                ['id' => 11, 'name' => 'Reyes Household', 'head_of_family' => null],
+            ]]),
+        ]);
+
+        $response = $this->get(route('evacuation-centers.households-refresh', $center).'?event='.$event->id);
+
+        $response->assertOk();
+        $response->assertJson([
+            ['value' => 'remote-11', 'label' => 'Reyes Household'],
+        ]);
+        // The already-local household (remote id 10) must not appear --
+        // it's already in the form's server-rendered options.
+        $response->assertJsonMissing(['value' => 'remote-10']);
+    }
+
+    public function test_a_household_picked_from_the_live_remote_list_syncs_using_its_remote_family_id_directly(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        $entry = EcBoardEntry::create([
+            'evacuation_center_id' => $center->id,
+            'evacuation_event_id' => $event->id,
+            'sex' => 'male',
+            'age_bracket' => 'adult',
+            'existing_household_remote_id' => 99,
+            'new_household_head_name' => 'Remote Household Head', // display snapshot only
+        ]);
+
+        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 200, 'evacuee_id' => 321]], 201)]);
+
+        $this->post(route('families.sync'));
+
+        Http::assertSent(fn ($request) => $request['household_mode'] === 'existing'
+            && $request['family_id'] === 99
+            && $request['family_name'] === null);
+
+        $this->assertSame(321, $entry->refresh()->remote_id);
     }
 
     public function test_reference_data_refresh_does_not_perform_any_on_demand_breakdown_fetch(): void
@@ -414,8 +494,6 @@ class EcBoardEntryManagementTest extends TestCase
     {
         [$barangay, $event, $center] = $this->seedBase();
 
-        Http::fake(['*quick-count*' => Http::response([], 500)]);
-
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
@@ -437,8 +515,6 @@ class EcBoardEntryManagementTest extends TestCase
     public function test_add_evacuee_flow_still_works_end_to_end_on_its_new_dedicated_page(): void
     {
         [$barangay, $event, $center] = $this->seedBase();
-
-        Http::fake(['*quick-count*' => Http::response([], 500)]);
 
         // The form lives on the EC Board page now, not the basic info page.
         $boardPage = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));

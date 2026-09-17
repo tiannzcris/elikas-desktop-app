@@ -28,9 +28,13 @@ class EvacuationCenterController extends Controller
     private const UNCLASSIFIED_BRACKET = 'unclassified';
 
     /**
-     * Same closed-exclusion pattern as the family registration form's
-     * center list (FamilyController::renderForm()) -- a decommissioned
-     * center shouldn't be browsable for new entries either.
+     * Grouped by barangay -- simpler than the full barangay -> center ->
+     * detail drill-down Registered Families uses, since this list never
+     * needs to go past barangay -> centers -> one center's own detail
+     * page (which already exists). Same closed-exclusion pattern as the
+     * family registration form's center list (FamilyController::
+     * renderForm()) -- a decommissioned center shouldn't be browsable for
+     * new entries either.
      */
     public function index()
     {
@@ -41,18 +45,20 @@ class EvacuationCenterController extends Controller
 
         $barangayNames = Barangay::pluck('name', 'remote_id');
 
-        $centers = EvacuationCenter::where('status', '!=', 'closed')
+        $centersByBarangay = EvacuationCenter::where('status', '!=', 'closed')
             ->orderBy('name')
             ->get()
             ->map(fn (EvacuationCenter $c) => [
                 'center' => $c,
                 'barangayName' => $barangayNames[$c->barangay_remote_id] ?? 'Unknown barangay',
                 'pendingCount' => EcBoardEntry::where('evacuation_center_id', $c->id)->whereNull('synced_at')->count(),
-            ]);
+            ])
+            ->groupBy('barangayName')
+            ->sortKeys();
 
         return view('evacuation-centers.index', [
             'currentUser' => $auth,
-            'centers' => $centers,
+            'centersByBarangay' => $centersByBarangay,
         ]);
     }
 
@@ -102,8 +108,22 @@ class EvacuationCenterController extends Controller
      * sources and the add form are all per center+event -- defaults to the
      * most recently created cached event so there's always something
      * sensible selected on first visit.
+     *
+     * Deliberately does NOT make any live network call itself -- an
+     * earlier version called refreshLastKnownBreakdown() synchronously
+     * here, which blocks NativePHP's local PHP server (a single-request-
+     * at-a-time `php artisan serve` process) for the duration of that
+     * call. While offline, that call hangs until it times out, and for
+     * that whole window the SAME browser tab's own concurrent requests
+     * for this page's CSS/JS/font assets queue up behind it and fail --
+     * a real, reproduced bug: the EC Board page rendered with correct
+     * data but no styling at all, specifically offline, while every other
+     * page (none of which make a live call during their own render)
+     * worked fine. The live refresh now happens client-side, via fetch(),
+     * AFTER the page (and its assets) have already loaded -- see
+     * refreshBreakdown() below and the script block in ec-board.blade.php.
      */
-    public function ecBoard(EvacuationCenter $center, Request $request, CentralApiService $api)
+    public function ecBoard(EvacuationCenter $center, Request $request)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
@@ -115,10 +135,6 @@ class EvacuationCenterController extends Controller
         $selectedEventId = (int) $request->query('event', 0);
         if (! $events->contains('id', $selectedEventId)) {
             $selectedEventId = optional($events->first())->id;
-        }
-
-        if ($selectedEventId) {
-            $this->refreshLastKnownBreakdown($api, $auth, $center, $events->firstWhere('id', $selectedEventId));
         }
 
         $breakdownBrackets = array_merge(array_keys(EcBoardEntry::AGE_BRACKETS), [self::UNCLASSIFIED_BRACKET]);
@@ -151,10 +167,15 @@ class EvacuationCenterController extends Controller
         $pendingEntries = $pendingEntriesQuery->with(['evacuationEvent', 'household.evacuees'])->latest()->get();
 
         // Existing-household picker: households already associated with
-        // THIS center, synced or not -- linking a new evacuee to a
-        // household is meaningful regardless of whether that household's
-        // own registration has reached the central server yet (that only
-        // matters at sync time -- see EcBoardEntry::toSyncPayload()).
+        // THIS center in this device's OWN local cache, synced or not --
+        // linking a new evacuee to a household is meaningful regardless of
+        // whether that household's own registration has reached the
+        // central server yet (that only matters at sync time -- see
+        // EcBoardEntry::toSyncPayload()). Households known to the central
+        // server but never locally cached (e.g. registered elsewhere) are
+        // appended to this same list client-side, on demand, while online
+        // -- see refreshHouseholds() below -- not fetched here, for the
+        // same blocking-request reason breakdown refresh moved client-side.
         $households = Family::where('evacuation_center_id', $center->id)
             ->with('evacuees')
             ->get();
@@ -177,25 +198,33 @@ class EvacuationCenterController extends Controller
     }
 
     /**
-     * Refreshes this device's local "as of last sync" cache for ONE
-     * center+event by calling the real central quick-count endpoint --
-     * see CentralApiService::fetchCenterQuickCount()'s own docblock for
-     * why this is scoped this way instead of a bulk refresh. Silently
-     * falls back to whatever was cached from the last successful visit on
-     * any failure (offline, session expired, endpoint down) -- same
-     * online-first-else-cached pattern as EvacueeController::index(),
-     * never blocks this page from rendering.
+     * Called client-side (fetch(), after the page itself has rendered) to
+     * refresh the "As of last sync" breakdown for one center+event -- see
+     * ecBoard()'s own docblock for why this is no longer part of that
+     * synchronous page render. Silently returns nothing useful on any
+     * failure (offline, session expired, endpoint down); the calling JS
+     * just leaves whatever was already on screen untouched in that case.
+     * Returns the same breakdown-table partial the page itself renders,
+     * so there is only one implementation of that table's markup.
      */
-    private function refreshLastKnownBreakdown(CentralApiService $api, LocalAuth $auth, EvacuationCenter $center, ?EvacuationEvent $event): void
+    public function refreshBreakdown(EvacuationCenter $center, Request $request, CentralApiService $api)
     {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return response()->noContent(401);
+        }
+
+        $eventId = (int) $request->query('event', 0);
+        $event = $eventId ? EvacuationEvent::find($eventId) : null;
+
         if (! $event || ! $center->remote_id) {
-            return;
+            return response()->noContent(422);
         }
 
         try {
             $rows = $api->fetchCenterQuickCount($auth->api_token, $center->remote_id, $event->remote_id);
         } catch (\RuntimeException $e) {
-            return;
+            return response()->noContent(503);
         }
 
         EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
@@ -220,6 +249,70 @@ class EvacuationCenterController extends Controller
                 ]);
             }
         }
+
+        $breakdownBrackets = array_merge(array_keys(EcBoardEntry::AGE_BRACKETS), [self::UNCLASSIFIED_BRACKET]);
+
+        $matrix = $this->breakdownMatrix(
+            EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
+                ->where('evacuation_event_id', $event->id)
+                ->get()
+                ->map(fn (EvacuationCenterBreakdown $row) => ['age_bracket' => $row->age_bracket, 'sex' => $row->sex, 'count' => $row->count]),
+            $breakdownBrackets
+        );
+
+        return view('evacuation-centers._breakdown_table', [
+            'matrix' => $matrix,
+            'ageBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
+        ]);
+    }
+
+    /**
+     * Called client-side (fetch(), after the page itself has rendered) to
+     * pull households already registered at this center+event straight
+     * from the central server -- see CentralApiService::
+     * fetchFamiliesAtCenter()'s own docblock. Returns JSON: a list of
+     * households NOT already in this device's own local list (deduped by
+     * remote id, since a synced local household would otherwise show up
+     * twice), each as {value, label} ready for the Add Evacuee form's
+     * household <select> -- value is "remote-{id}" (see
+     * AddEvacueeRequest's own note on that format). Empty/error responses
+     * are exactly as safe as no response at all: the form already has its
+     * own local households list to fall back to, offline or not.
+     */
+    public function refreshHouseholds(EvacuationCenter $center, Request $request, CentralApiService $api)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return response()->json([], 401);
+        }
+
+        $eventId = (int) $request->query('event', 0);
+        $event = $eventId ? EvacuationEvent::find($eventId) : null;
+
+        if (! $event || ! $center->remote_id) {
+            return response()->json([], 422);
+        }
+
+        try {
+            $remoteFamilies = $api->fetchFamiliesAtCenter($auth->api_token, $center->remote_id, $event->remote_id);
+        } catch (\RuntimeException $e) {
+            return response()->json([], 503);
+        }
+
+        $knownRemoteIds = Family::where('evacuation_center_id', $center->id)
+            ->whereNotNull('remote_id')
+            ->pluck('remote_id')
+            ->all();
+
+        $households = collect($remoteFamilies)
+            ->reject(fn ($f) => in_array($f['id'], $knownRemoteIds, true))
+            ->map(fn ($f) => [
+                'value' => 'remote-'.$f['id'],
+                'label' => $f['name'] ?? ($f['head_of_family']['full_name'] ?? null) ?? 'Household #'.$f['id'],
+            ])
+            ->values();
+
+        return response()->json($households);
     }
 
     /**

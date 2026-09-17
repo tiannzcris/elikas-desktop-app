@@ -40,6 +40,13 @@ Route::get('/evacuees', [EvacueeController::class, 'index'])->name('evacuees.ind
 Route::get('/evacuation-centers', [EvacuationCenterController::class, 'index'])->name('evacuation-centers.index');
 Route::get('/evacuation-centers/{center}', [EvacuationCenterController::class, 'show'])->name('evacuation-centers.show');
 Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');
+// Called client-side via fetch() AFTER the EC Board page itself has
+// rendered -- never part of that page's own synchronous render, since a
+// blocking live call there starves this single-request-at-a-time local
+// server's concurrent CSS/JS asset requests while offline (see
+// EvacuationCenterController::ecBoard()'s docblock).
+Route::get('/evacuation-centers/{center}/breakdown-refresh', [EvacuationCenterController::class, 'refreshBreakdown'])->name('evacuation-centers.breakdown-refresh');
+Route::get('/evacuation-centers/{center}/households-refresh', [EvacuationCenterController::class, 'refreshHouseholds'])->name('evacuation-centers.households-refresh');
 Route::post('/evacuation-centers/{center}/evacuees', [EcBoardEntryController::class, 'store'])->name('ec-board-entries.store');
 Route::get('/ec-board-entries/{entry}/edit', [EcBoardEntryController::class, 'edit'])->name('ec-board-entries.edit');
 Route::put('/ec-board-entries/{entry}', [EcBoardEntryController::class, 'update'])->name('ec-board-entries.update');

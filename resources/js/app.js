@@ -415,6 +415,70 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
     root.querySelectorAll('.household-type-radio').forEach((radio) => {
         radio.addEventListener('change', applyHouseholdType);
     });
+
+    // Keeps the hidden household_label input in sync with whichever
+    // option is currently selected -- AddEvacueeRequest::householdFields()
+    // uses this as the display snapshot for a household picked from the
+    // live remote list below, which has no local row to look a name back
+    // up from later (see that class's own docblock).
+    const householdSelect = root.querySelector('.household-select');
+    const householdLabelInput = root.querySelector('.household-label-input');
+    householdSelect?.addEventListener('change', () => {
+        const option = householdSelect.options[householdSelect.selectedIndex];
+        if (householdLabelInput) householdLabelInput.value = option ? option.textContent : '';
+    });
+
+    // Live households fetch -- appends households known to the central
+    // server but not yet in this device's own local list (e.g.
+    // registered from a different device) to the SAME dropdown above,
+    // rather than a separate list, so staff only ever pick from one
+    // place. Fires after the form is already usable (this device's own
+    // local households, if any, are already in the select from the
+    // server-side render) and fails completely silently offline -- see
+    // EvacuationCenterController::refreshHouseholds()'s own docblock for
+    // why this is a fetch(), not part of any page's synchronous render.
+    function loadRemoteHouseholds() {
+        const refreshUrlInput = root.querySelector('.household-refresh-url');
+        const eventSelect = root.querySelector('[name="evacuation_event_id"]');
+        if (!refreshUrlInput || !householdSelect || !eventSelect?.value) return;
+
+        const knownRemoteIds = (root.querySelector('.household-local-remote-ids')?.value || '')
+            .split(',').filter(Boolean);
+        const loadingHint = root.querySelector('.household-loading-hint');
+        const emptyHint = root.querySelector('.household-empty-hint');
+
+        if (loadingHint) loadingHint.style.display = 'block';
+
+        fetch(`${refreshUrlInput.value}?event=${encodeURIComponent(eventSelect.value)}`)
+            .then((r) => (r.ok ? r.json() : []))
+            .then((remoteHouseholds) => {
+                // Households this device already has locally (by remote
+                // id) are skipped -- they're already in the select from
+                // the server-side render, and listing them twice would
+                // just be confusing, not more complete.
+                remoteHouseholds
+                    .filter((h) => !knownRemoteIds.includes(String(h.value).replace('remote-', '')))
+                    .forEach((h) => {
+                        const option = document.createElement('option');
+                        option.value = h.value;
+                        option.textContent = h.label;
+                        householdSelect.appendChild(option);
+                    });
+
+                if (emptyHint && householdSelect.options.length > 1) emptyHint.style.display = 'none';
+            })
+            .catch(() => {
+                // Offline, timeout, or session expired -- this device's
+                // own local households (already in the select) remain
+                // fully usable either way.
+            })
+            .finally(() => {
+                if (loadingHint) loadingHint.style.display = 'none';
+            });
+    }
+
+    loadRemoteHouseholds();
+    root.querySelector('[name="evacuation_event_id"]')?.addEventListener('change', loadRemoteHouseholds);
 };
 
 // ---------------------------------------------------------------------

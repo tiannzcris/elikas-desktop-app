@@ -154,6 +154,41 @@ class CentralApiService
     }
 
     /**
+     * Pulls the households already registered at ONE center, for ONE
+     * event, straight from the central server -- confirmed against
+     * elikas-backend's EvacuationCenterController::familiesAtCenter()
+     * (the exact same call the web dashboard's own "Add Evacuee ->
+     * Existing household" picker makes). Powers the EC Board's household
+     * dropdown with households this device may never have locally cached
+     * (e.g. registered from a different device) -- called on demand when
+     * the EC Board page is opened while online (see
+     * EvacuationCenterController::refreshHouseholds()), same
+     * one-center-at-a-time principle as fetchCenterQuickCount(), not a
+     * bulk fetch.
+     *
+     * @return list<array{id: int, name: ?string, head_of_family: ?array, member_count: int}>
+     */
+    public function fetchFamiliesAtCenter(string $token, int $centerRemoteId, int $eventRemoteId): array
+    {
+        $headers = ['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'];
+
+        try {
+            $response = Http::withHeaders($headers)->timeout(10)->get(
+                "{$this->baseUrl()}/evacuation-centers/{$centerRemoteId}/families",
+                ['evacuation_event_id' => $eventRemoteId]
+            );
+        } catch (ConnectionException $e) {
+            throw new \RuntimeException('Could not reach the central server to refresh this center\'s households.');
+        }
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('The central server rejected the request -- your login may have expired. Try logging in again while online.');
+        }
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * Pushes one locally-registered family to the CENTRAL server's existing
      * registration endpoint -- this IS the sync mechanism. No separate sync
      * protocol: it's the same authenticated request the web dashboard would
