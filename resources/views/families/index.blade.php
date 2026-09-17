@@ -22,61 +22,111 @@
         </div>
     </div>
 
-    @if ($families->isEmpty())
-        <div class="flex flex-col items-center text-center py-16">
-            <i class="ti ti-users text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
-            <p class="text-sm text-gray-400">No families registered on this device yet.</p>
+    {{-- Stays visible on every drill-down level (and search results) --
+         a failed sync is exactly the kind of thing that must never
+         require extra navigation to even notice. The flat list this page
+         used to be showed every family's sync_error directly on its own
+         card; this replaces that visibility, not removes it. --}}
+    @if ($syncErrors->isNotEmpty())
+        <div class="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
+            <p class="text-sm font-bold text-red-700 mb-2 flex items-center gap-1.5">
+                <i class="ti ti-alert-triangle" style="font-size: 15px;" aria-hidden="true"></i>
+                {{ $syncErrors->count() }} {{ Str::plural('family', $syncErrors->count()) }} failed to sync
+            </p>
+            <div class="flex flex-col gap-1.5">
+                @foreach ($syncErrors as $errored)
+                    <a href="{{ route('families.index', ['barangay' => $errored->barangay_id, 'center' => $errored->evacuation_center_id ?? 'none']) }}" class="text-xs text-red-600 hover:underline">
+                        {{ $errored->barangay->name ?? 'Unknown barangay' }} &middot; {{ $errored->evacuationCenter->name ?? 'Outside center / unassigned' }}: {{ $errored->sync_error }}
+                    </a>
+                @endforeach
+            </div>
         </div>
+    @endif
+
+    {{-- Global search: independent of the barangay -> center -> family
+         drill-down below -- finds a family by any member's name no matter
+         which barangay/center they're actually in, matching the web
+         dashboard's own "family reunification lookups never get slower
+         because of the drill-down" principle. --}}
+    <form method="GET" action="{{ route('families.index') }}" class="relative mb-6">
+        <i class="ti ti-search absolute left-3 top-1/2 text-gray-400" style="font-size: 15px; transform: translateY(-50%);" aria-hidden="true"></i>
+        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Search any family by member name, regardless of barangay or center..." class="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm">
+    </form>
+
+    @if (($view ?? null) === 'search')
+        <div class="flex items-center justify-between mb-4">
+            <p class="text-sm text-gray-500">
+                {{ $families->count() }} result(s) for "<span class="font-medium text-gray-700">{{ $search }}</span>"
+            </p>
+            <a href="{{ route('families.index') }}" class="text-xs text-brand hover:underline">Clear search</a>
+        </div>
+
+        @include('families._family_cards', ['families' => $families, 'emptyMessage' => 'No family matches that name.'])
     @else
-        <div class="flex flex-col gap-3">
-            @foreach ($families as $family)
-                <div class="card-modern p-4">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <p class="font-bold text-sm text-gray-800">{{ $family->barangay->name ?? 'Unknown barangay' }}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">
-                                {{ $family->evacuationEvent->name ?? '' }} &middot;
-                                {{ $family->evacuees->count() }} member(s) &middot;
-                                {{ $family->displacement_type === 'inside_center' ? 'Inside center' : 'Outside center' }}
-                            </p>
-                            <p class="text-xs text-gray-400 mt-1">Registered {{ $family->created_at->format('M j, Y g:i A') }}</p>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            @if ($family->synced_at)
-                                <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-green-50 text-green-700">
-                                    <i class="ti ti-check" style="font-size: 12px;" aria-hidden="true"></i> Synced
-                                </span>
-                            @else
-                                <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
-                                    <i class="ti ti-clock" style="font-size: 12px;" aria-hidden="true"></i> Waiting to sync
-                                </span>
-                                {{-- Editing/removing only ever makes sense for a not-yet-synced record --
-                                     once it's on the central server, this device's copy is just a local
-                                     staging record of what was submitted, not something to keep changing. --}}
-                                <a href="{{ route('families.edit', $family) }}" data-modal-trigger="register-family" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-brand hover:bg-gray-100" aria-label="Edit" title="Edit">
-                                    <i class="ti ti-pencil" style="font-size: 14px;" aria-hidden="true"></i>
-                                </a>
-                                {{-- Explicit stopPropagation() on cancel, not just "return false" -- the
-                                     shared page-transition listener in app.js fades #main out on ANY submit
-                                     event that reaches document, regardless of whether this handler's return
-                                     value cancelled the actual submission. Without stopping propagation here,
-                                     clicking "Cancel" would still fade the whole page out with nothing
-                                     submitted to bring it back. --}}
-                                <form method="POST" action="{{ route('families.destroy', $family) }}" onsubmit="if (!confirm('Remove this pending registration from this device? This cannot be undone.')) { event.stopPropagation(); return false; }">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50" aria-label="Delete" title="Delete">
-                                        <i class="ti ti-trash" style="font-size: 14px;" aria-hidden="true"></i>
-                                    </button>
-                                </form>
-                            @endif
-                        </div>
-                    </div>
-                    @if ($family->sync_error)
-                        <p class="text-xs text-red-500 mt-2 border-t border-gray-100 pt-2">{{ $family->sync_error }}</p>
-                    @endif
+        {{-- Breadcrumb: "All barangays" is always clickable to jump back to
+             the landing view; the current level's own label is plain text. --}}
+        <nav class="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
+            @if (($view ?? null) === 'barangay')
+                <span class="font-medium text-gray-700">All barangays</span>
+            @else
+                <a href="{{ route('families.index') }}" class="hover:text-brand hover:underline">All barangays</a>
+            @endif
+
+            @isset($barangay)
+                <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
+                @if (($view ?? null) === 'center')
+                    <span class="font-medium text-gray-700">{{ $barangay->name }}</span>
+                @else
+                    <a href="{{ route('families.index', ['barangay' => $barangay->id]) }}" class="hover:text-brand hover:underline">{{ $barangay->name }}</a>
+                @endif
+            @endisset
+
+            @if (($view ?? null) === 'family')
+                <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
+                <span class="font-medium text-gray-700">{{ $center->name ?? 'Outside center / unassigned' }}</span>
+            @endif
+        </nav>
+
+        @if (($view ?? null) === 'barangay')
+            @if ($barangaySummary->isEmpty())
+                <div class="flex flex-col items-center text-center py-16">
+                    <i class="ti ti-users text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
+                    <p class="text-sm text-gray-400">No families registered on this device yet.</p>
                 </div>
-            @endforeach
-        </div>
+            @else
+                <div class="flex flex-col gap-3">
+                    @foreach ($barangaySummary as $row)
+                        <a href="{{ route('families.index', ['barangay' => $row->barangay_id]) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+                            <div>
+                                <p class="font-bold text-sm text-gray-800">{{ $row->barangay->name ?? 'Unknown barangay' }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
+                            </div>
+                            <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        @elseif (($view ?? null) === 'center')
+            @if ($centerSummary->isEmpty())
+                <div class="flex flex-col items-center text-center py-16">
+                    <i class="ti ti-building-community text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
+                    <p class="text-sm text-gray-400">No families registered in {{ $barangay->name }} yet.</p>
+                </div>
+            @else
+                <div class="flex flex-col gap-3">
+                    @foreach ($centerSummary as $row)
+                        <a href="{{ route('families.index', ['barangay' => $barangay->id, 'center' => $row->evacuation_center_id ?? 'none']) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+                            <div>
+                                <p class="font-bold text-sm text-gray-800">{{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
+                            </div>
+                            <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        @else
+            @include('families._family_cards', ['families' => $families, 'emptyMessage' => 'No families here yet.'])
+        @endif
     @endif
 @endsection

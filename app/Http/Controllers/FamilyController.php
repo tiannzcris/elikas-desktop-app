@@ -149,17 +149,164 @@ class FamilyController extends Controller
         }
     }
 
-    public function index()
+    /**
+     * Barangay -> center -> family drill-down, matching the same
+     * restructuring already done on the web dashboard's own families
+     * page (there labeled "Evacuees") -- a flat list of every
+     * registration on this device stops being scannable once there are
+     * more than a handful. Global name search (see searchFamilies())
+     * sits outside this drill-down entirely, exactly like the web
+     * version's own "independent of the drill-down" search.
+     *
+     * One route, driven by query params (?search=, or ?barangay=&center=)
+     * rather than separate named routes per level -- matches this
+     * codebase's existing ?event= convention on the evacuation centers
+     * pages, and keeps this a single controller action for one page.
+     */
+    public function index(Request $request)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
             return redirect()->route('login');
         }
 
-        return view('families.index', [
+        // Shown as its own banner regardless of which drill-down level is
+        // currently on screen -- a failed sync is exactly the kind of
+        // thing that must stay visible without extra navigation, not
+        // something that should only surface once someone happens to
+        // drill down to the specific barangay+center it's in. The flat
+        // list this page used to be showed every family's sync_error
+        // directly; this replaces that visibility, not removes it.
+        $sharedData = [
             'currentUser' => $auth,
-            'families' => Family::with(['evacuees', 'barangay', 'evacuationEvent'])->latest()->get(),
+            'syncErrors' => Family::whereNotNull('sync_error')->with(['barangay', 'evacuationCenter'])->get(),
+        ];
+
+        $search = trim((string) $request->query('search', ''));
+        if ($search !== '') {
+            return view('families.index', $sharedData + [
+                'view' => 'search',
+                'search' => $search,
+                'families' => $this->searchFamilies($search),
+            ]);
+        }
+
+        $barangayId = $request->query('barangay');
+        if ($barangayId === null) {
+            return view('families.index', $sharedData + [
+                'view' => 'barangay',
+                'barangaySummary' => $this->barangaySummary(),
+            ]);
+        }
+
+        $barangay = Barangay::find($barangayId);
+        if (! $barangay) {
+            // A stale link (e.g. this barangay was pruned from the cache
+            // since) -- back to the top of the drill-down rather than a 404
+            // in the middle of it.
+            return redirect()->route('families.index');
+        }
+
+        $centerParam = $request->query('center');
+        if ($centerParam === null) {
+            return view('families.index', $sharedData + [
+                'view' => 'center',
+                'barangay' => $barangay,
+                'centerSummary' => $this->centerSummary($barangay),
+            ]);
+        }
+
+        $center = $centerParam !== 'none' ? EvacuationCenter::find($centerParam) : null;
+        if ($centerParam !== 'none' && ! $center) {
+            return redirect()->route('families.index', ['barangay' => $barangay->id]);
+        }
+
+        return view('families.index', $sharedData + [
+            'view' => 'family',
+            'barangay' => $barangay,
+            'center' => $center,
+            'centerParam' => $centerParam,
+            'families' => $this->familiesForCenter($barangay, $centerParam),
         ]);
+    }
+
+    /**
+     * One row per barangay this device has ANY registration for, family
+     * counts included -- the landing view. Sorted by name via the
+     * Collection (not the DB query) since the count comes from a raw
+     * groupBy on the FOREIGN key, with no join to sort by the related
+     * barangay's name at the SQL level.
+     */
+    private function barangaySummary()
+    {
+        return Family::selectRaw('barangay_id, count(*) as family_count')
+            ->groupBy('barangay_id')
+            ->with('barangay')
+            ->get()
+            ->sortBy(fn ($row) => $row->barangay->name ?? '')
+            ->values();
+    }
+
+    /**
+     * One row per evacuation center within $barangay, plus a trailing
+     * "Outside center / unassigned" bucket for outside_center
+     * registrations (evacuation_center_id is null for those -- see
+     * RegisterFamilyRequest) -- same bucket the web dashboard's own
+     * center-summary shows. Real centers are sorted by name; the
+     * unassigned bucket (no name to sort by) always comes last.
+     */
+    private function centerSummary(Barangay $barangay)
+    {
+        $rows = Family::where('barangay_id', $barangay->id)
+            ->selectRaw('evacuation_center_id, count(*) as family_count')
+            ->groupBy('evacuation_center_id')
+            ->with('evacuationCenter')
+            ->get();
+
+        $withCenter = $rows->filter(fn ($row) => $row->evacuation_center_id !== null)
+            ->sortBy(fn ($row) => $row->evacuationCenter->name ?? '')
+            ->values();
+
+        $withoutCenter = $rows->filter(fn ($row) => $row->evacuation_center_id === null)->values();
+
+        return $withCenter->concat($withoutCenter)->values();
+    }
+
+    /**
+     * Level 3: the actual family list, scoped to one barangay+center --
+     * the same content the old flat index() showed, just filtered now.
+     * $centerParam is either a real center's local id, or the literal
+     * string 'none' for the "Outside center / unassigned" bucket.
+     */
+    private function familiesForCenter(Barangay $barangay, string $centerParam)
+    {
+        return Family::where('barangay_id', $barangay->id)
+            ->when($centerParam === 'none', fn ($q) => $q->whereNull('evacuation_center_id'))
+            ->when($centerParam !== 'none', fn ($q) => $q->where('evacuation_center_id', $centerParam))
+            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
+            ->latest()
+            ->get();
+    }
+
+    /**
+     * Global search: finds a family by ANY member's name, regardless of
+     * barangay or center -- independent of, and bypasses, the drill-down
+     * above entirely, matching the web dashboard's own "family
+     * reunification lookups never get slower because of the drill-down"
+     * principle. Device-local data only ever belongs to whoever is
+     * logged in here, so unlike the web version there's no further
+     * access-scoping to apply on top of the name match itself.
+     */
+    private function searchFamilies(string $search)
+    {
+        return Family::whereHas('evacuees', function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+                ->orWhere('middle_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%");
+        })
+            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
+            ->latest()
+            ->get();
     }
 
     /**

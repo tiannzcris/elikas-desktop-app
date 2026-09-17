@@ -263,13 +263,16 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
     const barangaySelect = modalRoot.querySelector('[name="barangay_id"]');
     barangaySelect.addEventListener('change', (e) => populateCentersFor(e.target));
 
-    // Editing a family already inside a center: the barangay <select> comes
-    // pre-selected server-side (see _form.blade.php), but a pre-selected
-    // <select> never fires its own 'change' event on page load, so without
-    // this the center dropdown would stay empty even though a barangay is
-    // already chosen. Runs the exact same population logic once up front,
-    // then selects the family's current center in the now-populated list.
-    if (currentCenterId != null) {
+    // A pre-selected barangay <select> never fires its own 'change' event
+    // on page load, so without this the center dropdown would stay empty
+    // even though a barangay is already chosen -- true both when editing
+    // a family already inside a center (currentCenterId set, selects it
+    // in the freshly-populated list) AND for a brand-new registration
+    // where _form.blade.php defaulted the barangay to this staff
+    // account's own one (currentCenterId stays null there -- there's no
+    // single "assigned center" to preselect, just a narrower, already-
+    // relevant list to pick from instead of every center system-wide).
+    if (barangaySelect.value) {
         populateCentersFor(barangaySelect, currentCenterId);
     }
 

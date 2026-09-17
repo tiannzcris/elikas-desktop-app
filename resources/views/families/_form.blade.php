@@ -37,7 +37,22 @@
                 <select name="barangay_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
                     <option value="">Select barangay</option>
                     @foreach ($barangays as $b)
-                        <option value="{{ $b->id }}" data-remote-id="{{ $b->remote_id }}" @selected($isEditing && $family->barangay_id === $b->id)>{{ $b->name }}</option>
+                        {{-- New registration (not editing): defaults to THIS
+                             staff account's own barangay, if it has one (a
+                             CSWD/admin account with no single barangay just
+                             gets today's blank default). Barangay stays a
+                             fully free choice either way -- an evacuee's home
+                             barangay can genuinely differ from whichever
+                             barangay the registering staff belongs to -- this
+                             only narrows the default starting point, and by
+                             extension (see app.js) the center dropdown that
+                             populates from it, for the common case of
+                             registering someone at your own barangay/center
+                             during fast field work. $currentUser->barangay_id
+                             is the CENTRAL server's own (remote) barangay id
+                             from login, so it's compared against $b->remote_id
+                             here, not $b->id (this cache table's own local id). --}}
+                        <option value="{{ $b->id }}" data-remote-id="{{ $b->remote_id }}" @selected($isEditing ? $family->barangay_id === $b->id : $currentUser->barangay_id === $b->remote_id)>{{ $b->name }}</option>
                     @endforeach
                 </select>
                 <div class="mt-3">
