@@ -6,7 +6,15 @@ use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
 use App\Http\Controllers\EvacueeController;
 use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\SystemUpdateController;
 use Illuminate\Support\Facades\Route;
+
+// Reachable even before login works, and exempted from
+// EnsureDatabaseIsUpToDate itself (see bootstrap/app.php) -- a schema
+// mismatch can affect tables login depends on, so this can't sit behind
+// auth or behind the very check it exists to handle.
+Route::get('/system/update-required', [SystemUpdateController::class, 'show'])->name('system.update-required');
+Route::post('/system/update-required', [SystemUpdateController::class, 'run'])->name('system.update-required.run');
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
