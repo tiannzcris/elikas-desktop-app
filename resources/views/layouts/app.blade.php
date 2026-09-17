@@ -37,6 +37,9 @@
                 <a href="{{ route('evacuees.index') }}" class="nav-link @yield('nav-evacuees')">
                     <i class="ti ti-clipboard-list" aria-hidden="true"></i> All Evacuees
                 </a>
+                <a href="{{ route('evacuation-centers.index') }}" class="nav-link @yield('nav-evacuation-centers')">
+                    <i class="ti ti-building-community" aria-hidden="true"></i> Evacuation Centers
+                </a>
             </nav>
         </aside>
     @endif

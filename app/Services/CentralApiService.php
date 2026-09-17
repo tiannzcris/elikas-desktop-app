@@ -110,6 +110,50 @@ class CentralApiService
     }
 
     /**
+     * Pulls ONE evacuation center's own live age/sex breakdown for ONE
+     * event, from the EC Board's real existing "quick-count" endpoint
+     * (confirmed against elikas-backend's
+     * EvacuationCenterController::quickCount() -- there is no bulk
+     * "all centers" breakdown endpoint; an earlier version of this method
+     * assumed one existed at /evacuation-centers/evacuee-breakdown, which
+     * was never real).
+     *
+     * The real endpoint is scoped to exactly one center+event per call and
+     * computes the breakdown LIVE on every request (not a stored
+     * snapshot), so this is called on demand -- when a specific center's
+     * detail page is opened while online (see
+     * EvacuationCenterController::show()) -- rather than bundled into
+     * fetchReferenceData(), which would need N requests (one per cached
+     * center) to cover the same ground for centers nobody may even be
+     * looking at.
+     *
+     * Response shape includes a fixed 7-bracket 'age_groups' array plus a
+     * trailing 'unclassified' bracket for anyone missing sex/age_bracket
+     * entirely -- see this project's EcBoardEntry::AGE_BRACKETS, which
+     * mirrors the backend's own EvacuationCenterQuickCount::AGE_BRACKETS
+     * exactly (in the same order) for the 7 real brackets.
+     */
+    public function fetchCenterQuickCount(string $token, int $centerRemoteId, int $eventRemoteId): array
+    {
+        $headers = ['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'];
+
+        try {
+            $response = Http::withHeaders($headers)->timeout(10)->get(
+                "{$this->baseUrl()}/evacuation-centers/{$centerRemoteId}/quick-count",
+                ['evacuation_event_id' => $eventRemoteId]
+            );
+        } catch (ConnectionException $e) {
+            throw new \RuntimeException('Could not reach the central server to refresh this center\'s breakdown.');
+        }
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('The central server rejected the request -- your login may have expired. Try logging in again while online.');
+        }
+
+        return $response->json('data.age_groups') ?? [];
+    }
+
+    /**
      * Pushes one locally-registered family to the CENTRAL server's existing
      * registration endpoint -- this IS the sync mechanism. No separate sync
      * protocol: it's the same authenticated request the web dashboard would
@@ -148,5 +192,51 @@ class CentralApiService
         }
 
         return (int) $response->json('data.id');
+    }
+
+    /**
+     * Pushes one locally-added EC Board evacuee entry to the CENTRAL
+     * server's real "Add Evacuee" endpoint (confirmed against
+     * elikas-backend's EvacuationCenterController::addEvacuee()) -- the EC
+     * Board equivalent of registerFamily() above, same shape, same error
+     * handling. {center} is this entry's center's REMOTE id, matching how
+     * registerFamily's payload resolves every other foreign key to a
+     * remote id before it's sent.
+     *
+     * The response wraps a FamilyResource, so top-level data.id is the
+     * HOUSEHOLD's family id, not this evacuee's own id -- confirmed the
+     * real response separately carries a top-level data.evacuee_id for
+     * the actual evacuee just created, which is what this method returns
+     * and what gets stored as this entry's remote_id. Storing the family
+     * id here instead would be wrong: it wouldn't identify this specific
+     * evacuee at all, and for an "existing household" entry it wouldn't
+     * even be unique to this sync (every entry added to the same
+     * household would get the same family id back).
+     */
+    public function addEvacuee(string $token, int $centerRemoteId, array $payload): int
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$token}",
+                'Accept' => 'application/json',
+            ])->timeout(15)->post("{$this->baseUrl()}/evacuation-centers/{$centerRemoteId}/evacuees", $payload);
+        } catch (ConnectionException $e) {
+            throw new \RuntimeException('Could not reach the central server.');
+        }
+
+        if ($response->status() === 401) {
+            throw new CentralApiAuthenticationException($response->json('message') ?? 'Unauthenticated.');
+        }
+
+        if (! $response->successful()) {
+            $message = $response->json('message') ?? 'The central server rejected this entry.';
+            $errors = $response->json('errors');
+            if ($errors) {
+                $message .= ' '.collect($errors)->flatten()->implode(' ');
+            }
+            throw new \RuntimeException($message);
+        }
+
+        return (int) $response->json('data.evacuee_id');
     }
 }

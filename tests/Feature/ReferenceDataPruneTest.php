@@ -90,6 +90,32 @@ class ReferenceDataPruneTest extends TestCase
         $this->assertDatabaseHas('evacuation_centers', ['remote_id' => 1, 'name' => 'Should Survive']);
     }
 
+    public function test_refresh_reference_data_never_calls_the_per_center_quick_count_endpoint(): void
+    {
+        // The EC Board's "as of last sync" breakdown is fetched ON DEMAND,
+        // per center+event, only when that center's detail page is opened
+        // (see EvacuationCenterController::show()) -- confirms the general
+        // reference-data refresh (login, or the manual "Refresh reference
+        // data" action) never touches quick-count for any cached center,
+        // which would mean N requests for centers nobody is even viewing.
+        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
+
+        LocalAuth::create([
+            'remote_user_id' => 1, 'name' => 'Tester', 'email' => 't@example.com', 'role' => 'barangay_official',
+            'api_token' => 'fake-token', 'logged_in_at' => now(),
+        ]);
+
+        Http::fake([
+            '*/barangays' => Http::response(['data' => []]),
+            '*/evacuation-events' => Http::response(['data' => []]),
+            '*/evacuation-centers' => Http::response(['data' => []]),
+        ]);
+
+        $this->post(route('reference-data.refresh'));
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'quick-count'));
+    }
+
     public function test_registration_form_excludes_closed_centers(): void
     {
         EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Active Center', 'status' => 'active']);

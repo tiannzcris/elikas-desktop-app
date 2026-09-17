@@ -351,6 +351,70 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
 };
 
 // ---------------------------------------------------------------------
+// "Edit pending evacuee entry" modal -- same dynamic-modal mechanism as
+// openRegisterFamilyModal() above (fetch the form fragment, inject it over
+// the current page), just targeting the EC Board entry form's own mount
+// point instead. The "Add evacuee" form itself never needs this: it's
+// always embedded directly on the center detail page, not opened as a
+// modal -- see initEcBoardEntryForm() below, which wires both cases with
+// one shared function.
+// ---------------------------------------------------------------------
+function openEcBoardEntryModal(url) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4';
+    backdrop.style.background = 'rgba(15, 36, 71, 0.55)';
+    backdrop.style.backdropFilter = 'blur(4px)';
+    backdrop.style.webkitBackdropFilter = 'blur(4px)';
+    backdrop.setAttribute('data-dynamic-modal-backdrop', '');
+    backdrop.innerHTML = '<div class="bg-white rounded-2xl px-6 py-5 text-sm text-gray-500 mt-10">Loading...</div>';
+    document.body.appendChild(backdrop);
+
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeDynamicModal(backdrop);
+    });
+
+    fetch(url, { headers: { 'X-Modal-Request': '1' }, credentials: 'same-origin' })
+        .then((r) => r.text())
+        .then((html) => {
+            backdrop.innerHTML = html;
+            const modalRoot = backdrop.querySelector('[data-ec-board-entry-modal]');
+            if (modalRoot) window.ELIKAS.initEcBoardEntryForm(modalRoot);
+        })
+        .catch(() => {
+            backdrop.innerHTML = '<div class="bg-white rounded-2xl p-6 text-sm text-red-600 mt-10">Could not load the form. Please try again.</div>';
+        });
+}
+
+/**
+ * Wires an EC Board entry form's household_type toggle plus the same
+ * fetch-based submit/close handling the family form uses (wireModalSubmit/
+ * wireModalClose are already generic -- not family-specific -- so this
+ * reuses them rather than inventing a second submit mechanism). Called for
+ * BOTH the inline "Add evacuee" card on the center page (root has no close
+ * button, so wireModalClose() no-ops) and the fetched "Edit" modal.
+ */
+window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
+    if (!root) return;
+
+    wireModalClose(root);
+    wireModalSubmit(root);
+
+    const existingField = root.querySelector('.household-existing-field');
+    const newField = root.querySelector('.household-new-field');
+
+    function applyHouseholdType() {
+        const checked = root.querySelector('.household-type-radio:checked');
+        const isExisting = !checked || checked.value === 'existing';
+        existingField.style.display = isExisting ? 'block' : 'none';
+        newField.style.display = isExisting ? 'none' : 'block';
+    }
+
+    root.querySelectorAll('.household-type-radio').forEach((radio) => {
+        radio.addEventListener('change', applyHouseholdType);
+    });
+};
+
+// ---------------------------------------------------------------------
 // Delegated click handler for the whole document -- opens the register-
 // family modal for [data-modal-trigger] links, otherwise runs the page
 // transition for normal same-origin navigation.
@@ -360,6 +424,13 @@ document.addEventListener('click', (e) => {
     if (trigger) {
         e.preventDefault();
         openRegisterFamilyModal(trigger.href);
+        return;
+    }
+
+    const ecBoardTrigger = e.target.closest('[data-modal-trigger="ec-board-entry"]');
+    if (ecBoardTrigger) {
+        e.preventDefault();
+        openEcBoardEntryModal(ecBoardTrigger.href);
         return;
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\CentralApiAuthenticationException;
 use App\Http\Requests\RegisterFamilyRequest;
 use App\Models\Barangay;
+use App\Models\EcBoardEntry;
 use App\Models\Evacuee;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
@@ -173,19 +174,24 @@ class FamilyController extends Controller
             return redirect()->route('login');
         }
 
-        $pending = Family::whereNull('synced_at')
+        $pendingFamilies = Family::whereNull('synced_at')
             ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
             ->get();
 
-        if ($pending->isEmpty()) {
+        $pendingEntries = EcBoardEntry::whereNull('synced_at')
+            ->with(['evacuationEvent', 'evacuationCenter', 'household.evacuees'])
+            ->get();
+
+        if ($pendingFamilies->isEmpty() && $pendingEntries->isEmpty()) {
             return redirect()->route('families.index')
                 ->with('status', 'Nothing to sync -- everything is already up to date.');
         }
 
         $successCount = 0;
         $failCount = 0;
+        $centralUnreachable = false;
 
-        foreach ($pending as $family) {
+        foreach ($pendingFamilies as $family) {
             try {
                 $remoteId = $api->registerFamily($auth->api_token, $family->toSyncPayload());
                 $family->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null]);
@@ -211,11 +217,39 @@ class FamilyController extends Controller
                 $failCount++;
 
                 // A "can't reach the server at all" failure means every
-                // remaining queued family will fail the exact same way --
-                // stop here instead of repeating a doomed network call for
-                // each one and showing the same error N times.
+                // remaining queued family (and every queued EC Board entry
+                // below) will fail the exact same way -- stop here instead
+                // of repeating a doomed network call for each one and
+                // showing the same error N times.
                 if (str_contains($e->getMessage(), 'Could not reach the central server')) {
+                    $centralUnreachable = true;
                     break;
+                }
+            }
+        }
+
+        // Pushed after families, in this same run, not a separate sync --
+        // an "existing household" entry linked to a family queued above
+        // needs that family's freshly-assigned remote_id, which only
+        // exists once its own update() a few lines up has actually run.
+        if (! $centralUnreachable) {
+            foreach ($pendingEntries as $entry) {
+                try {
+                    $remoteId = $api->addEvacuee($auth->api_token, $entry->evacuationCenter->remote_id, $entry->toSyncPayload());
+                    $entry->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null]);
+                    $successCount++;
+                } catch (CentralApiAuthenticationException $e) {
+                    return redirect()->route('families.index')->with(
+                        'authExpired',
+                        'Your session has expired. Please log in again to continue syncing.'
+                    );
+                } catch (\RuntimeException $e) {
+                    $entry->update(['sync_error' => $e->getMessage()]);
+                    $failCount++;
+
+                    if (str_contains($e->getMessage(), 'Could not reach the central server')) {
+                        break;
+                    }
                 }
             }
         }

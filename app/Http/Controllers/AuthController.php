@@ -124,6 +124,16 @@ class AuthController extends Controller
             $centerRemoteIds[] = $c['id'];
         }
         $this->pruneStale(EvacuationCenter::class, $centerRemoteIds, 'evacuation_center_id');
+
+        // The EC Board's "as of last sync" breakdown is deliberately NOT
+        // refreshed here -- the real central endpoint (quick-count) is
+        // scoped to one center+event per call, not a bulk "all centers"
+        // list, so pulling it for every cached center on every login/
+        // refresh would mean N requests for centers nobody may even be
+        // looking at. It's fetched on demand instead, only for the one
+        // center+event actually being viewed -- see
+        // EvacuationCenterController::show() and
+        // CentralApiService::fetchCenterQuickCount().
     }
 
     /**
