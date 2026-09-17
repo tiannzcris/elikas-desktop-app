@@ -57,17 +57,53 @@ class EvacuationCenterController extends Controller
     }
 
     /**
-     * Center detail: the dual-source breakdown (last-known-from-server vs
-     * pending-on-this-device, kept deliberately separate -- see the
-     * breakdownMatrix() helper) plus the Add Evacuee fast entry form and
-     * this device's own not-yet-synced entries for this center.
+     * Basic/static center info ONLY -- name, barangay, status, plus a
+     * prominent link to the EC Information Board (see ecBoard() below).
+     * Split out from what used to be one combined page, matching the same
+     * split just done on the web dashboard (elikas-backend's own
+     * evacuation-centers/show.blade.php + ec-board.blade.php): a staff
+     * member arriving here to check a center's basic details shouldn't
+     * have to load past a live headcount/Add-Evacuee form to get to them,
+     * and vice versa.
+     *
+     * NOTE: unlike the web dashboard's own basic-info page, this device
+     * has no local cache of address/facilities/camp-manager/capacity at
+     * all -- fetchReferenceData()/the evacuation_centers table only ever
+     * stored name/status/barangay_remote_id (confirmed against
+     * AuthController::refreshReferenceData() and the evacuation_centers
+     * migration). Showing those fields here would mean extending what
+     * reference data this device caches, which is separate, larger scope
+     * from splitting this existing page -- flagged here rather than
+     * silently omitted.
+     */
+    public function show(EvacuationCenter $center)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        return view('evacuation-centers.show', [
+            'currentUser' => $auth,
+            'center' => $center,
+            'barangayName' => Barangay::where('remote_id', $center->barangay_remote_id)->value('name') ?? 'Unknown barangay',
+            'pendingCount' => EcBoardEntry::where('evacuation_center_id', $center->id)->whereNull('synced_at')->count(),
+        ]);
+    }
+
+    /**
+     * The EC Information Board: the dual-source breakdown (last-known-
+     * from-server vs pending-on-this-device, kept deliberately separate --
+     * see the breakdownMatrix() helper) plus the Add Evacuee fast entry
+     * form and this device's own not-yet-synced entries for this center.
+     * Everything EC-Board-related lives here now, not on show() above.
      *
      * Scoped to one event at a time via ?event=, since both breakdown
      * sources and the add form are all per center+event -- defaults to the
      * most recently created cached event so there's always something
      * sensible selected on first visit.
      */
-    public function show(EvacuationCenter $center, Request $request, CentralApiService $api)
+    public function ecBoard(EvacuationCenter $center, Request $request, CentralApiService $api)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
@@ -123,7 +159,7 @@ class EvacuationCenterController extends Controller
             ->with('evacuees')
             ->get();
 
-        return view('evacuation-centers.show', [
+        return view('evacuation-centers.ec-board', [
             'currentUser' => $auth,
             'center' => $center,
             'barangayName' => Barangay::where('remote_id', $center->barangay_remote_id)->value('name') ?? 'Unknown barangay',

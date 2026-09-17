@@ -10,7 +10,7 @@
             <h1 class="text-xl font-bold text-brand mb-1">Edit pending evacuee entry</h1>
             <p class="text-sm text-gray-500">Still saved only on this device -- fix what's needed, then sync when you're back online.</p>
         </div>
-        <a href="{{ route('evacuation-centers.show', $center) }}" class="modal-close-btn w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0" aria-label="Close">
+        <a href="{{ route('evacuation-centers.ec-board', $center) }}" class="modal-close-btn w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0" aria-label="Close">
             <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>
         </a>
     </div>

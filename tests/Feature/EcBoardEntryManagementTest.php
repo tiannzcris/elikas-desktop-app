@@ -44,7 +44,7 @@ class EcBoardEntryManagementTest extends TestCase
             'new_household_head_name' => 'Juan Dela Cruz',
         ]);
 
-        $response->assertRedirect(route('evacuation-centers.show', ['center' => $center, 'event' => $event->id]));
+        $response->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
 
         // No HTTP call was made at all -- this is purely a local save, so
         // nothing here required connectivity.
@@ -57,12 +57,12 @@ class EcBoardEntryManagementTest extends TestCase
             'synced_at' => null,
         ]);
 
-        // The detail page itself tries a live breakdown refresh while
+        // The EC Board page itself tries a live breakdown refresh while
         // "online" -- faked to fail fast here (irrelevant to this test)
         // rather than let a real, unfaked request slow the test down.
         Http::fake(['*quick-count*' => Http::response([], 500)]);
 
-        $page = $this->get(route('evacuation-centers.show', ['center' => $center, 'event' => $event->id]));
+        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
         $page->assertSee('As of last sync');
         $page->assertSee('Added on this device (pending sync)');
@@ -97,7 +97,7 @@ class EcBoardEntryManagementTest extends TestCase
         // test below.
         Http::fake(['*quick-count*' => Http::response([], 500)]);
 
-        $page = $this->get(route('evacuation-centers.show', ['center' => $center, 'event' => $event->id]));
+        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
 
         // Scoped, section-by-section checks rather than a bare global
@@ -151,7 +151,7 @@ class EcBoardEntryManagementTest extends TestCase
             ]]),
         ]);
 
-        $page = $this->get(route('evacuation-centers.show', ['center' => $center, 'event' => $event->id]));
+        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
 
         // Fetched from the REAL per-center+event endpoint, with the
@@ -377,7 +377,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         $response = $this->get(route('ec-board-entries.edit', $entry));
 
-        $response->assertRedirect(route('evacuation-centers.show', $center));
+        $response->assertRedirect(route('evacuation-centers.ec-board', $center));
     }
 
     public function test_delete_removes_a_pending_entry(): void
@@ -390,7 +390,111 @@ class EcBoardEntryManagementTest extends TestCase
 
         $response = $this->delete(route('ec-board-entries.destroy', $entry));
 
-        $response->assertRedirect(route('evacuation-centers.show', $center));
+        $response->assertRedirect(route('evacuation-centers.ec-board', $center));
         $this->assertDatabaseMissing('ec_board_entries', ['id' => $entry->id]);
+    }
+
+    public function test_basic_info_page_no_longer_shows_ec_board_content_and_links_to_it_prominently(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        $page = $this->get(route('evacuation-centers.show', $center));
+
+        $page->assertOk();
+        $page->assertSee($center->name);
+        $page->assertSee('EC Information Board');
+        $page->assertSee(route('evacuation-centers.ec-board', $center), false);
+        // Content that now lives ONLY on the dedicated EC Board page.
+        $page->assertDontSee('As of last sync');
+        $page->assertDontSee('Added on this device (pending sync)');
+        $page->assertDontSee('Add evacuee (offline)');
+    }
+
+    public function test_ec_board_page_links_back_to_the_basic_info_page(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        Http::fake(['*quick-count*' => Http::response([], 500)]);
+
+        $page = $this->get(route('evacuation-centers.ec-board', $center));
+
+        $page->assertOk();
+        $page->assertSee('Back to center info');
+        $page->assertSee(route('evacuation-centers.show', $center), false);
+    }
+
+    public function test_evacuation_centers_list_links_to_the_basic_info_page_by_default(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        $page = $this->get(route('evacuation-centers.index'));
+
+        $page->assertOk();
+        $page->assertSee(route('evacuation-centers.show', $center), false);
+        $page->assertDontSee(route('evacuation-centers.ec-board', $center), false);
+    }
+
+    public function test_add_evacuee_flow_still_works_end_to_end_on_its_new_dedicated_page(): void
+    {
+        [$barangay, $event, $center] = $this->seedBase();
+
+        Http::fake(['*quick-count*' => Http::response([], 500)]);
+
+        // The form lives on the EC Board page now, not the basic info page.
+        $boardPage = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
+        $boardPage->assertOk();
+        $boardPage->assertSee('Add evacuee (offline)');
+
+        $store = $this->post(route('ec-board-entries.store', $center), [
+            'evacuation_event_id' => $event->id,
+            'sex' => 'female',
+            'age_bracket' => 'toddler',
+            'household_type' => 'new',
+            'new_household_head_name' => 'Rosa Santos',
+        ]);
+        $store->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
+
+        $this->assertDatabaseHas('ec_board_entries', [
+            'evacuation_center_id' => $center->id,
+            'new_household_head_name' => 'Rosa Santos',
+            'synced_at' => null,
+        ]);
+
+        $afterAdd = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
+        $afterAdd->assertSee('Rosa Santos');
+    }
+
+    public function test_sidebar_nav_moves_evacuation_centers_immediately_before_all_evacuees_without_shifting_the_rest(): void
+    {
+        LocalAuth::create([
+            'remote_user_id' => 1, 'name' => 'Tester', 'email' => 't@example.com', 'role' => 'barangay_official',
+            'api_token' => 'fake-token', 'logged_in_at' => now(),
+        ]);
+
+        $page = $this->get(route('dashboard'));
+        $page->assertOk();
+
+        // Matches the nav-link label text itself, not the surrounding tag --
+        // the actual Blade output has the icon element and whitespace/
+        // indentation between the label and its closing </a>, so anchoring
+        // to "</a>" directly (as an earlier version of this test did) never
+        // matches at all.
+        $content = $page->getContent();
+        $dashboardPos = strpos($content, '> Dashboard');
+        $familiesPos = strpos($content, '> Registered families');
+        $centersPos = strpos($content, '> Evacuation Centers');
+        $evacueesPos = strpos($content, '> All Evacuees');
+
+        $this->assertNotFalse($dashboardPos);
+        $this->assertNotFalse($familiesPos);
+        $this->assertNotFalse($centersPos);
+        $this->assertNotFalse($evacueesPos);
+
+        // Dashboard and Registered families keep their existing relative
+        // order; Evacuation Centers moves to immediately before All
+        // Evacuees (EC Board is now the primary fast-entry workflow).
+        $this->assertTrue($dashboardPos < $familiesPos, 'Dashboard must still come before Registered families');
+        $this->assertTrue($familiesPos < $centersPos, 'Registered families must still come before Evacuation Centers');
+        $this->assertTrue($centersPos < $evacueesPos, 'Evacuation Centers must now come immediately before All Evacuees');
     }
 }

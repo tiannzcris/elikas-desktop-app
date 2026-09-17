@@ -32,7 +32,7 @@ class EcBoardEntryController extends Controller
             'age_bracket' => $validated['age_bracket'],
         ], $request->householdFields()));
 
-        return redirect()->route('evacuation-centers.show', ['center' => $center, 'event' => $validated['evacuation_event_id']])
+        return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
             ->with('status', 'Evacuee added on this device. Sync when you have internet.');
     }
 
@@ -71,7 +71,7 @@ class EcBoardEntryController extends Controller
         }
 
         if ($entry->isSynced()) {
-            return redirect()->route('evacuation-centers.show', $entry->evacuation_center_id)
+            return redirect()->route('evacuation-centers.ec-board', $entry->evacuation_center_id)
                 ->with('status', 'This entry has already synced -- it can no longer be edited from this device.');
         }
 
@@ -81,7 +81,7 @@ class EcBoardEntryController extends Controller
     public function update(AddEvacueeRequest $request, EcBoardEntry $entry)
     {
         if ($entry->isSynced()) {
-            return redirect()->route('evacuation-centers.show', $entry->evacuation_center_id)
+            return redirect()->route('evacuation-centers.ec-board', $entry->evacuation_center_id)
                 ->with('status', 'This entry has already synced -- it can no longer be edited from this device.');
         }
 
@@ -97,7 +97,7 @@ class EcBoardEntryController extends Controller
             'sync_error' => null,
         ], $request->householdFields()));
 
-        return redirect()->route('evacuation-centers.show', ['center' => $entry->evacuation_center_id, 'event' => $entry->evacuation_event_id])
+        return redirect()->route('evacuation-centers.ec-board', ['center' => $entry->evacuation_center_id, 'event' => $entry->evacuation_event_id])
             ->with('status', 'Entry updated on this device. Sync when you have internet.');
     }
 
@@ -109,14 +109,14 @@ class EcBoardEntryController extends Controller
         }
 
         if ($entry->isSynced()) {
-            return redirect()->route('evacuation-centers.show', $entry->evacuation_center_id)
+            return redirect()->route('evacuation-centers.ec-board', $entry->evacuation_center_id)
                 ->with('status', 'This entry has already synced -- it can no longer be deleted from this device.');
         }
 
         $centerId = $entry->evacuation_center_id;
         $entry->delete();
 
-        return redirect()->route('evacuation-centers.show', $centerId)
+        return redirect()->route('evacuation-centers.ec-board', $centerId)
             ->with('status', 'Pending entry removed.');
     }
 }
