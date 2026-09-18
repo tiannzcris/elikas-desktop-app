@@ -6,7 +6,9 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-gray-50 text-gray-900 flex h-screen overflow-hidden">
+<body class="bg-gray-50 text-gray-900 flex flex-col h-screen overflow-hidden">
+    @include('partials._api_target_banner')
+    <div class="flex flex-1 min-h-0">
     @php
         $initials = collect(explode(' ', trim($currentUser->name ?? '')))
             ->filter()
@@ -16,7 +18,7 @@
     @endphp
 
     @if($currentUser ?? null)
-        <aside class="w-64 shrink-0 h-screen flex flex-col px-4 py-5" style="background: linear-gradient(180deg, {{ '#0F2447' }} 0%, {{ '#152F5C' }} 100%);">
+        <aside class="w-64 shrink-0 h-full flex flex-col px-4 py-5" style="background: linear-gradient(180deg, {{ '#0F2447' }} 0%, {{ '#152F5C' }} 100%);">
             <div class="leading-tight px-2 mb-8">
                 <p class="text-white font-extrabold text-base tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
                 <p class="text-xs font-medium" style="color: #A8C2E8;">Offline Companion</p>
@@ -108,6 +110,7 @@
 
             @yield('content')
         </main>
+    </div>
     </div>
 
     @yield('scripts')

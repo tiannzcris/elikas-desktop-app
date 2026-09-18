@@ -63,6 +63,10 @@ return [
         'content',
         'storage/app/framework/{sessions,testing,cache}',
         'storage/logs/laravel.log',
+        // Local/staging API target override (see config/elikas.php and
+        // ApiTargetCommand) -- never allowed to ship, even if a developer
+        // forgets to clear it before building.
+        'storage/app/dev-api-target.txt',
     ],
 
     /**

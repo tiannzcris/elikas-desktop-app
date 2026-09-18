@@ -6,8 +6,9 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite('resources/css/app.css')
 </head>
-<body class="min-h-screen flex items-center justify-center" style="background: linear-gradient(160deg, #0F2447 0%, #152F5C 45%, #0F2447 100%);">
-    <div class="login-card w-full max-w-sm bg-white rounded-3xl p-8" style="box-shadow: 0 20px 50px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15);">
+<body class="min-h-screen flex flex-col items-center justify-center" style="background: linear-gradient(160deg, #0F2447 0%, #152F5C 45%, #0F2447 100%);">
+    @include('partials._api_target_banner')
+    <div class="login-card w-full max-w-sm bg-white rounded-3xl p-8 mt-4" style="box-shadow: 0 20px 50px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.15);">
         <div class="flex flex-col items-center text-center mb-6">
             <img src="{{ asset('images/logo-full.png') }}" alt="E-LIKAS - Electronic Ligao Kaligtasan Sistema" class="w-48 object-contain mb-2">
             <p class="text-xs text-gray-400 mt-1">Offline Companion &middot; First-time login requires internet</p>
