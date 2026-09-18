@@ -449,7 +449,13 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
 
         if (loadingHint) loadingHint.style.display = 'block';
 
-        fetch(`${refreshUrlInput.value}?event=${encodeURIComponent(eventSelect.value)}`)
+        // cache: 'no-store' + a cache-busting _ param -- this must always
+        // reflect who's ACTUALLY registered right now, never a stale
+        // browser-cached response from an earlier visit to this exact
+        // URL (a real, confirmed source of confusion: the server-side
+        // data was already correct, but a cached fetch() response kept
+        // showing an outdated household list even after a page reload).
+        fetch(`${refreshUrlInput.value}?event=${encodeURIComponent(eventSelect.value)}&_=${Date.now()}`, { cache: 'no-store' })
             .then((r) => (r.ok ? r.json() : []))
             .then((remoteHouseholds) => {
                 // Households this device already has locally (by remote
