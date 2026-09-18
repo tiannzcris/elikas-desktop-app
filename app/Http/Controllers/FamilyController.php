@@ -369,11 +369,24 @@ class FamilyController extends Controller
             return redirect()->route('login');
         }
 
+        // created_via_ec_board families are excluded here -- they never
+        // go through registerFamily() at all (the real /families/register
+        // endpoint requires date_of_birth/contact_number per member,
+        // which "Add Evacuee" never collects). They sync instead through
+        // their own originating ec_board_entries row below -- see
+        // EcBoardEntry::toSyncPayload()'s originated_household docblock.
         $pendingFamilies = Family::whereNull('synced_at')
+            ->where('created_via_ec_board', false)
             ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
             ->get();
 
+        // originated_household entries sorted first so a household
+        // created AND given a second member in the SAME sync run
+        // resolves in one pass: the second entry's toSyncPayload() needs
+        // its Family already synced (the originating entry's own job, a
+        // few lines below), which only happens if that one runs first.
         $pendingEntries = EcBoardEntry::whereNull('synced_at')
+            ->orderByDesc('originated_household')
             ->with(['evacuationEvent', 'evacuationCenter', 'household.evacuees'])
             ->get();
 
@@ -434,8 +447,35 @@ class FamilyController extends Controller
         if (! $centralUnreachable) {
             foreach ($pendingEntries as $entry) {
                 try {
-                    $remoteId = $api->addEvacuee($auth->api_token, $entry->evacuationCenter->remote_id, $entry->toSyncPayload());
-                    $entry->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null]);
+                    // Forces a fresh read of this entry's household --
+                    // $pendingEntries eager-loaded it once, up front,
+                    // before this loop started. Without this, a SECOND
+                    // entry referencing the SAME household a prior
+                    // iteration just synced (see the originated_household
+                    // branch below) would still see that relation's
+                    // stale, pre-sync state and wrongly fail toSyncPayload
+                    // ()'s "has this household synced yet" check within
+                    // this same run.
+                    $entry->unsetRelation('household');
+
+                    $result = $api->addEvacuee($auth->api_token, $entry->evacuationCenter->remote_id, $entry->toSyncPayload());
+                    $entry->update(['remote_id' => $result['evacuee_id'], 'synced_at' => now(), 'sync_error' => null]);
+
+                    // This entry's own submission created its linked
+                    // Family locally (see EcBoardEntryController::
+                    // createNewHousehold()) -- stamp the family id THIS
+                    // same response just assigned it, since that Family
+                    // has no other sync path of its own (created_via_ec_
+                    // board is permanently excluded from the families
+                    // loop above).
+                    if ($entry->originated_household && $entry->household_family_local_id) {
+                        Family::whereKey($entry->household_family_local_id)->update([
+                            'remote_id' => $result['family_id'],
+                            'synced_at' => now(),
+                            'sync_error' => null,
+                        ]);
+                    }
+
                     $successCount++;
                 } catch (CentralApiAuthenticationException $e) {
                     return redirect()->route('families.index')->with(

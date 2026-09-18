@@ -47,14 +47,28 @@ class EcBoardEntryManagementTest extends TestCase
         $response->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
 
         // No HTTP call was made at all -- this is purely a local save, so
-        // nothing here required connectivity.
+        // nothing here required connectivity. A real local Family+Evacuee
+        // now backs this "new household" (see EcBoardEntryController::
+        // createNewHousehold()) -- new_household_head_name stays null on
+        // the entry itself; the name now lives on the linked Evacuee.
+        $family = Family::where('created_via_ec_board', true)->firstOrFail();
         $this->assertDatabaseHas('ec_board_entries', [
             'evacuation_center_id' => $center->id,
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'new_household_head_name' => 'Juan Dela Cruz',
+            'household_family_local_id' => $family->id,
+            'originated_household' => true,
+            'new_household_head_name' => null,
             'synced_at' => null,
+        ]);
+        $this->assertDatabaseHas('evacuees', [
+            'family_id' => $family->id,
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'sex' => 'male',
+            'is_head_of_family' => true,
+            'date_of_birth' => null,
         ]);
 
         // The page itself makes no live network call at all (see
@@ -535,9 +549,11 @@ class EcBoardEntryManagementTest extends TestCase
 
         $this->assertDatabaseHas('ec_board_entries', [
             'evacuation_center_id' => $center->id,
-            'new_household_head_name' => 'Rosa Santos',
+            'originated_household' => true,
+            'new_household_head_name' => null,
             'synced_at' => null,
         ]);
+        $this->assertDatabaseHas('evacuees', ['first_name' => 'Rosa', 'last_name' => 'Santos']);
 
         $afterAdd = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $afterAdd->assertSee('Rosa Santos');

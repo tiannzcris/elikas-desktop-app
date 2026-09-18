@@ -35,6 +35,15 @@ class Evacuee extends Model
 
     public function getFullNameAttribute(): string
     {
-        return trim("{$this->first_name} {$this->middle_name} {$this->last_name} {$this->suffix}");
+        // Filters out blank parts before joining, rather than a plain
+        // trim() on the interpolated string -- that previously left a
+        // double space wherever middle_name/suffix was null/empty (e.g.
+        // "Rosa  Santos"), a pre-existing cosmetic bug this app's own
+        // full registration flow could already trigger, now also visible
+        // on every EC-Board-created household (see EcBoardEntryController
+        // ::createNewHousehold(), which never sets a middle_name/suffix).
+        return collect([$this->first_name, $this->middle_name, $this->last_name, $this->suffix])
+            ->filter(fn ($part) => filled($part))
+            ->implode(' ');
     }
 }

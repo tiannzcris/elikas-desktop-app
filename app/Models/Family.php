@@ -11,11 +11,12 @@ class Family extends Model
     protected $fillable = [
         'barangay_id', 'evacuation_event_id', 'evacuation_center_id',
         'displacement_type', 'is_4ps_beneficiary', 'home_address',
-        'remote_id', 'synced_at', 'sync_error',
+        'created_via_ec_board', 'remote_id', 'synced_at', 'sync_error',
     ];
 
     protected $casts = [
         'is_4ps_beneficiary' => 'boolean',
+        'created_via_ec_board' => 'boolean',
         'synced_at' => 'datetime',
     ];
 

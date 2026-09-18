@@ -31,10 +31,11 @@ class EcBoardEntry extends Model
     protected $fillable = [
         'evacuation_center_id', 'evacuation_event_id', 'sex', 'age_bracket',
         'household_family_local_id', 'existing_household_remote_id', 'new_household_head_name',
-        'remote_id', 'synced_at', 'sync_error',
+        'originated_household', 'remote_id', 'synced_at', 'sync_error',
     ];
 
     protected $casts = [
+        'originated_household' => 'boolean',
         'synced_at' => 'datetime',
     ];
 
@@ -121,6 +122,34 @@ class EcBoardEntry extends Model
                 'family_id' => $this->existing_household_remote_id,
                 'barangay_id' => null,
                 'family_name' => null,
+            ];
+        }
+
+        // This entry's own submission is what created household_family_
+        // local_id's Family locally (see EcBoardEntryController::
+        // createNewHousehold()) -- that Family is a created_via_ec_board
+        // placeholder that NEVER goes through FamilyController::sync()'s
+        // own registerFamily() loop (the real /families/register endpoint
+        // requires date_of_birth/contact_number per member, which "Add
+        // Evacuee" never collects -- see this migration's own docblock:
+        // 2026_02_01_000014_add_ec_board_household_support). It syncs
+        // ONLY through this entry's own addEvacuee() call instead, same
+        // household_mode=new shape as before this Family existed locally
+        // at all -- FamilyController::sync() captures the family id back
+        // from THIS response and stamps it onto the local Family once
+        // this succeeds. Checked BEFORE the generic "existing" branch
+        // below, which would otherwise treat this exactly like a
+        // genuinely pre-existing household and wait forever for a
+        // registerFamily() sync that will never happen.
+        if ($this->originated_household) {
+            return [
+                'evacuation_event_id' => $this->evacuationEvent->remote_id,
+                'sex' => $this->sex,
+                'age_bracket' => $this->age_bracket,
+                'household_mode' => 'new',
+                'family_id' => null,
+                'barangay_id' => $this->evacuationCenter->barangay_remote_id,
+                'family_name' => $this->household?->evacuees->firstWhere('is_head_of_family', true)?->full_name,
             ];
         }
 

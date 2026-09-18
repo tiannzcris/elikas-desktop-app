@@ -246,16 +246,21 @@ class CentralApiService
      * remote id before it's sent.
      *
      * The response wraps a FamilyResource, so top-level data.id is the
-     * HOUSEHOLD's family id, not this evacuee's own id -- confirmed the
-     * real response separately carries a top-level data.evacuee_id for
-     * the actual evacuee just created, which is what this method returns
-     * and what gets stored as this entry's remote_id. Storing the family
-     * id here instead would be wrong: it wouldn't identify this specific
-     * evacuee at all, and for an "existing household" entry it wouldn't
-     * even be unique to this sync (every entry added to the same
-     * household would get the same family id back).
+     * HOUSEHOLD's family id, and the response separately carries a
+     * top-level data.evacuee_id for the actual evacuee just created.
+     * Returns both: 'evacuee_id' is what every caller stores as this
+     * entry's OWN remote_id (family id alone wouldn't identify this
+     * specific evacuee, and for an "existing household" entry wouldn't
+     * even be unique to this sync -- every entry added to the same
+     * household gets the same family id back). 'family_id' exists
+     * specifically for household_mode='new' calls, so
+     * FamilyController::sync() can stamp the freshly-assigned remote id
+     * onto this entry's local created_via_ec_board Family too -- see
+     * EcBoardEntry::toSyncPayload()'s own originated_household docblock.
+     *
+     * @return array{evacuee_id: int, family_id: int}
      */
-    public function addEvacuee(string $token, int $centerRemoteId, array $payload): int
+    public function addEvacuee(string $token, int $centerRemoteId, array $payload): array
     {
         try {
             $response = Http::withHeaders([
@@ -279,7 +284,10 @@ class CentralApiService
             throw new \RuntimeException($message);
         }
 
-        return (int) $response->json('data.evacuee_id');
+        return [
+            'evacuee_id' => (int) $response->json('data.evacuee_id'),
+            'family_id' => (int) $response->json('data.id'),
+        ];
     }
 
     /**
