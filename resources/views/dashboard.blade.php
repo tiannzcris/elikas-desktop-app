@@ -59,18 +59,6 @@
         @endif
     </div>
 
-    {{-- EC Board is the primary, fast-entry workflow now (same design
-         decision already shipped on the web dashboard) -- this is the
-         first thing staff should see and reach for, not "Register a
-         family" below. Deep-links straight to this staff account's own
-         center's EC Board when there's exactly one obvious target (see
-         DashboardController::primaryEcBoardCenter()); otherwise lands on
-         the centers list to pick one, same as the sidebar link. --}}
-    <a href="{{ $primaryEcBoardCenter ? route('evacuation-centers.ec-board', $primaryEcBoardCenter) : route('evacuation-centers.index') }}"
-        class="btn-modern btn-primary-modern flex items-center gap-1.5 bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5 w-fit mb-4">
-        <i class="ti ti-clipboard-list" style="font-size: 15px;" aria-hidden="true"></i> Go to EC Board
-    </a>
-
     <div class="flex gap-3">
         <form method="POST" action="{{ route('reference-data.refresh') }}">
             @csrf
@@ -81,11 +69,5 @@
         <a href="{{ route('families.index') }}" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
             <i class="ti ti-users" style="font-size: 15px;" aria-hidden="true"></i> View registered families
         </a>
-        <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
-            <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
-        </a>
     </div>
-    <p class="text-xs text-gray-400 mt-2 max-w-lg">
-        "Register a family" is for households outside a center (staying with relatives, no center involved), or when full detailed registration is genuinely needed directly -- for someone physically at a center right now, EC Board's "Add evacuee" is faster.
-    </p>
 @endsection

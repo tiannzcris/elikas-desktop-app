@@ -8,6 +8,7 @@ use App\Models\Barangay;
 use App\Models\EcBoardEntry;
 use App\Models\Evacuee;
 use App\Models\EvacuationCenter;
+use App\Models\EvacuationCenterQuickCount;
 use App\Models\EvacuationEvent;
 use App\Models\EvacueeRecord;
 use App\Models\Family;
@@ -376,7 +377,11 @@ class FamilyController extends Controller
             ->with(['evacuationEvent', 'evacuationCenter', 'household.evacuees'])
             ->get();
 
-        if ($pendingFamilies->isEmpty() && $pendingEntries->isEmpty()) {
+        $pendingQuickCounts = EvacuationCenterQuickCount::whereNull('synced_at')
+            ->with(['evacuationCenter', 'evacuationEvent', 'sectoralGroups'])
+            ->get();
+
+        if ($pendingFamilies->isEmpty() && $pendingEntries->isEmpty() && $pendingQuickCounts->isEmpty()) {
             return redirect()->route('families.index')
                 ->with('status', 'Nothing to sync -- everything is already up to date.');
         }
@@ -439,6 +444,33 @@ class FamilyController extends Controller
                     );
                 } catch (\RuntimeException $e) {
                     $entry->update(['sync_error' => $e->getMessage()]);
+                    $failCount++;
+
+                    if (str_contains($e->getMessage(), 'Could not reach the central server')) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Sectoral/4Ps figures: a single upsert-by-(center,event) PUT per
+        // pending row, not a "create" POST -- see EvacuationCenterQuickCount
+        // ::toSyncPayload()'s own docblock for why this is a "simple value
+        // update" rather than a queue of individual records like the two
+        // loops above.
+        if (! $centralUnreachable) {
+            foreach ($pendingQuickCounts as $quickCount) {
+                try {
+                    $api->updateQuickCount($auth->api_token, $quickCount->evacuationCenter->remote_id, $quickCount->toSyncPayload());
+                    $quickCount->update(['synced_at' => now(), 'sync_error' => null]);
+                    $successCount++;
+                } catch (CentralApiAuthenticationException $e) {
+                    return redirect()->route('families.index')->with(
+                        'authExpired',
+                        'Your session has expired. Please log in again to continue syncing.'
+                    );
+                } catch (\RuntimeException $e) {
+                    $quickCount->update(['sync_error' => $e->getMessage()]);
                     $failCount++;
 
                     if (str_contains($e->getMessage(), 'Could not reach the central server')) {

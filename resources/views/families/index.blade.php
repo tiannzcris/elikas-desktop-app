@@ -19,9 +19,9 @@
             <div>
                 {{-- De-emphasized on purpose -- EC Board's "Add evacuee" is
                      now the primary, fast-entry path for someone physically
-                     at a center (see the Dashboard's own "Go to EC Board"
-                     action). This stays fully functional for the cases it's
-                     still the right tool for -- see the helper text below. --}}
+                     at a center (see the sidebar's "EC Board" nav item).
+                     This stays fully functional for the cases it's still
+                     the right tool for -- see the helper text below. --}}
                 <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
                     <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
                 </a>

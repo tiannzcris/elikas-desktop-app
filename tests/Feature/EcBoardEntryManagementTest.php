@@ -490,14 +490,17 @@ class EcBoardEntryManagementTest extends TestCase
         $page->assertDontSee('Add evacuee (offline)');
     }
 
-    public function test_ec_board_page_links_back_to_the_basic_info_page(): void
+    public function test_ec_board_page_links_back_to_its_barangays_centers_list_and_still_links_to_basic_info(): void
     {
         [$barangay, $event, $center] = $this->seedBase();
 
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        $page->assertSee('Back to center info');
+        $page->assertSee('Back to '.$barangay->name);
+        $page->assertSee(route('ec-board.centers', $barangay), false);
+        // Center details (basic info page) stays reachable as a secondary
+        // link, even though it's no longer the primary "Back" target.
         $page->assertSee(route('evacuation-centers.show', $center), false);
     }
 
@@ -540,7 +543,7 @@ class EcBoardEntryManagementTest extends TestCase
         $afterAdd->assertSee('Rosa Santos');
     }
 
-    public function test_sidebar_nav_moves_evacuation_centers_immediately_before_all_evacuees_without_shifting_the_rest(): void
+    public function test_sidebar_nav_shows_dashboard_ec_board_registered_families_all_evacuees_in_that_exact_order(): void
     {
         LocalAuth::create([
             'remote_user_id' => 1, 'name' => 'Tester', 'email' => 't@example.com', 'role' => 'barangay_official',
@@ -557,20 +560,20 @@ class EcBoardEntryManagementTest extends TestCase
         // matches at all.
         $content = $page->getContent();
         $dashboardPos = strpos($content, '> Dashboard');
+        $ecBoardPos = strpos($content, '> EC Board');
         $familiesPos = strpos($content, '> Registered families');
-        $centersPos = strpos($content, '> Evacuation Centers');
         $evacueesPos = strpos($content, '> All Evacuees');
 
         $this->assertNotFalse($dashboardPos);
+        $this->assertNotFalse($ecBoardPos);
         $this->assertNotFalse($familiesPos);
-        $this->assertNotFalse($centersPos);
         $this->assertNotFalse($evacueesPos);
 
-        // Dashboard and Registered families keep their existing relative
-        // order; Evacuation Centers moves to immediately before All
-        // Evacuees (EC Board is now the primary fast-entry workflow).
-        $this->assertTrue($dashboardPos < $familiesPos, 'Dashboard must still come before Registered families');
-        $this->assertTrue($familiesPos < $centersPos, 'Registered families must still come before Evacuation Centers');
-        $this->assertTrue($centersPos < $evacueesPos, 'Evacuation Centers must now come immediately before All Evacuees');
+        // EC Board is now the elevated primary workflow, immediately after
+        // Dashboard; Registered families and All Evacuees keep their
+        // existing relative order after it.
+        $this->assertTrue($dashboardPos < $ecBoardPos, 'Dashboard must come before EC Board');
+        $this->assertTrue($ecBoardPos < $familiesPos, 'EC Board must come before Registered families');
+        $this->assertTrue($familiesPos < $evacueesPos, 'Registered families must still come before All Evacuees');
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Barangay;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationCenterBreakdown;
+use App\Models\EvacuationCenterQuickCount;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
@@ -28,6 +29,78 @@ class EvacuationCenterController extends Controller
     private const UNCLASSIFIED_BRACKET = 'unclassified';
 
     /**
+     * The sidebar's "EC Board" landing page -- step 1 of the real
+     * barangay -> centers -> board flow (replacing the earlier stopgap
+     * that just relabeled the old Evacuation Centers management list).
+     * Only barangays with at least one non-closed center are listed --
+     * an empty barangay has nowhere for this flow to go next, same
+     * closed-exclusion reasoning as index()/ecBoard() below. This route
+     * is now what the sidebar's "EC Board" link points to; the OLD
+     * management list below (index()/show()) still exists at its own
+     * URL, reachable via a secondary link on this page -- see this
+     * method's view for where.
+     */
+    public function ecBoardBarangays()
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        $barangayRemoteIds = EvacuationCenter::where('status', '!=', 'closed')
+            ->pluck('barangay_remote_id')
+            ->unique();
+
+        $rows = Barangay::whereIn('remote_id', $barangayRemoteIds)
+            ->orderBy('name')
+            ->get()
+            ->map(function (Barangay $barangay) {
+                $centerIds = EvacuationCenter::where('barangay_remote_id', $barangay->remote_id)
+                    ->where('status', '!=', 'closed')
+                    ->pluck('id');
+
+                return [
+                    'barangay' => $barangay,
+                    'centerCount' => $centerIds->count(),
+                    'pendingCount' => EcBoardEntry::whereIn('evacuation_center_id', $centerIds)->whereNull('synced_at')->count(),
+                ];
+            });
+
+        return view('ec-board.index', [
+            'currentUser' => $auth,
+            'rows' => $rows,
+        ]);
+    }
+
+    /**
+     * Step 2 of the EC Board flow: this one barangay's own centers, name
+     * only -- pure fast navigation, no occupancy/capacity/facilities here
+     * (those still live on the old management pages, linked from here).
+     */
+    public function ecBoardCenters(Barangay $barangay)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        $centers = EvacuationCenter::where('barangay_remote_id', $barangay->remote_id)
+            ->where('status', '!=', 'closed')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (EvacuationCenter $c) => [
+                'center' => $c,
+                'pendingCount' => EcBoardEntry::where('evacuation_center_id', $c->id)->whereNull('synced_at')->count(),
+            ]);
+
+        return view('ec-board.centers', [
+            'currentUser' => $auth,
+            'barangay' => $barangay,
+            'centers' => $centers,
+        ]);
+    }
+
+    /**
      * Grouped by barangay -- simpler than the full barangay -> center ->
      * detail drill-down Registered Families uses, since this list never
      * needs to go past barangay -> centers -> one center's own detail
@@ -35,6 +108,13 @@ class EvacuationCenterController extends Controller
      * family registration form's center list (FamilyController::
      * renderForm()) -- a decommissioned center shouldn't be browsable for
      * new entries either.
+     *
+     * This is now the OLD center-management entry point (create/edit
+     * centers' basic info) -- "EC Board" in the sidebar points at
+     * ecBoardBarangays() above instead, per Cristian's 4-item sidebar
+     * preference (Dashboard, EC Board, Registered Families, All
+     * Evacuees). Still fully reachable via a secondary link from the new
+     * EC Board pages, just no longer a top-level nav item itself.
      */
     public function index()
     {
@@ -180,10 +260,26 @@ class EvacuationCenterController extends Controller
             ->with('evacuees')
             ->get();
 
+        // Derived straight from the center's own barangay_remote_id, not
+        // carried through the URL as a query param -- this always resolves
+        // to the SAME barangay regardless of which page linked here (the
+        // new EC Board flow, a bookmark, or a direct URL), so "Back"
+        // always lands somewhere correct rather than trusting stale state.
+        // Null only if that barangay somehow isn't cached locally.
+        $backBarangay = Barangay::where('remote_id', $center->barangay_remote_id)->first();
+
+        $quickCount = $selectedEventId
+            ? EvacuationCenterQuickCount::with('sectoralGroups')
+                ->where('evacuation_center_id', $center->id)
+                ->where('evacuation_event_id', $selectedEventId)
+                ->first()
+            : null;
+
         return view('evacuation-centers.ec-board', [
             'currentUser' => $auth,
             'center' => $center,
             'barangayName' => Barangay::where('remote_id', $center->barangay_remote_id)->value('name') ?? 'Unknown barangay',
+            'backBarangay' => $backBarangay,
             'events' => $events,
             'selectedEventId' => $selectedEventId,
             'lastKnownBreakdown' => $lastKnownBreakdown,
@@ -194,7 +290,59 @@ class EvacuationCenterController extends Controller
             // only, distinct from $breakdownAgeBrackets below.
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
             'breakdownAgeBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
+            'quickCount' => $quickCount,
+            'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
         ]);
+    }
+
+    /**
+     * Saves this device's locally-reported sectoral/4Ps figures for one
+     * center+event -- confirmed missing from this app entirely until now
+     * (see EvacuationCenterQuickCount's own docblock). Always saves
+     * entirely to the LOCAL database first, same as EcBoardEntryController
+     * ::store() -- no live API call from this request, synced_at stays
+     * null (pending) until the next manual "Sync now". Overwrites the
+     * SAME row on every save (not a growing queue): there is only ever
+     * one current figure to report per center+event, matching how the
+     * web dashboard's own "Save beneficiaries & sectoral figures" form
+     * always submits the full table.
+     */
+    public function saveSectoral(EvacuationCenter $center, Request $request)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        $validated = $request->validate([
+            'evacuation_event_id' => ['required', 'integer', 'exists:evacuation_events,id'],
+            'beneficiaries_4ps' => ['required', 'integer', 'min:0'],
+            'sectoral_groups' => ['array'],
+            'sectoral_groups.*.sectoral_group' => ['required', 'in:'.implode(',', array_keys(EvacuationCenterQuickCount::SECTORAL_GROUPS))],
+            'sectoral_groups.*.male_count' => ['required', 'integer', 'min:0'],
+            'sectoral_groups.*.female_count' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $quickCount = EvacuationCenterQuickCount::updateOrCreate(
+            ['evacuation_center_id' => $center->id, 'evacuation_event_id' => $validated['evacuation_event_id']],
+            [
+                'beneficiaries_4ps' => $validated['beneficiaries_4ps'],
+                // Changed just now -- needs pushing again, same reasoning
+                // as FamilyController::update() clearing sync_error on edit.
+                'synced_at' => null,
+                'sync_error' => null,
+            ]
+        );
+
+        foreach ($validated['sectoral_groups'] ?? [] as $group) {
+            $quickCount->sectoralGroups()->updateOrCreate(
+                ['sectoral_group' => $group['sectoral_group']],
+                ['male_count' => $group['male_count'], 'female_count' => $group['female_count']]
+            );
+        }
+
+        return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
+            ->with('status', 'Sectoral figures saved on this device. Sync when you have internet.');
     }
 
     /**
@@ -222,7 +370,11 @@ class EvacuationCenterController extends Controller
         }
 
         try {
-            $rows = $api->fetchCenterQuickCount($auth->api_token, $center->remote_id, $event->remote_id);
+            // fetchCenterQuickCount() returns the full quick-count payload
+            // (age_groups, sectoral_groups, beneficiaries_4ps) -- only
+            // age_groups is relevant here, since this endpoint refreshes
+            // just the age/sex breakdown table.
+            $rows = $api->fetchCenterQuickCount($auth->api_token, $center->remote_id, $event->remote_id)['age_groups'] ?? [];
         } catch (\RuntimeException $e) {
             return response()->noContent(503);
         }

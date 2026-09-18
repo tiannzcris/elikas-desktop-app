@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @section('title', 'Evacuation Centers')
-@section('nav-evacuation-centers', 'active')
 
 @section('content')
     <div class="mb-6">

@@ -17,25 +17,26 @@
 
     @if($currentUser ?? null)
         <aside class="w-64 shrink-0 h-screen flex flex-col px-4 py-5" style="background: linear-gradient(180deg, {{ '#0F2447' }} 0%, {{ '#152F5C' }} 100%);">
-            <div class="flex items-center gap-3 px-2 mb-8">
-                <div class="w-11 h-11 rounded-full bg-white flex items-center justify-center shrink-0 p-1.5" style="box-shadow: 0 2px 6px rgba(0,0,0,0.25);">
-                    <img src="{{ asset('images/logo-icon.png') }}" alt="E-LIKAS" class="w-full h-full object-contain">
-                </div>
-                <div class="leading-tight">
-                    <p class="text-white font-extrabold text-base tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
-                    <p class="text-xs font-medium" style="color: #A8C2E8;">Offline Companion</p>
-                </div>
+            <div class="leading-tight px-2 mb-8">
+                <p class="text-white font-extrabold text-base tracking-wide"><span style="color: #E63946;">E-</span>LIKAS</p>
+                <p class="text-xs font-medium" style="color: #A8C2E8;">Offline Companion</p>
             </div>
 
             <nav class="flex flex-col gap-1.5">
                 <a href="{{ route('dashboard') }}" class="nav-link @yield('nav-dashboard')">
                     <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard
                 </a>
+                {{-- Elevated to the primary entry point, immediately after
+                     Dashboard (mirrors the web dashboard's structure). Real
+                     standalone section now: barangay -> centers -> board
+                     (see EvacuationCenterController::ecBoardBarangays()),
+                     its own route/controller separate from the old
+                     Evacuation Centers management pages below. --}}
+                <a href="{{ route('ec-board.index') }}" class="nav-link @yield('nav-ec-board')">
+                    <i class="ti ti-building-community" aria-hidden="true"></i> EC Board
+                </a>
                 <a href="{{ route('families.index') }}" class="nav-link @yield('nav-families')">
                     <i class="ti ti-users" aria-hidden="true"></i> Registered families
-                </a>
-                <a href="{{ route('evacuation-centers.index') }}" class="nav-link @yield('nav-evacuation-centers')">
-                    <i class="ti ti-building-community" aria-hidden="true"></i> Evacuation Centers
                 </a>
                 <a href="{{ route('evacuees.index') }}" class="nav-link @yield('nav-evacuees')">
                     <i class="ti ti-clipboard-list" aria-hidden="true"></i> All Evacuees

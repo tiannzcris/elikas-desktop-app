@@ -1,16 +1,25 @@
 @extends('layouts.app')
 
 @section('title', 'EC Information Board -- '.$center->name)
-@section('nav-evacuation-centers', 'active')
+@section('nav-ec-board', 'active')
 
 @section('content')
     <div class="flex items-center justify-between mb-6">
         <div>
-            <a href="{{ route('evacuation-centers.show', $center) }}" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-2">
-                <i class="ti ti-arrow-left" style="font-size: 12px;" aria-hidden="true"></i> Back to center info
+            {{-- Always returns to THIS center's own barangay in the EC
+                 Board flow -- resolved from the center's own
+                 barangay_remote_id (see EvacuationCenterController::
+                 ecBoard()), not a query param, so it's correct regardless
+                 of how this page was reached. Falls back to the barangay
+                 list if that barangay somehow isn't cached locally. --}}
+            <a href="{{ $backBarangay ? route('ec-board.centers', $backBarangay) : route('ec-board.index') }}" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-2">
+                <i class="ti ti-arrow-left" style="font-size: 12px;" aria-hidden="true"></i> Back to {{ $barangayName }}
             </a>
             <h1 class="text-xl font-bold text-brand mb-1">EC Information Board</h1>
-            <p class="text-sm text-gray-500">{{ $barangayName }} &middot; {{ $center->name }}</p>
+            <p class="text-sm text-gray-500">
+                {{ $barangayName }} &middot; {{ $center->name }}
+                &middot; <a href="{{ route('evacuation-centers.show', $center) }}" class="text-gray-400 hover:text-brand underline">center details</a>
+            </p>
         </div>
 
         @if ($events->isNotEmpty())
@@ -105,6 +114,78 @@
                     @endforeach
                 </div>
             @endif
+        </div>
+
+        {{-- Sectoral/4Ps figures -- a manually-reported aggregate, kept
+             deliberately separate from the age/sex breakdown above:
+             sectoral flags (PWD, pregnant, etc.) aren't known at "Add
+             Evacuee" time, so unlike age/sex this can never be derived
+             from individual entries (see EvacuationCenterQuickCount's own
+             docblock, mirroring the same reasoning already established on
+             the web dashboard). Saves entirely to this device first, same
+             as "Add evacuee" above -- no live call from this form, synced
+             on the next "Sync now". --}}
+        <div class="card-modern p-4 mt-6">
+            <h2 class="text-sm font-bold text-gray-700 mb-1">Sectoral group breakdown</h2>
+            <p class="text-xs text-gray-400 mb-3">Manually-reported figures for this event -- separate from the age/sex breakdown above, and not generated from individual evacuee entries.</p>
+
+            @if ($quickCount)
+                @if (! $quickCount->isSynced())
+                    <p class="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg mb-3">
+                        <i class="ti ti-clock" style="font-size: 13px;" aria-hidden="true"></i> Saved on this device, not yet synced.
+                    </p>
+                @else
+                    <p class="text-xs text-gray-400 mb-3">Last synced {{ $quickCount->synced_at->format('M j, Y g:i A') }}.</p>
+                @endif
+                @if ($quickCount->sync_error)
+                    <p class="text-xs text-red-500 mb-3">{{ $quickCount->sync_error }}</p>
+                @endif
+            @else
+                <p class="text-xs text-gray-400 mb-3">Not yet reported for this event.</p>
+            @endif
+
+            <form method="POST" action="{{ route('evacuation-centers.sectoral.update', $center) }}" class="flex flex-col gap-4">
+                @csrf
+                <input type="hidden" name="evacuation_event_id" value="{{ $selectedEventId }}">
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1" for="beneficiaries-4ps">4Ps beneficiary families</label>
+                    <input type="number" min="0" name="beneficiaries_4ps" id="beneficiaries-4ps" value="{{ $quickCount->beneficiaries_4ps ?? 0 }}" class="w-28 border border-gray-200 rounded-xl px-3 py-2 text-sm">
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-gray-400 text-left">
+                                <th class="pb-2 font-medium">Sectoral group</th>
+                                <th class="pb-2 font-medium w-24">Male</th>
+                                <th class="pb-2 font-medium w-24">Female</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $sectoralRows = $quickCount ? $quickCount->sectoralGroups->keyBy('sectoral_group') : collect(); @endphp
+                            @foreach ($sectoralGroups as $groupKey => $groupLabel)
+                                <tr class="border-t border-gray-100">
+                                    <td class="py-1.5 text-gray-600">
+                                        {{ $groupLabel }}
+                                        <input type="hidden" name="sectoral_groups[{{ $loop->index }}][sectoral_group]" value="{{ $groupKey }}">
+                                    </td>
+                                    <td class="py-1.5">
+                                        <input type="number" min="0" name="sectoral_groups[{{ $loop->index }}][male_count]" value="{{ $sectoralRows[$groupKey]->male_count ?? 0 }}" class="w-20 border border-gray-200 rounded-xl px-2 py-1.5 text-xs">
+                                    </td>
+                                    <td class="py-1.5">
+                                        <input type="number" min="0" name="sectoral_groups[{{ $loop->index }}][female_count]" value="{{ $sectoralRows[$groupKey]->female_count ?? 0 }}" class="w-20 border border-gray-200 rounded-xl px-2 py-1.5 text-xs">
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="submit" class="btn-modern btn-primary-modern bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5 w-fit">
+                    Save sectoral figures (offline)
+                </button>
+            </form>
         </div>
     @endif
 @endsection

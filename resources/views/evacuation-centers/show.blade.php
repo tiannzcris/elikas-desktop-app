@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @section('title', $center->name)
-@section('nav-evacuation-centers', 'active')
 
 @section('content')
     <a href="{{ route('evacuation-centers.index') }}" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-4">

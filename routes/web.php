@@ -37,9 +37,19 @@ Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->name(
 
 Route::get('/evacuees', [EvacueeController::class, 'index'])->name('evacuees.index');
 
+// Standalone fast-entry path to EC Board: barangay -> center -> that
+// center's board. Kept under its own /ec-board/... prefix (not nested
+// under /evacuation-centers/...) so the URL itself signals this is a
+// separate section, not a sub-page of the Evacuation Centers management
+// area below (mirrors the same separation on the web dashboard). This is
+// what the sidebar's "EC Board" link points to now.
+Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardBarangays'])->name('ec-board.index');
+Route::get('/ec-board/{barangay}', [EvacuationCenterController::class, 'ecBoardCenters'])->name('ec-board.centers');
+
 Route::get('/evacuation-centers', [EvacuationCenterController::class, 'index'])->name('evacuation-centers.index');
 Route::get('/evacuation-centers/{center}', [EvacuationCenterController::class, 'show'])->name('evacuation-centers.show');
 Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');
+Route::post('/evacuation-centers/{center}/sectoral', [EvacuationCenterController::class, 'saveSectoral'])->name('evacuation-centers.sectoral.update');
 // Called client-side via fetch() AFTER the EC Board page itself has
 // rendered -- never part of that page's own synchronous render, since a
 // blocking live call there starves this single-request-at-a-time local

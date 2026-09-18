@@ -252,51 +252,35 @@ class FamilyDrillDownTest extends TestCase
     }
 
     // -----------------------------------------------------------------
-    // Part 4: Register-a-Family de-emphasized, EC Board promoted
+    // Part 4: Dashboard cleanup -- EC Board is now the sidebar's primary
+    // entry point, not a Dashboard button; Register-a-family duplication
+    // removed from the Dashboard entirely (still reachable from the
+    // Registered Families page).
     // -----------------------------------------------------------------
 
-    public function test_dashboard_promotes_go_to_ec_board_and_de_emphasizes_register_a_family(): void
+    public function test_dashboard_no_longer_shows_go_to_ec_board_or_register_a_family(): void
     {
         $this->login();
 
         $page = $this->get(route('dashboard'));
 
         $page->assertOk();
-        $page->assertSee('Go to EC Board');
-        // "Register a family" must no longer use the brand-colored primary
-        // button styling -- de-emphasized, not removed (still reachable).
-        $content = $page->getContent();
-        $registerPos = strpos($content, 'Register a family');
-        $this->assertNotFalse($registerPos);
-        $surroundingMarkup = substr($content, max(0, $registerPos - 400), 400);
-        $this->assertStringNotContainsString('btn-primary-modern', $surroundingMarkup);
+        $page->assertDontSee('Go to EC Board');
+        $page->assertDontSee('Register a family');
     }
 
-    public function test_dashboard_deep_links_straight_to_ec_board_when_staffs_barangay_has_exactly_one_center(): void
+    public function test_dashboard_still_shows_refresh_and_view_registered_families(): void
     {
-        $this->login(barangayRemoteId: 1);
-        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Only Center', 'status' => 'active']);
+        $this->login();
 
         $page = $this->get(route('dashboard'));
 
         $page->assertOk();
-        $center = EvacuationCenter::where('remote_id', 1)->firstOrFail();
-        $page->assertSee(route('evacuation-centers.ec-board', $center), false);
+        $page->assertSee('Refresh reference data');
+        $page->assertSee('View registered families');
     }
 
-    public function test_dashboard_links_to_the_centers_list_when_no_single_obvious_center_exists(): void
-    {
-        $this->login(barangayRemoteId: 1);
-        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
-        EvacuationCenter::create(['remote_id' => 2, 'barangay_remote_id' => 1, 'name' => 'Center Two', 'status' => 'active']);
-
-        $page = $this->get(route('dashboard'));
-
-        $page->assertOk();
-        $page->assertSee(route('evacuation-centers.index'), false);
-    }
-
-    public function test_register_a_family_remains_fully_functional_despite_being_de_emphasized(): void
+    public function test_register_a_family_remains_fully_functional_from_the_families_page(): void
     {
         $this->login();
         $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);

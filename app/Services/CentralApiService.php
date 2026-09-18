@@ -131,7 +131,14 @@ class CentralApiService
      * trailing 'unclassified' bracket for anyone missing sex/age_bracket
      * entirely -- see this project's EcBoardEntry::AGE_BRACKETS, which
      * mirrors the backend's own EvacuationCenterQuickCount::AGE_BRACKETS
-     * exactly (in the same order) for the 7 real brackets.
+     * exactly (in the same order) for the 7 real brackets. The SAME
+     * response also always carries 'sectoral_groups' (all 8 groups,
+     * zero-filled) and 'beneficiaries_4ps' -- confirmed against the
+     * backend's EvacuationCenterQuickCountResource, there is no separate
+     * endpoint for that data. Returns the full decoded 'data' object
+     * rather than just age_groups (as an earlier version of this method
+     * did) so callers needing the sectoral figures don't need a second
+     * request for the same underlying row.
      */
     public function fetchCenterQuickCount(string $token, int $centerRemoteId, int $eventRemoteId): array
     {
@@ -150,7 +157,7 @@ class CentralApiService
             throw new \RuntimeException('The central server rejected the request -- your login may have expired. Try logging in again while online.');
         }
 
-        return $response->json('data.age_groups') ?? [];
+        return $response->json('data') ?? [];
     }
 
     /**
@@ -273,5 +280,43 @@ class CentralApiService
         }
 
         return (int) $response->json('data.evacuee_id');
+    }
+
+    /**
+     * Pushes this device's locally-saved EC Board sectoral/4Ps figures to
+     * the CENTRAL server's real quick-count save endpoint (confirmed
+     * against elikas-backend's EvacuationCenterController::
+     * updateQuickCount()). Unlike registerFamily()/addEvacuee() above,
+     * this is a single upsert-by-(center,event) PUT, not a "create a new
+     * record" POST -- matching how this figure is a "simple value update"
+     * on this device too (see EvacuationCenterQuickCount's own docblock),
+     * not a growing queue of individual entries. No id is returned or
+     * needed: the server resolves the row to update from
+     * evacuation_event_id (in the payload) plus {center} in the URL, the
+     * same two keys this device's own local row is unique on.
+     */
+    public function updateQuickCount(string $token, int $centerRemoteId, array $payload): void
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$token}",
+                'Accept' => 'application/json',
+            ])->timeout(15)->put("{$this->baseUrl()}/evacuation-centers/{$centerRemoteId}/quick-count", $payload);
+        } catch (ConnectionException $e) {
+            throw new \RuntimeException('Could not reach the central server.');
+        }
+
+        if ($response->status() === 401) {
+            throw new CentralApiAuthenticationException($response->json('message') ?? 'Unauthenticated.');
+        }
+
+        if (! $response->successful()) {
+            $message = $response->json('message') ?? 'The central server rejected these figures.';
+            $errors = $response->json('errors');
+            if ($errors) {
+                $message .= ' '.collect($errors)->flatten()->implode(' ');
+            }
+            throw new \RuntimeException($message);
+        }
     }
 }
