@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barangay;
+use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
@@ -56,9 +57,21 @@ class AuthController extends Controller
         try {
             $this->refreshReferenceData($api, $result['token']);
         } catch (\RuntimeException $e) {
-            // Login itself still succeeded -- don't block on this failing,
-            // the dashboard will just show whatever was cached before (or
-            // nothing, on a genuinely first-ever login).
+            // Login itself still succeeds -- lacking a connection right
+            // after login is a normal, expected state this app is built
+            // around, so this must never block reaching the dashboard.
+            // But silently swallowing this previously let a PARTIAL
+            // refresh (see pruneStale()'s own docblock -- a real incident:
+            // an interrupted refresh left evacuation_centers 54 stale rows
+            // out of date against a real 39, entirely unnoticed) pass as
+            // an ordinary successful login with zero indication the cache
+            // might now be incomplete or wrong. Surfaced instead, so a
+            // real refresh failure is visible immediately rather than
+            // discovered later as unexplained missing/mismatched data.
+            return redirect()->route('dashboard')->with(
+                'referenceDataWarning',
+                'Logged in, but refreshing reference data failed -- some barangays/events/centers on this device may be out of date. '.$e->getMessage()
+            );
         }
 
         return redirect()->route('dashboard');
@@ -101,6 +114,10 @@ class AuthController extends Controller
             Barangay::updateOrCreate(['remote_id' => $b['id']], ['name' => $b['name']]);
             $barangayRemoteIds[] = $b['id'];
         }
+        // Barangays have no ec_board_entries FK of their own (an entry
+        // only ever points at an event/center, never a barangay directly
+        // -- see EcBoardEntry's own fillable columns), so the families-
+        // only guard is already complete here.
         $this->pruneStale(Barangay::class, $barangayRemoteIds, 'barangay_id');
 
         $eventRemoteIds = [];
@@ -112,7 +129,7 @@ class AuthController extends Controller
             ]);
             $eventRemoteIds[] = $e['id'];
         }
-        $this->pruneStale(EvacuationEvent::class, $eventRemoteIds, 'evacuation_event_id');
+        $this->pruneStale(EvacuationEvent::class, $eventRemoteIds, 'evacuation_event_id', EcBoardEntry::class, 'evacuation_event_id');
 
         $centerRemoteIds = [];
         foreach ($data['centers'] as $c) {
@@ -123,7 +140,7 @@ class AuthController extends Controller
             ]);
             $centerRemoteIds[] = $c['id'];
         }
-        $this->pruneStale(EvacuationCenter::class, $centerRemoteIds, 'evacuation_center_id');
+        $this->pruneStale(EvacuationCenter::class, $centerRemoteIds, 'evacuation_center_id', EcBoardEntry::class, 'evacuation_center_id');
 
         // The EC Board's "as of last sync" breakdown is deliberately NOT
         // refreshed here -- the real central endpoint (quick-count) is
@@ -151,25 +168,35 @@ class AuthController extends Controller
      *    wipe the whole local cache table -- far more likely a transient
      *    or malformed response than "the server truly has zero barangays
      *    now".
-     *  - Never delete a row a LOCAL family record still points to (synced
-     *    or not). families.*_id columns are foreign keys with no cascade
-     *    action defined, so deleting a still-referenced row would throw a
-     *    constraint violation -- and if it didn't, it would silently
-     *    detach that family's historical barangay/event/center the next
-     *    time its sync payload is built. A stale row still referenced by
-     *    an existing family is left in place; it prunes cleanly once that
-     *    family is gone or nothing local points to it anymore.
+     *  - Never delete a row a LOCAL record still points to (synced or
+     *    not) -- families.*_id AND ec_board_entries.*_id columns are BOTH
+     *    real foreign keys with no cascade action defined (confirmed: a
+     *    real device hit exactly this -- pruning an event still
+     *    referenced by two ec_board_entries threw a genuine SQLite
+     *    "FOREIGN KEY constraint failed", which aborted the rest of this
+     *    refresh entirely, silently, leaving evacuation_centers stuck 54
+     *    rows stale against the real 39). $foreignModelColumn is optional
+     *    since barangays have no ec_board_entries column pointing at them
+     *    at all (an entry only ever references an event/center, never a
+     *    barangay directly) -- passing null there is correct, not an
+     *    oversight.
      */
-    private function pruneStale(string $modelClass, array $currentRemoteIds, string $familyColumn): void
+    private function pruneStale(string $modelClass, array $currentRemoteIds, string $familyColumn, ?string $foreignModel = null, ?string $foreignModelColumn = null): void
     {
         if (empty($currentRemoteIds)) {
             return;
         }
 
-        $referencedLocalIds = Family::whereNotNull($familyColumn)->pluck($familyColumn)->unique();
+        $referencedLocalIds = Family::whereNotNull($familyColumn)->pluck($familyColumn);
+
+        if ($foreignModel && $foreignModelColumn) {
+            $referencedLocalIds = $referencedLocalIds->merge(
+                $foreignModel::whereNotNull($foreignModelColumn)->pluck($foreignModelColumn)
+            );
+        }
 
         $modelClass::whereNotIn('remote_id', $currentRemoteIds)
-            ->whereNotIn('id', $referencedLocalIds)
+            ->whereNotIn('id', $referencedLocalIds->unique())
             ->delete();
     }
 }

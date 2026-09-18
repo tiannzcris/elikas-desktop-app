@@ -101,6 +101,19 @@
                     </form>
                 </div>
             @endif
+            @if (session('referenceDataWarning'))
+                {{-- Surfaces a refresh that happened at login but failed
+                     partway through (see AuthController::login()'s own
+                     comment) -- kept visible on the FIRST page load after
+                     login only (a normal session() flash, not a banner
+                     that persists across navigation), since by design
+                     this is a one-time "here's what just happened",
+                     not an ongoing state indicator. --}}
+                <div class="flex items-center gap-2 bg-amber-50 text-amber-800 text-sm rounded-lg p-3 mb-4">
+                    <i class="ti ti-alert-triangle shrink-0" style="font-size: 16px;" aria-hidden="true"></i>
+                    {{ session('referenceDataWarning') }}
+                </div>
+            @endif
             @if (session('status'))
                 <div class="bg-green-50 text-green-700 text-sm rounded-lg p-3 mb-4">{{ session('status') }}</div>
             @endif

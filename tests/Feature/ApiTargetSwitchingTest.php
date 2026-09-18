@@ -49,7 +49,19 @@ class ApiTargetSwitchingTest extends TestCase
     public function test_with_no_override_file_the_central_api_url_resolves_to_the_configured_production_url(): void
     {
         $this->assertFalse(file_exists($this->overrideFile()));
-        $this->assertSame(config('elikas.production_api_url'), config('elikas.central_api_url'));
+
+        // config('elikas.central_api_url') alone isn't reliable here: it
+        // was already evaluated once at THIS test's own application boot
+        // (parent::setUp(), before the override file cleanup above ran),
+        // and a real developer machine may have a genuine override file
+        // in place for active local testing -- re-require the config file
+        // directly, the same way every real request does (a fresh PHP
+        // process each time, per this app's own dev-server model), so
+        // this reflects the just-cleaned "no override" state, not
+        // whatever was true a moment before this test started.
+        $resolved = (require config_path('elikas.php'))['central_api_url'];
+
+        $this->assertSame(config('elikas.production_api_url'), $resolved);
     }
 
     public function test_the_api_target_command_with_no_argument_reports_production_when_no_override_is_active(): void
