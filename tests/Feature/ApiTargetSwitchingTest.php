@@ -14,19 +14,55 @@ use Tests\TestCase;
  * and no visible indicator when a session was accidentally still pointed
  * at production during testing (or vice versa). See config/elikas.php's
  * own docblock for the full story.
+ *
+ * Also covers the FOLLOW-UP real incident: running elikas:api-target via
+ * a bare CLI invocation only ever wrote to THIS project's own
+ * storage/app/ -- the real running app (native:serve or a packaged
+ * build) never reads from there at all, so the banner kept showing
+ * "DEV MODE" after the CLI reported success. ApiTargetCommand now ALSO
+ * writes to the real NativePHP/Electron userData storage directory
+ * (recomputed from vendor/nativephp/electron/resources/js/package.json's
+ * own "name" field, the same value Electron's app.getPath('userData')
+ * keys off -- see that command's own docblock).
  */
 class ApiTargetSwitchingTest extends TestCase
 {
     use RefreshDatabase;
+
+    private ?string $originalAppData = null;
+
+    private string $fakeAppDataDir;
 
     private function overrideFile(): string
     {
         return storage_path('app/dev-api-target.txt');
     }
 
+    /**
+     * The REAL AppData path ApiTargetCommand would resolve to on this
+     * machine, but redirected into an isolated temp directory for the
+     * duration of each test -- getenv('APPDATA') is read fresh by the
+     * command every time it runs, so putenv() here safely exercises the
+     * command's actual resolution logic without ever touching this
+     * developer's real AppData\Roaming\e-likas-dev\ folder.
+     */
+    private function fakeUserDataOverrideFile(): string
+    {
+        $packageJsonPath = base_path('vendor/nativephp/electron/resources/js/package.json');
+        $appName = json_decode(file_get_contents($packageJsonPath), true)['name'];
+
+        return $this->fakeAppDataDir.'/'.$appName.'/storage/app/dev-api-target.txt';
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->originalAppData = getenv('APPDATA') ?: null;
+        $this->fakeAppDataDir = sys_get_temp_dir().'/elikas_test_appdata_'.uniqid();
+        mkdir($this->fakeAppDataDir, 0755, true);
+        putenv('APPDATA='.$this->fakeAppDataDir);
+
         // Never trust a leftover override file from outside this test --
         // every test here starts from "no override" (production) state.
         if (file_exists($this->overrideFile())) {
@@ -43,6 +79,10 @@ class ApiTargetSwitchingTest extends TestCase
         if (file_exists($this->overrideFile())) {
             unlink($this->overrideFile());
         }
+
+        putenv($this->originalAppData !== null ? "APPDATA={$this->originalAppData}" : 'APPDATA');
+        @array_map('unlink', glob($this->fakeAppDataDir.'/*/storage/app/*') ?: []);
+
         parent::tearDown();
     }
 
@@ -67,7 +107,7 @@ class ApiTargetSwitchingTest extends TestCase
     public function test_the_api_target_command_with_no_argument_reports_production_when_no_override_is_active(): void
     {
         $this->artisan('elikas:api-target')
-            ->expectsOutputToContain('(production -- no override active)')
+            ->expectsOutputToContain('[production, no override]')
             ->assertExitCode(0);
     }
 
@@ -115,6 +155,46 @@ class ApiTargetSwitchingTest extends TestCase
 
         $this->assertSame('http://127.0.0.1:9999/api/v1', $resolved);
         $this->assertNotSame(config('elikas.production_api_url'), $resolved);
+    }
+
+    /**
+     * The exact real incident: setting/clearing the target via a bare
+     * CLI invocation must ALSO reach the file the real running
+     * native:serve/packaged app actually reads (NativePHP's own userData
+     * storage directory), not just this project's own storage/app/.
+     */
+    public function test_setting_a_target_also_writes_the_real_nativephp_userdata_override_file(): void
+    {
+        Artisan::call('elikas:api-target', ['target' => 'local']);
+
+        $this->assertFileExists($this->fakeUserDataOverrideFile());
+        $this->assertSame('http://127.0.0.1:8000/api/v1', trim(file_get_contents($this->fakeUserDataOverrideFile())));
+    }
+
+    public function test_switching_to_production_also_clears_the_real_nativephp_userdata_override_file(): void
+    {
+        Artisan::call('elikas:api-target', ['target' => 'local']);
+        $this->assertFileExists($this->fakeUserDataOverrideFile());
+
+        Artisan::call('elikas:api-target', ['target' => 'production']);
+
+        $this->assertFileDoesNotExist($this->fakeUserDataOverrideFile());
+    }
+
+    public function test_showing_current_target_reports_on_both_locations_independently(): void
+    {
+        // Simulates the exact bug: the project path is clean (as if
+        // "production" were already run there), but the REAL userData
+        // file still holds a stale override -- confirms the command
+        // surfaces this mismatch instead of only reporting one side.
+        $file = $this->fakeUserDataOverrideFile();
+        mkdir(dirname($file), 0755, true);
+        file_put_contents($file, 'http://127.0.0.1:8000/api/v1');
+
+        $this->artisan('elikas:api-target')
+            ->expectsOutputToContain('[production, no override]')
+            ->expectsOutputToContain('[OVERRIDE ACTIVE: http://127.0.0.1:8000/api/v1]')
+            ->assertExitCode(0);
     }
 
     public function test_dashboard_shows_the_warning_banner_when_an_override_is_active(): void
