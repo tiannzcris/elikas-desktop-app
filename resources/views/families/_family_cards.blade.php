@@ -12,8 +12,9 @@
             <div class="card-modern p-4">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="font-bold text-sm text-gray-800">{{ $family->barangay->name ?? 'Unknown barangay' }}</p>
+                        <p class="font-bold text-sm text-gray-800">{{ $family->headOfFamilyName() }}</p>
                         <p class="text-xs text-gray-500 mt-0.5">
+                            {{ $family->barangay->name ?? 'Unknown barangay' }} &middot;
                             {{ $family->evacuationEvent->name ?? '' }} &middot;
                             {{ $family->evacuees->count() }} member(s) &middot;
                             {{ $family->displacement_type === 'inside_center' ? ($family->evacuationCenter->name ?? 'Inside center') : 'Outside center' }}

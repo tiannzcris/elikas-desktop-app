@@ -105,6 +105,57 @@ class FamilyDrillDownTest extends TestCase
         $page->assertDontSee('Covered Court');
     }
 
+    /**
+     * Confirmed real bug: the family card's own primary bold label used to
+     * show $family->barangay->name instead of the family's actual
+     * head-of-family name -- on a real device this looked exactly like a
+     * person named after their own barangay (e.g. a family under "Abella"
+     * showing "Abella" as if that were someone's name), and was redundant
+     * either way since the barangay is already shown in this drill-down's
+     * own breadcrumb just above the list.
+     */
+    public function test_a_center_level_family_card_shows_the_head_of_familys_name_not_the_barangay_name(): void
+    {
+        $this->login();
+        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Abella']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Abella Elementary School', 'status' => 'active']);
+        $this->seedFamily($barangay, $event, $center, 'Matikas', 'Tacio');
+
+        $page = $this->get(route('families.index', ['barangay' => $barangay->id, 'center' => $center->id]));
+
+        $page->assertOk();
+        preg_match('/<p class="font-bold text-sm text-gray-800">(.*?)<\/p>/', $page->getContent(), $m);
+        $this->assertSame('Matikas Tacio', trim($m[1] ?? ''), 'the card\'s primary label must be the head of family, not the barangay name');
+
+        // The barangay is still shown -- just as secondary metadata on the
+        // card now, not confused with the family's own identity.
+        $page->assertSee('Abella &middot;', false);
+    }
+
+    /**
+     * Confirms the center-level drill-down's own query (familiesForCenter())
+     * has no artificial limit -- every real Family at this barangay+center
+     * shows up, not just the first/most recent one.
+     */
+    public function test_center_level_drill_down_shows_every_family_at_that_center_not_just_one(): void
+    {
+        $this->login();
+        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Abella']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Abella Elementary School', 'status' => 'active']);
+        $this->seedFamily($barangay, $event, $center, 'Matikas', 'Tacio');
+        $this->seedFamily($barangay, $event, $center, 'Rosa', 'Santos');
+        $this->seedFamily($barangay, $event, $center, 'Pedro', 'Reyes');
+
+        $page = $this->get(route('families.index', ['barangay' => $barangay->id, 'center' => $center->id]));
+
+        $page->assertOk();
+        $page->assertSee('Matikas Tacio');
+        $page->assertSee('Rosa Santos');
+        $page->assertSee('Pedro Reyes');
+    }
+
     public function test_drilling_into_the_outside_center_bucket_shows_only_unassigned_families(): void
     {
         $this->login();

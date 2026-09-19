@@ -46,6 +46,21 @@ class Family extends Model
     }
 
     /**
+     * The name shown for this family's card in the Registered Families
+     * drill-down -- confirmed missing before this: that view used to show
+     * $family->barangay->name as the card's primary bold label instead,
+     * which happened to look exactly like a real (if unlikely) person's
+     * name in a real device's data, and is redundant either way -- the
+     * barangay is already shown in the drill-down's own breadcrumb, or as
+     * secondary metadata on the card itself for the cross-barangay search
+     * results view. Mirrors EcBoardEntry::householdLabel()'s own pattern.
+     */
+    public function headOfFamilyName(): string
+    {
+        return $this->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? 'Unknown household';
+    }
+
+    /**
      * Builds the exact JSON shape RegisterFamilyRequest expects on the
      * central server -- keeping this in one place means the sync service
      * never has to duplicate knowledge of that endpoint's payload shape.
