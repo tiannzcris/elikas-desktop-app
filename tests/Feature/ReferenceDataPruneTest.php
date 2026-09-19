@@ -130,13 +130,30 @@ class ReferenceDataPruneTest extends TestCase
         $this->assertDatabaseHas('evacuation_events', ['id' => $droppedEvent->id, 'remote_id' => 13]);
         $this->assertDatabaseHas('evacuation_centers', ['id' => $droppedCenter->id, 'remote_id' => 5]);
 
+        // ...but they're no longer selectable for a NEW entry -- confirmed
+        // real bug: "Typhoon Bagwis" kept showing up in the Add Evacuee
+        // event dropdown as if still current, because nothing ever told
+        // its local row it wasn't -- the real server had dropped it
+        // entirely (not simply closed it there), yet its stale cached
+        // status stayed "active" forever since deleting the row outright
+        // isn't safe (still referenced above). pruneStale() now force-
+        // closes it instead.
+        $this->assertDatabaseHas('evacuation_events', ['id' => $droppedEvent->id, 'status' => 'closed']);
+        $this->assertDatabaseHas('evacuation_centers', ['id' => $droppedCenter->id, 'status' => 'closed']);
+
         // ...and critically, the refresh continues past them instead of
         // aborting -- the new real event/center from THIS fetch are
         // actually present, which is exactly what a real device needs to
         // see the real Binatagan Covered Court instead of a stale,
         // mismatched center.
-        $this->assertDatabaseHas('evacuation_events', ['remote_id' => 7, 'name' => 'Tropical Storm Amang']);
-        $this->assertDatabaseHas('evacuation_centers', ['remote_id' => 27, 'name' => 'Binatagan Covered Court']);
+        $this->assertDatabaseHas('evacuation_events', ['remote_id' => 7, 'name' => 'Tropical Storm Amang', 'status' => 'active']);
+        $this->assertDatabaseHas('evacuation_centers', ['remote_id' => 27, 'name' => 'Binatagan Covered Court', 'status' => 'active']);
+
+        // End-to-end: the Add Evacuee form itself must no longer offer
+        // the force-closed event as a selectable choice.
+        $page = $this->get(route('evacuation-centers.ec-board', $droppedCenter));
+        $page->assertDontSee('Typhoon Bagwis');
+        $page->assertSee('Tropical Storm Amang');
     }
 
     public function test_refresh_does_not_wipe_cache_on_empty_response(): void

@@ -34,6 +34,31 @@ updateClock();
 setInterval(updateClock, 30000);
 
 // ---------------------------------------------------------------------
+// "Sync now" offline guard -- shared by every [data-sync-control] on the
+// page (Registered Families' own button, and EC Board's). Reuses the
+// SAME navigator.onLine signal as the connection badge above (this
+// app's one existing connectivity-detection mechanism -- no new
+// detection logic here), disabling the button and showing why, rather
+// than letting someone click it while offline and either wait on a
+// doomed request or see a confusing error.
+// ---------------------------------------------------------------------
+function updateSyncButtons() {
+    document.querySelectorAll('[data-sync-control]').forEach((control) => {
+        const button = control.querySelector('[data-sync-button]');
+        const warning = control.querySelector('[data-sync-offline-warning]');
+        if (!button) return;
+        button.disabled = !navigator.onLine;
+        button.classList.toggle('opacity-50', !navigator.onLine);
+        button.classList.toggle('cursor-not-allowed', !navigator.onLine);
+        if (warning) warning.style.display = navigator.onLine ? 'none' : 'flex';
+    });
+}
+
+updateSyncButtons();
+window.addEventListener('online', updateSyncButtons);
+window.addEventListener('offline', updateSyncButtons);
+
+// ---------------------------------------------------------------------
 // User menu dropdown
 // ---------------------------------------------------------------------
 const userMenuBtn = document.getElementById('user-menu-btn');
@@ -112,6 +137,26 @@ function wireModalClose(modalRoot) {
     });
 }
 
+/**
+ * Confirmed real bug this fixes: after a successful "Add evacuee"
+ * submission, the redirect target is almost always the EXACT SAME URL
+ * the form was already on (same center+event) -- assigning
+ * window.location.href to a URL identical to the current one is a no-op
+ * in Chromium (no navigation happens at all), so the page's own DOMContent
+ * Loaded handlers (including loadRemoteHouseholds(), see
+ * initEcBoardEntryForm() below) never ran again, leaving the just-added
+ * household invisible as "existing" until a manual refresh. Forces a real
+ * reload whenever the target is the page we're already on, instead of
+ * relying on assignment alone to always navigate.
+ */
+function navigateFreshTo(url) {
+    if (url === window.location.href) {
+        window.location.reload();
+    } else {
+        window.location.href = url;
+    }
+}
+
 function wireModalSubmit(modalRoot) {
     const form = modalRoot.querySelector('form');
     const errorBox = modalRoot.querySelector('.form-errors');
@@ -130,7 +175,7 @@ function wireModalSubmit(modalRoot) {
             });
 
             if (response.redirected) {
-                window.location.href = response.url;
+                navigateFreshTo(response.url);
                 return;
             }
 
@@ -145,7 +190,7 @@ function wireModalSubmit(modalRoot) {
 
             // Unexpected response shape -- fail safe with a real navigation
             // rather than leaving the user stuck on a silently broken form.
-            window.location.href = form.action;
+            navigateFreshTo(form.action);
         } finally {
             submitBtn.disabled = false;
         }
@@ -189,16 +234,19 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
                 ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-500 font-medium hover:underline">Remove</button>` : ''}
             </div>
             <div class="grid grid-cols-3 gap-3">
-                <input type="text" name="members[${index}][first_name]" value="${escAttr(v('first_name'))}" placeholder="First name" class="m-first_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][middle_name]" value="${escAttr(v('middle_name'))}" placeholder="Middle name" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
-                <input type="text" name="members[${index}][last_name]" value="${escAttr(v('last_name'))}" placeholder="Last name" class="m-last_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][first_name]" value="${escAttr(v('first_name'))}" placeholder="First name *" class="m-first_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                <input type="text" name="members[${index}][middle_name]" value="${escAttr(v('middle_name'))}" placeholder="Middle name (optional)" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <input type="text" name="members[${index}][last_name]" value="${escAttr(v('last_name'))}" placeholder="Last name *" class="m-last_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
                 <select name="members[${index}][sex]" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                    <option value="">Sex</option>
+                    <option value="">Sex *</option>
                     <option value="male" ${selected('sex', 'male')}>Male</option>
                     <option value="female" ${selected('sex', 'female')}>Female</option>
                 </select>
-                <input type="date" name="members[${index}][date_of_birth]" value="${escAttr(v('date_of_birth'))}" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][contact_number]" value="${escAttr(v('contact_number'))}" placeholder="Contact number" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <div>
+                    <label class="text-xs text-gray-500 block mb-0.5">Date of birth *</label>
+                    <input type="date" name="members[${index}][date_of_birth]" value="${escAttr(v('date_of_birth'))}" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                </div>
+                <input type="text" name="members[${index}][contact_number]" value="${escAttr(v('contact_number'))}" placeholder="Contact number (optional)" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
             </div>
             <div class="dup-warning mt-3 bg-amber-50 text-amber-700 text-xs rounded-xl p-2.5 items-start gap-2" style="display: none;">
                 <i class="ti ti-alert-triangle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>

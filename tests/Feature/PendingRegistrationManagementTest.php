@@ -189,6 +189,46 @@ class PendingRegistrationManagementTest extends TestCase
         $response->assertDontSee('Edit pending registration');
     }
 
+    public function test_the_form_visibly_marks_which_top_level_fields_are_required(): void
+    {
+        $this->login();
+        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+
+        $response = $this->get(route('families.create'));
+
+        $response->assertOk();
+        $response->assertSee('Fields marked with', false);
+        $response->assertSee('Barangay <span class="text-red-500">*</span>', false);
+        $response->assertSee('Disaster event <span class="text-red-500">*</span>', false);
+        $response->assertSee('Evacuation center <span class="text-red-500">*</span>', false);
+    }
+
+    /**
+     * Household member fields (first/last name, sex, date of birth) are
+     * injected client-side by app.js's memberRowHtml() -- PHPUnit's test
+     * client never executes JS, so their own required-markers can only be
+     * confirmed by inspecting the built bundle's source directly rather
+     * than a rendered page response.
+     */
+    public function test_the_built_js_bundle_marks_required_member_fields(): void
+    {
+        $manifestPath = public_path('build/manifest.json');
+        if (! file_exists($manifestPath)) {
+            $this->markTestSkipped('Frontend assets not built (run `npm run build`) -- nothing to inspect yet.');
+        }
+
+        $manifest = json_decode(file_get_contents($manifestPath), true);
+        $bundlePath = public_path('build/'.$manifest['resources/js/app.js']['file']);
+        $js = file_get_contents($bundlePath);
+
+        $this->assertStringContainsString('First name *', $js);
+        $this->assertStringContainsString('Last name *', $js);
+        $this->assertStringContainsString('Date of birth', $js);
+        $this->assertStringContainsString('Middle name (optional)', $js);
+        $this->assertStringContainsString('Contact number (optional)', $js);
+    }
+
     public function test_edit_form_shows_edit_specific_labels_and_existing_member_data(): void
     {
         $this->login();

@@ -51,10 +51,19 @@ class EvacuationCenterController extends Controller
             ->pluck('barangay_remote_id')
             ->unique();
 
+        // Always include the staff's own barangay, even if it happens to
+        // have zero cached centers right now -- pinned first below either
+        // way, so it's never simply missing from the list they'd expect
+        // to see it in first.
+        if ($auth->barangay_id) {
+            $barangayRemoteIds->push($auth->barangay_id);
+            $barangayRemoteIds = $barangayRemoteIds->unique();
+        }
+
         $rows = Barangay::whereIn('remote_id', $barangayRemoteIds)
             ->orderBy('name')
             ->get()
-            ->map(function (Barangay $barangay) {
+            ->map(function (Barangay $barangay) use ($auth) {
                 $centerIds = EvacuationCenter::where('barangay_remote_id', $barangay->remote_id)
                     ->where('status', '!=', 'closed')
                     ->pluck('id');
@@ -63,8 +72,16 @@ class EvacuationCenterController extends Controller
                     'barangay' => $barangay,
                     'centerCount' => $centerIds->count(),
                     'pendingCount' => EcBoardEntry::whereIn('evacuation_center_id', $centerIds)->whereNull('synced_at')->count(),
+                    'isOwnBarangay' => $auth->barangay_id !== null && $barangay->remote_id === $auth->barangay_id,
                 ];
             });
+
+        // Pinned first -- see this method's own docblock/Part 2 fix for
+        // why, everything else keeps its existing alphabetical order.
+        $ownRow = $rows->firstWhere('isOwnBarangay', true);
+        if ($ownRow) {
+            $rows = collect([$ownRow])->merge($rows->reject(fn ($row) => $row['isOwnBarangay']))->values();
+        }
 
         return view('ec-board.index', [
             'currentUser' => $auth,

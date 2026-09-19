@@ -196,7 +196,7 @@ class FamilyController extends Controller
         if ($barangayId === null) {
             return view('families.index', $sharedData + [
                 'view' => 'barangay',
-                'barangaySummary' => $this->barangaySummary(),
+                'barangaySummary' => $this->barangaySummary($auth),
                 'ecBoardPendingByBarangay' => $this->ecBoardPendingCountsByBarangay(),
             ]);
         }
@@ -239,15 +239,34 @@ class FamilyController extends Controller
      * Collection (not the DB query) since the count comes from a raw
      * groupBy on the FOREIGN key, with no join to sort by the related
      * barangay's name at the SQL level.
+     *
+     * The staff's own barangay (LocalAuth::barangay_id, a REMOTE id) is
+     * always included and pinned first, even with zero registrations so
+     * far -- otherwise a barangay with nothing registered yet would never
+     * appear here at all, hiding the exact place staff are most likely to
+     * start registering from.
      */
-    private function barangaySummary()
+    private function barangaySummary(LocalAuth $auth)
     {
-        return Family::selectRaw('barangay_id, count(*) as family_count')
+        $rows = Family::selectRaw('barangay_id, count(*) as family_count')
             ->groupBy('barangay_id')
             ->with('barangay')
-            ->get()
-            ->sortBy(fn ($row) => $row->barangay->name ?? '')
-            ->values();
+            ->get();
+
+        $ownBarangay = $auth->barangay_id ? Barangay::where('remote_id', $auth->barangay_id)->first() : null;
+
+        if ($ownBarangay && ! $rows->contains('barangay_id', $ownBarangay->id)) {
+            $rows->push((object) ['barangay_id' => $ownBarangay->id, 'family_count' => 0, 'barangay' => $ownBarangay]);
+        }
+
+        $sorted = $rows->sortBy(fn ($row) => $row->barangay->name ?? '')->values();
+
+        if ($ownBarangay) {
+            $ownRow = $sorted->firstWhere('barangay_id', $ownBarangay->id);
+            $sorted = collect([$ownRow])->merge($sorted->reject(fn ($row) => $row->barangay_id === $ownBarangay->id))->values();
+        }
+
+        return $sorted;
     }
 
     /**
@@ -361,13 +380,26 @@ class FamilyController extends Controller
      * Pushes every queued (not-yet-synced) family to the central server,
      * one at a time, using the same registration endpoint the web
      * dashboard uses. No separate sync protocol -- see Family::toSyncPayload().
+     *
+     * Triggerable from more than one page now (Registered Families, and
+     * the EC Board page itself -- see partials/_sync_button.blade.php),
+     * so where this redirects back to afterward depends on where it was
+     * triggered from: return_to_center_id/return_to_event_id, when
+     * present, send the user back to that SAME EC Board page (refreshing
+     * its own pending counts/breakdown), rather than always landing on
+     * Registered Families. Resolved via resolveSyncRedirect() below,
+     * built from an explicit route + a real, looked-up EvacuationCenter --
+     * never a raw redirect URL taken from input, so there's no
+     * open-redirect surface despite honoring caller-supplied ids.
      */
-    public function sync(CentralApiService $api)
+    public function sync(Request $request, CentralApiService $api)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
             return redirect()->route('login');
         }
+
+        $returnTo = $this->resolveSyncRedirect($request);
 
         // created_via_ec_board families are excluded here -- they never
         // go through registerFamily() at all (the real /families/register
@@ -395,7 +427,7 @@ class FamilyController extends Controller
             ->get();
 
         if ($pendingFamilies->isEmpty() && $pendingEntries->isEmpty() && $pendingQuickCounts->isEmpty()) {
-            return redirect()->route('families.index')
+            return redirect($returnTo)
                 ->with('status', 'Nothing to sync -- everything is already up to date.');
         }
 
@@ -420,7 +452,7 @@ class FamilyController extends Controller
                 // instead of repeating a doomed call for each one, and
                 // surface a distinct, actionable message instead of the
                 // generic sync summary below.
-                return redirect()->route('families.index')->with(
+                return redirect($returnTo)->with(
                     'authExpired',
                     'Your session has expired. Please log in again to continue syncing.'
                 );
@@ -478,7 +510,7 @@ class FamilyController extends Controller
 
                     $successCount++;
                 } catch (CentralApiAuthenticationException $e) {
-                    return redirect()->route('families.index')->with(
+                    return redirect($returnTo)->with(
                         'authExpired',
                         'Your session has expired. Please log in again to continue syncing.'
                     );
@@ -505,7 +537,7 @@ class FamilyController extends Controller
                     $quickCount->update(['synced_at' => now(), 'sync_error' => null]);
                     $successCount++;
                 } catch (CentralApiAuthenticationException $e) {
-                    return redirect()->route('families.index')->with(
+                    return redirect($returnTo)->with(
                         'authExpired',
                         'Your session has expired. Please log in again to continue syncing.'
                     );
@@ -525,7 +557,34 @@ class FamilyController extends Controller
             $message .= " {$failCount} failed -- see details below.";
         }
 
-        return redirect()->route('families.index')->with('status', $message);
+        return redirect($returnTo)->with('status', $message);
+    }
+
+    /**
+     * Resolves where sync() should redirect back to -- Registered
+     * Families by default, or the SAME EC Board page it was triggered
+     * from when return_to_center_id is present (see this method's own
+     * docblock on sync() for why). Deliberately builds a named route
+     * from a real, looked-up EvacuationCenter rather than trusting any
+     * raw URL from the request -- an invalid/missing center id falls
+     * back to the safe default instead of erroring.
+     */
+    private function resolveSyncRedirect(Request $request): string
+    {
+        $centerId = $request->input('return_to_center_id');
+        if (! $centerId) {
+            return route('families.index');
+        }
+
+        $center = EvacuationCenter::find($centerId);
+        if (! $center) {
+            return route('families.index');
+        }
+
+        return route('evacuation-centers.ec-board', [
+            'center' => $center,
+            'event' => $request->input('return_to_event_id'),
+        ]);
     }
 
     /**

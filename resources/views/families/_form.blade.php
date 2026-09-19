@@ -31,9 +31,10 @@
         @if ($isEditing)
             @method('PUT')
         @endif
+        <p class="text-xs text-gray-500 -mb-1">Fields marked with <span class="text-red-500 font-semibold">*</span> are required.</p>
         <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 grid grid-cols-2 gap-4">
             <div>
-                <label class="text-sm text-gray-600 block mb-1">Barangay</label>
+                <label class="text-sm text-gray-600 block mb-1">Barangay <span class="text-red-500">*</span></label>
                 <select name="barangay_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
                     <option value="">Select barangay</option>
                     @foreach ($barangays as $b)
@@ -61,7 +62,7 @@
                 </div>
             </div>
             <div>
-                <label class="text-sm text-gray-600 block mb-1">Disaster event</label>
+                <label class="text-sm text-gray-600 block mb-1">Disaster event <span class="text-red-500">*</span></label>
                 <select name="evacuation_event_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
                     <option value="">Select event</option>
                     @foreach ($events as $e)
@@ -88,7 +89,7 @@
                 </select>
             </div>
             <div id="center-field" @if ($isEditing && $family->displacement_type !== 'inside_center') style="display: none;" @endif>
-                <label class="text-sm text-gray-600 block mb-1">Evacuation center</label>
+                <label class="text-sm text-gray-600 block mb-1">Evacuation center <span class="text-red-500">*</span></label>
                 <select name="evacuation_center_id" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
                     <option value="">Select center</option>
                 </select>

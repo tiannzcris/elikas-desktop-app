@@ -10,6 +10,7 @@ use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class AuthController extends Controller
 {
@@ -180,6 +181,18 @@ class AuthController extends Controller
      *    at all (an entry only ever references an event/center, never a
      *    barangay directly) -- passing null there is correct, not an
      *    oversight.
+     *
+     * A protected row is still STALE, though -- the server no longer
+     * returns it at all (not merely "closed" there), so if this model
+     * tracks a status column (events/centers; barangays don't), it gets
+     * force-closed here instead of being left stuck showing whatever
+     * status it had the last time it WAS in a fresh fetch. Confirmed on a
+     * real device: an event removed entirely from the server stayed
+     * selectable in every "Add Evacuee"/registration dropdown
+     * indefinitely, still reading "active" from before local records
+     * started protecting it from deletion -- every one of those
+     * dropdowns already filters on status != 'closed', so this alone is
+     * enough to correctly drop it from all of them at once.
      */
     private function pruneStale(string $modelClass, array $currentRemoteIds, string $familyColumn, ?string $foreignModel = null, ?string $foreignModelColumn = null): void
     {
@@ -195,8 +208,14 @@ class AuthController extends Controller
             );
         }
 
-        $modelClass::whereNotIn('remote_id', $currentRemoteIds)
-            ->whereNotIn('id', $referencedLocalIds->unique())
-            ->delete();
+        $referencedLocalIds = $referencedLocalIds->unique();
+
+        $stale = $modelClass::whereNotIn('remote_id', $currentRemoteIds);
+
+        if (Schema::hasColumn((new $modelClass)->getTable(), 'status')) {
+            (clone $stale)->whereIn('id', $referencedLocalIds)->update(['status' => 'closed']);
+        }
+
+        (clone $stale)->whereNotIn('id', $referencedLocalIds)->delete();
     }
 }

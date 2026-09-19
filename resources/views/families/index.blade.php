@@ -10,12 +10,7 @@
             <p class="text-sm text-gray-500">Everything registered on this device, synced or not.</p>
         </div>
         <div class="flex items-start gap-3">
-            <form method="POST" action="{{ route('families.sync') }}">
-                @csrf
-                <button type="submit" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
-                    <i class="ti ti-cloud-upload" style="font-size: 15px;" aria-hidden="true"></i> Sync now
-                </button>
-            </form>
+            @include('partials._sync_button')
             <div>
                 {{-- De-emphasized on purpose -- EC Board's "Add evacuee" is
                      now the primary, fast-entry path for someone physically
@@ -102,12 +97,21 @@
                     <p class="text-sm text-gray-400">No families registered on this device yet.</p>
                 </div>
             @else
+                <p class="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
+                    Your barangay is shown first. Other barangays are included so you can help register displaced residents temporarily staying in your area, or view city-wide activity.
+                </p>
                 <div class="flex flex-col gap-3">
                     @foreach ($barangaySummary as $row)
                         @php($ecBoardPending = $ecBoardPendingByBarangay[$row->barangay->remote_id ?? null] ?? 0)
-                        <a href="{{ route('families.index', ['barangay' => $row->barangay_id]) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+                        @php($isOwnBarangay = $currentUser->barangay_id !== null && ($row->barangay->remote_id ?? null) === $currentUser->barangay_id)
+                        <a href="{{ route('families.index', ['barangay' => $row->barangay_id]) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow {{ $isOwnBarangay ? 'ring-1 ring-brand/40' : '' }}">
                             <div>
-                                <p class="font-bold text-sm text-gray-800">{{ $row->barangay->name ?? 'Unknown barangay' }}</p>
+                                <p class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                                    {{ $row->barangay->name ?? 'Unknown barangay' }}
+                                    @if ($isOwnBarangay)
+                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-brand bg-blue-50 rounded-full px-2 py-0.5">Your barangay</span>
+                                    @endif
+                                </p>
                                 <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">

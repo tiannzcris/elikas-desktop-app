@@ -22,15 +22,23 @@
             </p>
         </div>
 
-        @if ($events->isNotEmpty())
-            <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}">
-                <select name="event" onchange="this.form.submit()" class="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-gray-700">
-                    @foreach ($events as $e)
-                        <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->name }}</option>
-                    @endforeach
-                </select>
-            </form>
-        @endif
+        <div class="flex items-start gap-3">
+            @if ($events->isNotEmpty())
+                <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}">
+                    <select name="event" onchange="this.form.submit()" class="border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-gray-700">
+                        @foreach ($events as $e)
+                            <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
+            {{-- Lets staff sync directly from this page without navigating
+                 away to Registered Families -- redirects back to this SAME
+                 center+event afterward (see FamilyController::sync()'s own
+                 resolveSyncRedirect()), so the breakdown/pending counts
+                 below reflect the sync immediately. --}}
+            @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
+        </div>
     </div>
 
     @if ($events->isEmpty())
