@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\CentralApiAuthenticationException;
 use App\Models\Barangay;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
@@ -482,6 +483,69 @@ class EvacuationCenterController extends Controller
             ->values();
 
         return response()->json($households);
+    }
+
+    /**
+     * "Quick Departure": the EC Board's reverse counterpart to "Add
+     * Evacuee" -- marks N currently-evacuated people at this center as
+     * departed by age bracket + sex + quantity, not by picking individual
+     * names (confirmed against elikas-backend's EvacuationCenterController
+     * ::quickDeparture(), which this calls directly). Called client-side
+     * via fetch() from ec-board.blade.php's own script, same "live JSON
+     * endpoint" shape as refreshBreakdown()/refreshHouseholds() above --
+     * but unlike Add Evacuee/sectoral figures, this has NO local/offline
+     * path at all: it needs the central server's own true current
+     * "who's here" set to correctly select who departs (this device's own
+     * local cache can't guarantee it reflects evacuees other devices have
+     * added), so it's online-only by design, gated client-side on
+     * navigator.onLine same as the Sync Now button (see app.js's
+     * updateSyncButtons() and this button's own data-sync-control
+     * wrapper in the view).
+     *
+     * Returns JSON in every case (never a redirect) so the calling JS can
+     * show the exact backend message inline -- including the 422 "Only N
+     * matching evacuee(s)..." rejection -- without a page reload, then
+     * itself re-fetches the breakdown-refresh partial to reflect the
+     * departure immediately.
+     */
+    public function quickDeparture(EvacuationCenter $center, Request $request, CentralApiService $api)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return response()->json(['message' => 'Your session has expired -- log in again.'], 401);
+        }
+
+        $validated = $request->validate([
+            'evacuation_event_id' => ['required', 'integer', 'exists:evacuation_events,id'],
+            'age_bracket' => ['required', 'in:'.implode(',', array_keys(EcBoardEntry::AGE_BRACKETS))],
+            'sex' => ['required', 'in:male,female'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'status' => ['required', 'in:returned_home,transferred'],
+        ]);
+
+        $event = EvacuationEvent::find($validated['evacuation_event_id']);
+
+        if (! $center->remote_id || ! $event?->remote_id) {
+            return response()->json([
+                'message' => 'This center or event has not synced with the central server yet -- refresh reference data while online first.',
+            ], 422);
+        }
+
+        try {
+            $api->quickDeparture($auth->api_token, $center->remote_id, [
+                'evacuation_event_id' => $event->remote_id,
+                'age_bracket' => $validated['age_bracket'],
+                'sex' => $validated['sex'],
+                'quantity' => $validated['quantity'],
+                'status' => $validated['status'],
+            ]);
+        } catch (CentralApiAuthenticationException $e) {
+            return response()->json(['message' => $e->getMessage()], 401);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => "{$validated['quantity']} evacuee(s) marked as departed."]);
     }
 
     /**

@@ -57,6 +57,11 @@ Route::post('/evacuation-centers/{center}/sectoral', [EvacuationCenterController
 // EvacuationCenterController::ecBoard()'s docblock).
 Route::get('/evacuation-centers/{center}/breakdown-refresh', [EvacuationCenterController::class, 'refreshBreakdown'])->name('evacuation-centers.breakdown-refresh');
 Route::get('/evacuation-centers/{center}/households-refresh', [EvacuationCenterController::class, 'refreshHouseholds'])->name('evacuation-centers.households-refresh');
+// "Quick Departure" -- called client-side via fetch(), online-only, no
+// offline/local path at all. See EvacuationCenterController::
+// quickDeparture()'s own docblock for why this differs from every other
+// write on this page.
+Route::post('/evacuation-centers/{center}/quick-departure', [EvacuationCenterController::class, 'quickDeparture'])->name('evacuation-centers.quick-departure');
 Route::post('/evacuation-centers/{center}/evacuees', [EcBoardEntryController::class, 'store'])->name('ec-board-entries.store');
 Route::get('/ec-board-entries/{entry}/edit', [EcBoardEntryController::class, 'edit'])->name('ec-board-entries.edit');
 Route::put('/ec-board-entries/{entry}', [EcBoardEntryController::class, 'update'])->name('ec-board-entries.update');

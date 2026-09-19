@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'E-LIKAS Offline Companion')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite(['resources/css/app.css', 'resources/js/app.js'])

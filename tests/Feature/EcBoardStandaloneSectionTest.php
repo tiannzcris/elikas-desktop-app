@@ -125,6 +125,31 @@ class EcBoardStandaloneSectionTest extends TestCase
         }
     }
 
+    /**
+     * Confirmed bug (mirrors the same fix already applied on the web
+     * dashboard, commit 3603162): this field was sitting inside the
+     * Sectoral Group card instead of the top header block, grouped with
+     * barangay/center/event. assertSeeInOrder over the raw rendered HTML
+     * is the only reliable way to prove DOM *position*, not just presence
+     * -- test_ec_board_page_shows_sectoral_group_form_with_all_eight_categories
+     * above already covered presence and would pass either way.
+     */
+    public function test_the_4ps_field_appears_in_the_header_row_not_the_sectoral_card(): void
+    {
+        $this->login();
+        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
+
+        $page = $this->get(route('evacuation-centers.ec-board', $center));
+
+        $page->assertOk();
+        $page->assertSeeInOrder(['4Ps beneficiary families', 'Add evacuee', 'Quick departure', 'Sectoral group breakdown']);
+        // Still saves through the sectoral form despite living outside it
+        // in the DOM -- see the form="" attribute on the relocated input.
+        $page->assertSee('form="ecboard-sectoral-form"', false);
+    }
+
     public function test_saving_sectoral_figures_stores_them_locally_as_pending(): void
     {
         $this->login();

@@ -291,6 +291,50 @@ class CentralApiService
     }
 
     /**
+     * Calls the CENTRAL server's real "Quick Departure" endpoint directly
+     * (confirmed against elikas-backend's EvacuationCenterController::
+     * quickDeparture()) -- the reverse of addEvacuee() above: marks N
+     * currently-evacuated people at this center as departed by age
+     * bracket + sex + quantity, not by name. Unlike every other write in
+     * this service, this has NO local/offline path at all -- it needs the
+     * central server's own true current "who's here" set to correctly
+     * pick who departs, which this device's own local cache can never
+     * guarantee reflects (other devices may have added/synced evacuees
+     * this one never pulled). Always called live, online-only, straight
+     * from EvacuationCenterController::quickDeparture() -- see that
+     * method's own docblock.
+     *
+     * Throws with the backend's own exact message on failure (e.g. the
+     * "Only N matching evacuee(s) are currently here..." 422), same
+     * generic error-unwrapping as every other method here, so the caller
+     * can show that exact wording rather than a generic fallback.
+     */
+    public function quickDeparture(string $token, int $centerRemoteId, array $payload): void
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => "Bearer {$token}",
+                'Accept' => 'application/json',
+            ])->timeout(15)->post("{$this->baseUrl()}/evacuation-centers/{$centerRemoteId}/quick-departure", $payload);
+        } catch (ConnectionException $e) {
+            throw new \RuntimeException('Could not reach the central server.');
+        }
+
+        if ($response->status() === 401) {
+            throw new CentralApiAuthenticationException($response->json('message') ?? 'Unauthenticated.');
+        }
+
+        if (! $response->successful()) {
+            $message = $response->json('message') ?? 'The central server rejected this request.';
+            $errors = $response->json('errors');
+            if ($errors) {
+                $message .= ' '.collect($errors)->flatten()->implode(' ');
+            }
+            throw new \RuntimeException($message);
+        }
+    }
+
+    /**
      * Pushes this device's locally-saved EC Board sectoral/4Ps figures to
      * the CENTRAL server's real quick-count save endpoint (confirmed
      * against elikas-backend's EvacuationCenterController::

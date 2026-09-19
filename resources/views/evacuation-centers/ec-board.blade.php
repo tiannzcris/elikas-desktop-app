@@ -31,6 +31,25 @@
                         @endforeach
                     </select>
                 </form>
+                {{-- Matches the real EC Information Board template's own row
+                     order (mirrors the same fix already applied on the web
+                     dashboard): this header-level count sits WITH
+                     Barangay/Center/Event, not down with the Sectoral Group
+                     table further below -- which has its own separate "4Ps
+                     beneficiary" row (male/female), a different,
+                     per-person-sex figure, not this one (see
+                     EvacuationCenterQuickCount's own docblock). Lives
+                     outside <form id="ecboard-sectoral-form"> below in the
+                     DOM, but the form="" attribute on the input still
+                     submits it with that form -- same element name/id, so
+                     saveSectoral() needs no changes. --}}
+                <div class="flex flex-col items-start">
+                    <label for="beneficiaries-4ps" class="text-xs text-gray-400 mb-1">4Ps beneficiary families</label>
+                    <input type="number" min="0" name="beneficiaries_4ps" id="beneficiaries-4ps" form="ecboard-sectoral-form"
+                        value="{{ $quickCount->beneficiaries_4ps ?? 0 }}"
+                        title="Saved together with the sectoral breakdown further down the page"
+                        class="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm">
+                </div>
             @endif
             {{-- Lets staff sync directly from this page without navigating
                  away to Registered Families -- redirects back to this SAME
@@ -80,6 +99,66 @@
                     Add evacuee (offline)
                 </button>
             </form>
+        </div>
+
+        {{-- "Quick Departure": the reverse of Add Evacuee above -- mirrors
+             the web dashboard's own Quick Departure card, but UNLIKE Add
+             Evacuee this has NO offline path at all (see
+             EvacuationCenterController::quickDeparture()'s own docblock
+             for why: it needs the central server's own true current
+             "who's here" set, which this device's local cache can't
+             guarantee reflects). Reuses the exact same data-sync-control/
+             data-sync-button/data-sync-offline-warning pattern already
+             wired for Sync Now in app.js's updateSyncButtons() -- no new
+             connectivity-detection logic here, same navigator.onLine
+             signal as the header's Online/Offline badge. --}}
+        <div class="card-modern p-4 mb-6" data-quick-departure-form>
+            <h2 class="text-sm font-bold text-gray-700 mb-1">Quick departure</h2>
+            <p class="text-xs text-gray-400 mb-3">Marks that many currently-evacuated people as departed -- oldest arrivals in the matching bracket first. Requires an internet connection; there's no offline queue for this action.</p>
+
+            <div data-quick-departure-errors class="bg-red-50 text-red-700 text-sm rounded-xl p-3 mb-3" style="display: none;"></div>
+            <p data-quick-departure-success class="text-xs text-green-600 font-medium mb-3" style="display: none;">&check; Marked as departed.</p>
+
+            <div class="flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Sex</label>
+                        <select data-quick-departure-sex class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 block mb-1">Quantity</label>
+                        <input type="number" min="1" value="1" data-quick-departure-quantity class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-sm text-gray-600 block mb-1">Age bracket</label>
+                        <select data-quick-departure-age-bracket class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                            @foreach ($ageBrackets as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-sm text-gray-600 block mb-1">Reason</label>
+                        <select data-quick-departure-status class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                            <option value="returned_home">Returned home</option>
+                            <option value="transferred">Transferred elsewhere</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div data-sync-control class="flex flex-col items-start gap-1">
+                    <button type="button" data-sync-button data-quick-departure-submit
+                        class="btn-modern flex items-center gap-1.5 bg-gray-800 hover:bg-gray-900 text-white text-sm px-4 py-2.5">
+                        Mark as departed
+                    </button>
+                    <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-600" style="display: none;">
+                        <i class="ti ti-alert-triangle" style="font-size: 12px;" aria-hidden="true"></i> Quick departure requires an internet connection.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <div>
@@ -152,14 +231,9 @@
                 <p class="text-xs text-gray-400 mb-3">Not yet reported for this event.</p>
             @endif
 
-            <form method="POST" action="{{ route('evacuation-centers.sectoral.update', $center) }}" class="flex flex-col gap-4">
+            <form id="ecboard-sectoral-form" method="POST" action="{{ route('evacuation-centers.sectoral.update', $center) }}" class="flex flex-col gap-4">
                 @csrf
                 <input type="hidden" name="evacuation_event_id" value="{{ $selectedEventId }}">
-
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1" for="beneficiaries-4ps">4Ps beneficiary families</label>
-                    <input type="number" min="0" name="beneficiaries_4ps" id="beneficiaries-4ps" value="{{ $quickCount->beneficiaries_4ps ?? 0 }}" class="w-28 border border-gray-200 rounded-xl px-3 py-2 text-sm">
-                </div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-xs">
@@ -219,6 +293,94 @@
                 })
                 .catch(() => {});
         @endif
+
+        // --- Quick Departure -------------------------------------------
+        // Online-only by design (see EvacuationCenterController::
+        // quickDeparture()'s own docblock) -- the button itself is
+        // already disabled while offline via the shared data-sync-button
+        // wiring in app.js's updateSyncButtons(), so a click here can
+        // only happen while online; this still handles a mid-request
+        // connection drop the same as any other network error below.
+        const qdForm = document.querySelector('[data-quick-departure-form]');
+        if (qdForm) {
+            const qdSubmitBtn = qdForm.querySelector('[data-quick-departure-submit]');
+            const qdErrors = qdForm.querySelector('[data-quick-departure-errors]');
+            const qdSuccess = qdForm.querySelector('[data-quick-departure-success]');
+
+            qdSubmitBtn.addEventListener('click', async () => {
+                qdErrors.style.display = 'none';
+                qdSuccess.style.display = 'none';
+
+                const payload = {
+                    evacuation_event_id: {{ (int) $selectedEventId }},
+                    age_bracket: qdForm.querySelector('[data-quick-departure-age-bracket]').value,
+                    sex: qdForm.querySelector('[data-quick-departure-sex]').value,
+                    quantity: Number(qdForm.querySelector('[data-quick-departure-quantity]').value) || 0,
+                    status: qdForm.querySelector('[data-quick-departure-status]').value,
+                };
+
+                qdSubmitBtn.disabled = true;
+                qdSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                qdSubmitBtn.textContent = 'Marking...';
+
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                    const response = await fetch('{{ route('evacuation-centers.quick-departure', $center) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const body = await response.json().catch(() => ({}));
+
+                    if (! response.ok) {
+                        // Matches the backend's exact wording (e.g. the
+                        // "Only N matching evacuee(s)..." 422) -- see
+                        // CentralApiService::quickDeparture()'s own
+                        // docblock. A field-level validation failure
+                        // (422 with an "errors" object) falls back to
+                        // listing those instead, same shape families
+                        // sync already handles.
+                        const messages = body.errors ? Object.values(body.errors).flat() : [body.message || 'The central server rejected this request.'];
+                        qdErrors.innerHTML = messages.map((m) => `<p>${m}</p>`).join('');
+                        qdErrors.style.display = 'block';
+                        return;
+                    }
+
+                    qdForm.querySelector('[data-quick-departure-quantity]').value = 1;
+                    qdSuccess.style.display = 'block';
+                    setTimeout(() => { qdSuccess.style.display = 'none'; }, 2500);
+
+                    // Reflects the just-completed departure in the "As of
+                    // last sync" figures -- same live-refresh endpoint
+                    // already called once on page load above. Quick
+                    // Departure never touches this device's own pending
+                    // (not-yet-synced) entries, so that other table is
+                    // deliberately left untouched.
+                    fetch('{{ route('evacuation-centers.breakdown-refresh', $center) }}?event={{ (int) $selectedEventId }}')
+                        .then((r) => (r.ok ? r.text() : null))
+                        .then((html) => {
+                            if (html) document.getElementById('last-known-breakdown-table').innerHTML = html;
+                        })
+                        .catch(() => {});
+                } catch (error) {
+                    qdErrors.innerHTML = '<p>Could not reach the central server. Check your internet connection and try again.</p>';
+                    qdErrors.style.display = 'block';
+                } finally {
+                    // Re-checks navigator.onLine rather than unconditionally
+                    // re-enabling -- connectivity may have dropped mid-
+                    // request, and updateSyncButtons() in app.js won't fire
+                    // again on its own until the next online/offline event.
+                    qdSubmitBtn.disabled = ! navigator.onLine;
+                    qdSubmitBtn.classList.toggle('opacity-50', ! navigator.onLine);
+                    qdSubmitBtn.classList.toggle('cursor-not-allowed', ! navigator.onLine);
+                    qdSubmitBtn.textContent = 'Mark as departed';
+                }
+            });
+        }
     });
 </script>
 @endsection
