@@ -270,20 +270,40 @@ class FamilyController extends Controller
     }
 
     /**
-     * One row per evacuation center within $barangay, plus a trailing
-     * "Outside center / unassigned" bucket for outside_center
-     * registrations (evacuation_center_id is null for those -- see
-     * RegisterFamilyRequest) -- same bucket the web dashboard's own
-     * center-summary shows. Real centers are sorted by name; the
-     * unassigned bucket (no name to sort by) always comes last.
+     * One row per evacuation center CURRENTLY HOSTING $barangay's
+     * registered families, plus a trailing "Outside center / unassigned"
+     * bucket for outside_center registrations (evacuation_center_id is
+     * null for those -- see RegisterFamilyRequest) -- same bucket the
+     * web dashboard's own center-summary shows. Real centers are sorted
+     * by name; the unassigned bucket (no name to sort by) always comes
+     * last.
+     *
+     * NOT "centers within $barangay" -- a family's registered barangay
+     * (home) and the center it's actually sheltering at are independent:
+     * nothing stops a Binatagan family from evacuating to a center that
+     * physically belongs to Ranao-ranao (confirmed real, reproducible
+     * case, not a hypothetical -- a family's own barangay_id has no
+     * relationship to its evacuation_center_id's own barangay_remote_id
+     * anywhere in this query). Each row below carries
+     * locatedInDifferentBarangay (the OTHER barangay's name, or null when
+     * the center's own barangay_remote_id actually matches $barangay) so
+     * the view can flag that clearly instead of implying every center
+     * listed here belongs to $barangay.
      */
     private function centerSummary(Barangay $barangay)
     {
         $rows = Family::where('barangay_id', $barangay->id)
             ->selectRaw('evacuation_center_id, count(*) as family_count')
             ->groupBy('evacuation_center_id')
-            ->with('evacuationCenter')
+            ->with('evacuationCenter.barangay')
             ->get();
+
+        $rows->each(function ($row) use ($barangay) {
+            $row->locatedInDifferentBarangay = $row->evacuationCenter
+                && (int) $row->evacuationCenter->barangay_remote_id !== (int) $barangay->remote_id
+                ? ($row->evacuationCenter->barangay->name ?? null)
+                : null;
+        });
 
         $withCenter = $rows->filter(fn ($row) => $row->evacuation_center_id !== null)
             ->sortBy(fn ($row) => $row->evacuationCenter->name ?? '')

@@ -145,7 +145,19 @@
                         <div class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
                             <a href="{{ route('families.index', ['barangay' => $barangay->id, 'center' => $row->evacuation_center_id ?? 'none']) }}" class="flex-1 flex items-center justify-between min-w-0">
                                 <div>
-                                    <p class="font-bold text-sm text-gray-800">{{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}</p>
+                                    <p class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                                        {{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}
+                                        {{-- This row means "{{ $barangay->name }}'s families staying
+                                             here", not "belongs to {{ $barangay->name }}" -- flagged
+                                             whenever the center's OWN barangay differs, so it's never
+                                             mistaken for a center physically located in this barangay
+                                             (see FamilyController::centerSummary()'s own docblock). --}}
+                                        @if ($row->locatedInDifferentBarangay)
+                                            <span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
+                                                Located in {{ $row->locatedInDifferentBarangay }}
+                                            </span>
+                                        @endif
+                                    </p>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
                                 </div>
                             </a>

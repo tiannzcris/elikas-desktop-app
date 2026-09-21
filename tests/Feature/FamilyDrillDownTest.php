@@ -84,6 +84,52 @@ class FamilyDrillDownTest extends TestCase
         $page->assertSee('Outside center / unassigned');
     }
 
+    /**
+     * Confirmed real, reproducible case (not hypothetical): a family's
+     * home barangay and the center it actually evacuated to are
+     * independent -- nothing stops a Binatagan family from sheltering at
+     * a center that physically belongs to Ranao-ranao. This row means
+     * "Binatagan's families are staying here", not "this center belongs
+     * to Binatagan" -- see FamilyController::centerSummary()'s own
+     * docblock.
+     */
+    public function test_a_center_belonging_to_a_different_barangay_shows_a_located_in_badge(): void
+    {
+        $this->login();
+        $binatagan = Barangay::create(['remote_id' => 13, 'name' => 'Binatagan']);
+        $ranao = Barangay::create(['remote_id' => 41, 'name' => 'Ranao-ranao']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $ranaoCenter = EvacuationCenter::create(['remote_id' => 27, 'barangay_remote_id' => 41, 'name' => 'Ranao-Ranao Evacuation Center', 'status' => 'active']);
+
+        $this->seedFamily($binatagan, $event, $ranaoCenter);
+
+        $page = $this->get(route('families.index', ['barangay' => $binatagan->id]));
+
+        $page->assertOk();
+        $page->assertSee('Ranao-Ranao Evacuation Center');
+        $page->assertSee('Located in Ranao-ranao');
+    }
+
+    /**
+     * No false positives: a center that genuinely belongs to the
+     * barangay being viewed must never show the "Located in" badge.
+     */
+    public function test_a_center_belonging_to_the_viewed_barangay_shows_no_located_in_badge(): void
+    {
+        $this->login();
+        $binatagan = Barangay::create(['remote_id' => 13, 'name' => 'Binatagan']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $ownCenter = EvacuationCenter::create(['remote_id' => 5, 'barangay_remote_id' => 13, 'name' => 'Binatagan Central School', 'status' => 'active']);
+
+        $this->seedFamily($binatagan, $event, $ownCenter);
+
+        $page = $this->get(route('families.index', ['barangay' => $binatagan->id]));
+
+        $page->assertOk();
+        $page->assertSee('Binatagan Central School');
+        $page->assertDontSee('Located in');
+    }
+
     public function test_drilling_into_a_center_shows_the_scoped_family_list(): void
     {
         $this->login();
