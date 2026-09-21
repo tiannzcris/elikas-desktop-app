@@ -35,20 +35,23 @@
                      order (mirrors the same fix already applied on the web
                      dashboard): this header-level count sits WITH
                      Barangay/Center/Event, not down with the Sectoral Group
-                     table further below -- which has its own separate "4Ps
-                     beneficiary" row (male/female), a different,
+                     section further below -- which has its own separate
+                     "4Ps beneficiary" row (male/female), a different,
                      per-person-sex figure, not this one (see
-                     EvacuationCenterQuickCount's own docblock). Lives
-                     outside <form id="ecboard-sectoral-form"> below in the
-                     DOM, but the form="" attribute on the input still
-                     submits it with that form -- same element name/id, so
-                     saveSectoral() needs no changes. --}}
+                     EvacuationCenterQuickCount's own docblock). Read-only
+                     display, not an editable input: editing now happens
+                     through the "Edit sectoral & 4Ps" modal below (see
+                     Part 1/2's dual-view rework), which is the one place
+                     this figure is actually saved. Shows this device's own
+                     pending value if one exists (this device's own more
+                     recent, unsynced intent), else the last-known synced
+                     figure -- same precedence as the edit form's own
+                     pre-fill. --}}
                 <div class="flex flex-col items-start">
-                    <label for="beneficiaries-4ps" class="text-xs text-gray-400 mb-1">4Ps beneficiary families</label>
-                    <input type="number" min="0" name="beneficiaries_4ps" id="beneficiaries-4ps" form="ecboard-sectoral-form"
-                        value="{{ $quickCount->beneficiaries_4ps ?? 0 }}"
-                        title="Saved together with the sectoral breakdown further down the page"
-                        class="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm">
+                    <span class="text-xs text-gray-400 mb-1">4Ps beneficiary families</span>
+                    <span class="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-700 min-w-[4rem] text-center">
+                        {{ $quickCount->beneficiaries_4ps ?? $sectoralSnapshot->beneficiaries_4ps ?? 0 }}
+                    </span>
                 </div>
             @endif
             {{-- Lets staff sync directly from this page without navigating
@@ -209,65 +212,76 @@
              Evacuee" time, so unlike age/sex this can never be derived
              from individual entries (see EvacuationCenterQuickCount's own
              docblock, mirroring the same reasoning already established on
-             the web dashboard). Saves entirely to this device first, same
-             as "Add evacuee" above -- no live call from this form, synced
-             on the next "Sync now". --}}
-        <div class="card-modern p-4 mt-6">
-            <h2 class="text-sm font-bold text-gray-700 mb-1">Sectoral group breakdown</h2>
-            <p class="text-xs text-gray-400 mb-3">Manually-reported figures for this event -- separate from the age/sex breakdown above, and not generated from individual evacuee entries.</p>
+             the web dashboard). Offline-capable via the same queue-then-
+             sync pattern as Add Evacuee: editing always saves locally
+             first (see _sectoral_form.blade.php), synced on the next
+             "Sync now" -- never a live call from this page. "Last known"
+             (server-synced, read-only) and "Pending" (this device's own
+             not-yet-synced edit) are shown as two separate cards, same
+             dual-view convention as the age/sex breakdown above and the
+             mobile app's own now-proven version of this exact feature --
+             deliberately never merged into one, same reasoning as
+             _breakdown_table.blade.php's own note. --}}
+        <div class="grid grid-cols-2 gap-4 mt-6">
+            <div class="card-modern p-4">
+                <div class="flex items-center justify-between mb-1">
+                    <p class="text-sm font-bold text-gray-700">Sectoral group &amp; 4Ps -- last known</p>
+                    <a href="{{ route('evacuation-centers.sectoral.edit', $center) }}?event={{ $selectedEventId }}" data-modal-trigger="sectoral-edit" class="text-xs font-semibold text-brand hover:underline shrink-0">
+                        Edit sectoral &amp; 4Ps
+                    </a>
+                </div>
+                <p class="text-xs text-gray-400 mb-3">The central server's own last-reported figures -- refreshes automatically a moment after this page loads if this device is online, otherwise shows whatever was last fetched.</p>
+                <div id="sectoral-last-known">
+                    @include('evacuation-centers._sectoral_last_known', ['snapshot' => $sectoralSnapshot, 'sectoralGroups' => $sectoralGroups])
+                </div>
+            </div>
+            <div class="card-modern p-4">
+                <p class="text-sm font-bold text-gray-700 mb-1">Sectoral group &amp; 4Ps -- pending</p>
+                <p class="text-xs text-gray-400 mb-3">This device's own not-yet-synced edit for this event, if any.</p>
 
-            @if ($quickCount)
-                @if (! $quickCount->isSynced())
+                @if ($quickCount && ! $quickCount->isSynced())
                     <p class="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg mb-3">
                         <i class="ti ti-clock" style="font-size: 13px;" aria-hidden="true"></i> Saved on this device, not yet synced.
                     </p>
-                @else
-                    <p class="text-xs text-gray-400 mb-3">Last synced {{ $quickCount->synced_at->format('M j, Y g:i A') }}.</p>
-                @endif
-                @if ($quickCount->sync_error)
-                    <p class="text-xs text-red-500 mb-3">{{ $quickCount->sync_error }}</p>
-                @endif
-            @else
-                <p class="text-xs text-gray-400 mb-3">Not yet reported for this event.</p>
-            @endif
+                    @if ($quickCount->sync_error)
+                        <p class="text-xs text-red-500 mb-3">{{ $quickCount->sync_error }}</p>
+                    @endif
 
-            <form id="ecboard-sectoral-form" method="POST" action="{{ route('evacuation-centers.sectoral.update', $center) }}" class="flex flex-col gap-4">
-                @csrf
-                <input type="hidden" name="evacuation_event_id" value="{{ $selectedEventId }}">
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-xs">
+                    <div class="flex items-center gap-1.5 text-sm text-gray-700 mb-3">
+                        <span class="text-gray-400">4Ps beneficiary families:</span>
+                        <span class="font-semibold">{{ $quickCount->beneficiaries_4ps }}</span>
+                    </div>
+                    <table class="w-full text-xs mb-3">
                         <thead>
                             <tr class="text-gray-400 text-left">
                                 <th class="pb-2 font-medium">Sectoral group</th>
-                                <th class="pb-2 font-medium w-24">Male</th>
-                                <th class="pb-2 font-medium w-24">Female</th>
+                                <th class="pb-2 font-medium text-right">Male</th>
+                                <th class="pb-2 font-medium text-right">Female</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @php $sectoralRows = $quickCount ? $quickCount->sectoralGroups->keyBy('sectoral_group') : collect(); @endphp
+                            @php $pendingSectoralRows = $quickCount->sectoralGroups->keyBy('sectoral_group'); @endphp
                             @foreach ($sectoralGroups as $groupKey => $groupLabel)
                                 <tr class="border-t border-gray-100">
-                                    <td class="py-1.5 text-gray-600">
-                                        {{ $groupLabel }}
-                                        <input type="hidden" name="sectoral_groups[{{ $loop->index }}][sectoral_group]" value="{{ $groupKey }}">
-                                    </td>
-                                    <td class="py-1.5">
-                                        <input type="number" min="0" name="sectoral_groups[{{ $loop->index }}][male_count]" value="{{ $sectoralRows[$groupKey]->male_count ?? 0 }}" class="w-20 border border-gray-200 rounded-xl px-2 py-1.5 text-xs">
-                                    </td>
-                                    <td class="py-1.5">
-                                        <input type="number" min="0" name="sectoral_groups[{{ $loop->index }}][female_count]" value="{{ $sectoralRows[$groupKey]->female_count ?? 0 }}" class="w-20 border border-gray-200 rounded-xl px-2 py-1.5 text-xs">
-                                    </td>
+                                    <td class="py-1.5 text-gray-600">{{ $groupLabel }}</td>
+                                    <td class="py-1.5 text-right text-gray-800">{{ $pendingSectoralRows[$groupKey]->male_count ?? 0 }}</td>
+                                    <td class="py-1.5 text-right text-gray-800">{{ $pendingSectoralRows[$groupKey]->female_count ?? 0 }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
-                </div>
 
-                <button type="submit" class="btn-modern btn-primary-modern bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5 w-fit">
-                    Save sectoral figures (offline)
-                </button>
-            </form>
+                    <form method="POST" action="{{ route('quick-counts.destroy', $quickCount) }}" onsubmit="if (!confirm('Remove this pending sectoral edit from this device? This cannot be undone.')) { event.preventDefault(); }">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700">
+                            <i class="ti ti-trash" style="font-size: 13px;" aria-hidden="true"></i> Delete pending edit
+                        </button>
+                    </form>
+                @else
+                    <p class="text-sm text-gray-400">Nothing pending -- use "Edit sectoral &amp; 4Ps" to report figures for this event.</p>
+                @endif
+            </div>
         </div>
     @endif
 @endsection
@@ -290,6 +304,18 @@
                 .then((r) => (r.ok ? r.text() : null))
                 .then((html) => {
                     if (html) document.getElementById('last-known-breakdown-table').innerHTML = html;
+                })
+                .catch(() => {});
+
+            // Sectoral/4Ps equivalent of the breakdown refresh above --
+            // its own separate call (see EvacuationCenterController::
+            // refreshSectoralLastKnown()'s own docblock for why this
+            // isn't folded into the same request), same silent-failure
+            // behavior offline.
+            fetch('{{ route('evacuation-centers.sectoral-refresh', $center) }}?event={{ $selectedEventId }}')
+                .then((r) => (r.ok ? r.text() : null))
+                .then((html) => {
+                    if (html) document.getElementById('sectoral-last-known').innerHTML = html;
                 })
                 .catch(() => {});
         @endif

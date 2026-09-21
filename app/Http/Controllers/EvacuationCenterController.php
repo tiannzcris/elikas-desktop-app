@@ -8,6 +8,7 @@ use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationCenterBreakdown;
 use App\Models\EvacuationCenterQuickCount;
+use App\Models\EvacuationCenterSectoralSnapshot;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
@@ -293,6 +294,18 @@ class EvacuationCenterController extends Controller
                 ->first()
             : null;
 
+        // The "Last known" half of the sectoral/4Ps dual view -- see
+        // EvacuationCenterSectoralSnapshot's own docblock. Whatever was
+        // last fetched from the server (or nothing yet, if this
+        // center+event has never been refreshed while online), same
+        // "show whatever we have, refresh client-side after render"
+        // pattern as $lastKnownBreakdown above.
+        $sectoralSnapshot = $selectedEventId
+            ? EvacuationCenterSectoralSnapshot::where('evacuation_center_id', $center->id)
+                ->where('evacuation_event_id', $selectedEventId)
+                ->first()
+            : null;
+
         return view('evacuation-centers.ec-board', [
             'currentUser' => $auth,
             'center' => $center,
@@ -309,6 +322,7 @@ class EvacuationCenterController extends Controller
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
             'breakdownAgeBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
             'quickCount' => $quickCount,
+            'sectoralSnapshot' => $sectoralSnapshot,
             'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
         ]);
     }
@@ -361,6 +375,90 @@ class EvacuationCenterController extends Controller
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
             ->with('status', 'Sectoral figures saved on this device. Sync when you have internet.');
+    }
+
+    /**
+     * Opens the sectoral/4Ps edit form, pre-filled from whichever source
+     * is most current: this device's own PENDING not-yet-synced edit if
+     * one exists, else the "Last known" synced snapshot, else empty
+     * defaults -- same three-way precedence as the mobile app's own
+     * now-proven version of this exact form. Rendered as a modal
+     * fragment (X-Modal-Request) or a full page, same convention as
+     * EcBoardEntryController::renderForm().
+     */
+    public function editSectoral(EvacuationCenter $center, Request $request)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        $eventId = (int) $request->query('event', 0);
+        $event = $eventId ? EvacuationEvent::find($eventId) : null;
+        if (! $event) {
+            return redirect()->route('evacuation-centers.ec-board', $center)
+                ->with('status', 'Select a disaster event first.');
+        }
+
+        // Only a genuinely PENDING (not-yet-synced) row counts as "this
+        // device's own more recent, unsynced intent" to resume -- an
+        // already-synced leftover row (kept around after a successful
+        // sync, never deleted -- see FamilyController::sync()) is no
+        // longer a draft in progress, so pre-filling from it here would
+        // resurrect stale values instead of falling through to the
+        // actually-current "Last known" snapshot below.
+        $quickCount = EvacuationCenterQuickCount::with('sectoralGroups')
+            ->where('evacuation_center_id', $center->id)
+            ->where('evacuation_event_id', $event->id)
+            ->whereNull('synced_at')
+            ->first();
+
+        $snapshot = EvacuationCenterSectoralSnapshot::where('evacuation_center_id', $center->id)
+            ->where('evacuation_event_id', $event->id)
+            ->first();
+
+        $data = [
+            'center' => $center,
+            'event' => $event,
+            'quickCount' => $quickCount,
+            'snapshot' => $snapshot,
+            'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
+        ];
+
+        if ($request->header('X-Modal-Request')) {
+            return view('evacuation-centers._sectoral_form', $data);
+        }
+
+        return view('evacuation-centers.edit-sectoral', $data);
+    }
+
+    /**
+     * Removes this device's own pending (not-yet-synced) sectoral/4Ps
+     * edit -- same synced-record-is-immutable convention as
+     * EcBoardEntryController::destroy(). This never touches the "Last
+     * known" snapshot (a separate model entirely -- see
+     * EvacuationCenterSectoralSnapshot's own docblock): deleting a
+     * pending edit just abandons this device's own unsynced draft, it
+     * never un-reports whatever the server already has on record.
+     */
+    public function destroySectoral(EvacuationCenterQuickCount $quickCount)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return redirect()->route('login');
+        }
+
+        if ($quickCount->isSynced()) {
+            return redirect()->route('evacuation-centers.ec-board', $quickCount->evacuation_center_id)
+                ->with('status', 'This sectoral report has already synced -- it can no longer be deleted from this device.');
+        }
+
+        $centerId = $quickCount->evacuation_center_id;
+        $eventId = $quickCount->evacuation_event_id;
+        $quickCount->delete();
+
+        return redirect()->route('evacuation-centers.ec-board', ['center' => $centerId, 'event' => $eventId])
+            ->with('status', 'Pending sectoral edit removed.');
     }
 
     /**
@@ -433,6 +531,53 @@ class EvacuationCenterController extends Controller
         return view('evacuation-centers._breakdown_table', [
             'matrix' => $matrix,
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
+        ]);
+    }
+
+    /**
+     * The sectoral/4Ps equivalent of refreshBreakdown() above -- same
+     * "called client-side after the page has rendered, cache into a
+     * local snapshot, return a fragment" shape, but its own separate
+     * endpoint/call rather than folded into refreshBreakdown() itself:
+     * matches this app's own existing precedent of one single-purpose
+     * fetch per data need (refreshBreakdown() and refreshHouseholds()
+     * are two separate calls too, despite both being callable from the
+     * same fetchCenterQuickCount()/fetchFamiliesAtCenter() shape) rather
+     * than one endpoint serving multiple unrelated display sections.
+     */
+    public function refreshSectoralLastKnown(EvacuationCenter $center, Request $request, CentralApiService $api)
+    {
+        $auth = LocalAuth::current();
+        if (! $auth) {
+            return response()->noContent(401);
+        }
+
+        $eventId = (int) $request->query('event', 0);
+        $event = $eventId ? EvacuationEvent::find($eventId) : null;
+
+        if (! $event || ! $center->remote_id) {
+            return response()->noContent(422);
+        }
+
+        try {
+            $data = $api->fetchCenterQuickCount($auth->api_token, $center->remote_id, $event->remote_id);
+        } catch (\RuntimeException $e) {
+            return response()->noContent(503);
+        }
+
+        $snapshot = EvacuationCenterSectoralSnapshot::updateOrCreate(
+            ['evacuation_center_id' => $center->id, 'evacuation_event_id' => $event->id],
+            [
+                'beneficiaries_4ps' => $data['beneficiaries_4ps'] ?? 0,
+                'sectoral_groups' => $data['sectoral_groups'] ?? [],
+                'updated_by_name' => $data['updated_by_name'] ?? null,
+                'server_updated_at' => $data['updated_at'] ?? null,
+            ]
+        );
+
+        return view('evacuation-centers._sectoral_last_known', [
+            'snapshot' => $snapshot,
+            'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
         ]);
     }
 

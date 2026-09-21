@@ -108,7 +108,7 @@ class EcBoardStandaloneSectionTest extends TestCase
     // Part 2: sectoral group reporting
     // -----------------------------------------------------------------
 
-    public function test_ec_board_page_shows_sectoral_group_form_with_all_eight_categories(): void
+    public function test_ec_board_page_shows_the_sectoral_dual_view_with_an_edit_trigger(): void
     {
         $this->login();
         Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
@@ -118,11 +118,12 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        $page->assertSee('Sectoral group breakdown');
-        $page->assertSee('4Ps beneficiary families');
-        foreach (EvacuationCenterQuickCount::SECTORAL_GROUPS as $label) {
-            $page->assertSee($label);
-        }
+        // Two separate cards, never merged -- see ec-board.blade.php's own
+        // note mirroring _breakdown_table.blade.php's reasoning.
+        $page->assertSee('Sectoral group &amp; 4Ps -- last known', false);
+        $page->assertSee('Sectoral group &amp; 4Ps -- pending', false);
+        $page->assertSee('Edit sectoral &amp; 4Ps', false);
+        $page->assertSee(route('evacuation-centers.sectoral.edit', $center), false);
     }
 
     /**
@@ -130,9 +131,7 @@ class EcBoardStandaloneSectionTest extends TestCase
      * dashboard, commit 3603162): this field was sitting inside the
      * Sectoral Group card instead of the top header block, grouped with
      * barangay/center/event. assertSeeInOrder over the raw rendered HTML
-     * is the only reliable way to prove DOM *position*, not just presence
-     * -- test_ec_board_page_shows_sectoral_group_form_with_all_eight_categories
-     * above already covered presence and would pass either way.
+     * is the only reliable way to prove DOM *position*, not just presence.
      */
     public function test_the_4ps_field_appears_in_the_header_row_not_the_sectoral_card(): void
     {
@@ -144,10 +143,30 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        $page->assertSeeInOrder(['4Ps beneficiary families', 'Add evacuee', 'Quick departure', 'Sectoral group breakdown']);
-        // Still saves through the sectoral form despite living outside it
-        // in the DOM -- see the form="" attribute on the relocated input.
-        $page->assertSee('form="ecboard-sectoral-form"', false);
+        $page->assertSeeInOrder(['4Ps beneficiary families', 'Add evacuee', 'Quick departure', 'Sectoral group']);
+    }
+
+    /**
+     * The modal edit form is the one place all 8 categories actually
+     * need to be listed -- the main page's own two dual-view cards
+     * deliberately stay empty-state/read-only until something has
+     * actually been fetched or reported (see _sectoral_last_known.blade
+     * .php and the Pending card's own empty state).
+     */
+    public function test_the_sectoral_edit_form_lists_all_eight_categories(): void
+    {
+        $this->login();
+        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
+
+        $page = $this->get(route('evacuation-centers.sectoral.edit', $center).'?event='.$event->id);
+
+        $page->assertOk();
+        $page->assertSee('4Ps beneficiary families');
+        foreach (EvacuationCenterQuickCount::SECTORAL_GROUPS as $label) {
+            $page->assertSee($label);
+        }
     }
 
     public function test_saving_sectoral_figures_stores_them_locally_as_pending(): void

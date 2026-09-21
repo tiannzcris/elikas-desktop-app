@@ -56,6 +56,11 @@ Route::post('/evacuation-centers/{center}/sectoral', [EvacuationCenterController
 // server's concurrent CSS/JS asset requests while offline (see
 // EvacuationCenterController::ecBoard()'s docblock).
 Route::get('/evacuation-centers/{center}/breakdown-refresh', [EvacuationCenterController::class, 'refreshBreakdown'])->name('evacuation-centers.breakdown-refresh');
+// Sectoral/4Ps equivalent of breakdown-refresh above -- see
+// EvacuationCenterController::refreshSectoralLastKnown()'s own docblock.
+Route::get('/evacuation-centers/{center}/sectoral-refresh', [EvacuationCenterController::class, 'refreshSectoralLastKnown'])->name('evacuation-centers.sectoral-refresh');
+Route::get('/evacuation-centers/{center}/sectoral/edit', [EvacuationCenterController::class, 'editSectoral'])->name('evacuation-centers.sectoral.edit');
+Route::delete('/quick-counts/{quickCount}', [EvacuationCenterController::class, 'destroySectoral'])->name('quick-counts.destroy');
 Route::get('/evacuation-centers/{center}/households-refresh', [EvacuationCenterController::class, 'refreshHouseholds'])->name('evacuation-centers.households-refresh');
 // "Quick Departure" -- called client-side via fetch(), online-only, no
 // offline/local path at all. See EvacuationCenterController::
