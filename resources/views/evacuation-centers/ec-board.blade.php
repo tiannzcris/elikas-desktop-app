@@ -300,7 +300,13 @@
         // any failure (offline, timeout, session expired) -- the
         // server-rendered table already on screen is left exactly as is.
         @if ($selectedEventId)
-            fetch('{{ route('evacuation-centers.breakdown-refresh', $center) }}?event={{ $selectedEventId }}')
+            {{-- cache: 'no-store' + a cache-busting _ param -- same fix
+                 already proven on households-refresh (see
+                 loadRemoteHouseholds() in app.js): this must always
+                 reflect what was actually just synced, never a stale
+                 browser-cached response for this exact same URL from an
+                 earlier visit to this page. --}}
+            fetch(`{{ route('evacuation-centers.breakdown-refresh', $center) }}?event={{ $selectedEventId }}&_=${Date.now()}`, { cache: 'no-store' })
                 .then((r) => (r.ok ? r.text() : null))
                 .then((html) => {
                     if (html) document.getElementById('last-known-breakdown-table').innerHTML = html;
@@ -311,8 +317,8 @@
             // its own separate call (see EvacuationCenterController::
             // refreshSectoralLastKnown()'s own docblock for why this
             // isn't folded into the same request), same silent-failure
-            // behavior offline.
-            fetch('{{ route('evacuation-centers.sectoral-refresh', $center) }}?event={{ $selectedEventId }}')
+            // behavior offline and the same no-store/cache-busting fix.
+            fetch(`{{ route('evacuation-centers.sectoral-refresh', $center) }}?event={{ $selectedEventId }}&_=${Date.now()}`, { cache: 'no-store' })
                 .then((r) => (r.ok ? r.text() : null))
                 .then((html) => {
                     if (html) document.getElementById('sectoral-last-known').innerHTML = html;
@@ -382,11 +388,12 @@
 
                     // Reflects the just-completed departure in the "As of
                     // last sync" figures -- same live-refresh endpoint
-                    // already called once on page load above. Quick
-                    // Departure never touches this device's own pending
-                    // (not-yet-synced) entries, so that other table is
-                    // deliberately left untouched.
-                    fetch('{{ route('evacuation-centers.breakdown-refresh', $center) }}?event={{ (int) $selectedEventId }}')
+                    // already called once on page load above (including
+                    // its cache: 'no-store' fix). Quick Departure never
+                    // touches this device's own pending (not-yet-synced)
+                    // entries, so that other table is deliberately left
+                    // untouched.
+                    fetch(`{{ route('evacuation-centers.breakdown-refresh', $center) }}?event={{ (int) $selectedEventId }}&_=${Date.now()}`, { cache: 'no-store' })
                         .then((r) => (r.ok ? r.text() : null))
                         .then((html) => {
                             if (html) document.getElementById('last-known-breakdown-table').innerHTML = html;
