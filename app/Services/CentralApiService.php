@@ -245,9 +245,10 @@ class CentralApiService
      * registerFamily's payload resolves every other foreign key to a
      * remote id before it's sent.
      *
-     * The response wraps a FamilyResource, so top-level data.id is the
-     * HOUSEHOLD's family id, and the response separately carries a
-     * top-level data.evacuee_id for the actual evacuee just created.
+     * The response wraps a FamilyResource, so data.id is the HOUSEHOLD's
+     * family id; the evacuee just created is a separate TOP-LEVEL
+     * evacuee_id, a sibling of data, not inside it (verified against the
+     * running server -- reading data.evacuee_id silently gave 0).
      * Returns both: 'evacuee_id' is what every caller stores as this
      * entry's OWN remote_id (family id alone wouldn't identify this
      * specific evacuee, and for an "existing household" entry wouldn't
@@ -285,7 +286,7 @@ class CentralApiService
         }
 
         return [
-            'evacuee_id' => (int) $response->json('data.evacuee_id'),
+            'evacuee_id' => (int) $response->json('evacuee_id'),
             'family_id' => (int) $response->json('data.id'),
         ];
     }

@@ -266,7 +266,7 @@ class EcBoardEntryManagementTest extends TestCase
             'new_household_head_name' => 'Remote Household Head', // display snapshot only
         ]);
 
-        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 200, 'evacuee_id' => 321]], 201)]);
+        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 200], 'evacuee_id' => 321], 201)]);
 
         $this->post(route('families.sync'));
 
@@ -304,7 +304,7 @@ class EcBoardEntryManagementTest extends TestCase
             'new_household_head_name' => 'Ana Reyes',
         ]);
 
-        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100, 'evacuee_id' => 777]], 201)]);
+        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 777], 201)]);
 
         $this->post(route('families.sync'));
 
@@ -339,7 +339,7 @@ class EcBoardEntryManagementTest extends TestCase
             'household_family_local_id' => $household->id,
         ]);
 
-        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100, 'evacuee_id' => 888]], 201)]);
+        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 888], 201)]);
 
         $this->post(route('families.sync'));
 
@@ -368,7 +368,7 @@ class EcBoardEntryManagementTest extends TestCase
         // a value that must NEVER end up as this entry's remote_id -- plus
         // a separate top-level data.evacuee_id (777) for the evacuee that
         // was actually just created, which is what should be stored.
-        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100, 'evacuee_id' => 777]], 201)]);
+        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 777], 201)]);
 
         $response = $this->post(route('families.sync'));
 
@@ -403,7 +403,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         Http::fake([
             '*/families/register' => Http::response(['data' => ['id' => 555]], 201),
-            '*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 556, 'evacuee_id' => 777]], 201),
+            '*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 556], 'evacuee_id' => 777], 201),
         ]);
 
         $response = $this->post(route('families.sync'));

@@ -64,7 +64,7 @@ class EcBoardSyncButtonTest extends TestCase
             'existing_household_remote_id' => 42,
         ]);
 
-        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100, 'evacuee_id' => 900]], 201)]);
+        Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 900], 201)]);
 
         $response = $this->post(route('families.sync'), [
             'return_to_center_id' => $center->id,

@@ -133,8 +133,8 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
         // NEW family's remote id, data.evacuee_id (900) is Juan's own.
         // Call 2 (the second member) must reuse that exact family id.
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::sequence()
-            ->push(['data' => ['id' => 500, 'evacuee_id' => 900]], 201)
-            ->push(['data' => ['id' => 500, 'evacuee_id' => 901]], 201),
+            ->push(['data' => ['id' => 500], 'evacuee_id' => 900], 201)
+            ->push(['data' => ['id' => 500], 'evacuee_id' => 901], 201),
         ]);
 
         $response = $this->post(route('families.sync'));
