@@ -1,14 +1,30 @@
 @php
-    // Shared by the inline "Add Evacuee" card on the center detail page and
-    // the edit modal below -- exactly the same field set either way, same
-    // reasoning as families/_form.blade.php's own $isEditing split: one
-    // implementation to keep in sync, not two.
+    // Shared by the inline "Add evacuee" card and the edit modal -- one
+    // implementation of the form, not two. Mirrors the web dashboard's own
+    // Add Evacuee: four sections in the order staff answer them, and a
+    // pinned "Will be recorded" read-back beside the save button.
     $isEditing = ! empty($entry);
-    $isExistingHousehold = $isEditing && $entry->household_family_local_id !== null;
+
+    // The entry that CREATED its household edits that household's own
+    // answers, and stays tied to it (see EcBoardEntryController::update()).
+    $isOriginated = $isEditing && $entry->originated_household;
+    $ownHousehold = $isOriginated ? $entry->household : null;
+    $isLegacyNew = $isEditing && ! $isOriginated && ! $entry->household_family_local_id && ! $entry->existing_household_remote_id;
+
+    $mode = ($isOriginated || $isLegacyNew) ? 'new' : 'existing';
+
+    $headIsSelfNew = $isEditing ? ($isOriginated ? (bool) $entry->head_is_self : true) : true;
+    $headIsSelfExisting = $isEditing && ! $isOriginated && (bool) $entry->head_is_self;
+    $householdName = $isOriginated ? $ownHousehold?->name : ($isLegacyNew ? $entry->new_household_head_name : '');
+    $triState = fn (?bool $value) => $value === null ? '' : ($value ? '1' : '0');
+
+    $flagsSet = $isEditing ? collect(array_keys(\App\Models\EcBoardEntry::SECTORAL_FLAGS))->filter(fn ($f) => $entry->{$f} === true)->count() : 0;
+    $submitLabel = $submitLabel ?? 'Save';
 @endphp
-<div class="grid grid-cols-2 gap-3">
-    <div>
-        <label class="text-sm text-gray-600 block mb-1">Disaster event</label>
+
+<div class="flex flex-col" data-entry-fields>
+    <div class="pb-3">
+        <label class="text-xs text-gray-500 block mb-1">Disaster event</label>
         <select name="evacuation_event_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
             <option value="">Select event</option>
             @foreach ($events as $e)
@@ -19,80 +35,170 @@
             <p class="text-xs text-amber-600 mt-1">No events cached -- refresh reference data while online.</p>
         @endif
     </div>
-    <div>
-        <label class="text-sm text-gray-600 block mb-1">Sex</label>
-        <select name="sex" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
-            <option value="">Select sex</option>
-            <option value="male" @selected($isEditing && $entry->sex === 'male')>Male</option>
-            <option value="female" @selected($isEditing && $entry->sex === 'female')>Female</option>
-        </select>
-    </div>
-    <div class="col-span-2">
-        <label class="text-sm text-gray-600 block mb-1">Age bracket</label>
-        <select name="age_bracket" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
-            <option value="">Select age bracket</option>
-            @foreach ($ageBrackets as $key => $label)
-                <option value="{{ $key }}" @selected($isEditing && $entry->age_bracket === $key)>{{ $label }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-span-2 bg-gray-50 border border-gray-100 rounded-2xl p-3">
-        <p class="text-sm text-gray-600 mb-2">Household</p>
-        <div class="flex gap-4 text-sm text-gray-700 mb-3">
-            <label class="flex items-center gap-1.5">
-                <input type="radio" name="household_type" value="existing" class="household-type-radio" @checked($isEditing ? $isExistingHousehold : true)> Existing household
-            </label>
-            <label class="flex items-center gap-1.5">
-                <input type="radio" name="household_type" value="new" class="household-type-radio" @checked($isEditing && ! $isExistingHousehold)> New household
-            </label>
+
+    {{-- 1. The person being added. --}}
+    <fieldset class="entry-section">
+        <legend class="entry-section-title">Who is this person?</legend>
+        <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-3">
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">Age group</label>
+                <select name="age_bracket" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <option value="">Select age group</option>
+                    @foreach ($ageBrackets as $key => $label)
+                        <option value="{{ $key }}" @selected($isEditing && $entry->age_bracket === $key)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">Sex</label>
+                <select name="sex" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <option value="">Select sex</option>
+                    <option value="male" @selected($isEditing && $entry->sex === 'male')>Male</option>
+                    <option value="female" @selected($isEditing && $entry->sex === 'female')>Female</option>
+                </select>
+            </div>
         </div>
-        <div class="household-existing-field" @if ($isEditing && ! $isExistingHousehold) style="display: none;" @endif>
-            <select name="household_family_local_id" class="household-select w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
-                <option value="">Select household</option>
-                @foreach ($households as $h)
-                    <option value="{{ $h->id }}" @selected($isEditing && $entry->household_family_local_id === $h->id)>
-                        {{ $h->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? 'Household #'.$h->id }}
-                    </option>
-                @endforeach
-                {{-- Households known on the central server but not yet
-                     cached locally (e.g. registered by another device) are
-                     appended here by JS after an on-demand fetch while
-                     online -- see initEcBoardEntryForm()'s loadRemoteHouseholds()
-                     in app.js. Never blocks this list from being usable
-                     offline; it just starts as this device's own local
-                     households until/unless that fetch succeeds. --}}
-                @if ($isEditing && $entry->existing_household_remote_id)
-                    <option value="remote-{{ $entry->existing_household_remote_id }}" selected>{{ $entry->new_household_head_name }}</option>
-                @endif
-            </select>
-            <p class="household-empty-hint text-xs text-gray-400 mt-1" @if ($households->isNotEmpty()) style="display: none;" @endif>No households registered at this center yet.</p>
-            <p class="household-loading-hint text-xs text-gray-400 mt-1" style="display: none;">Checking the central server for more households...</p>
-        </div>
-        <input type="hidden" name="household_label" class="household-label-input" value="{{ $isEditing && $entry->existing_household_remote_id ? $entry->new_household_head_name : '' }}">
-        <input type="hidden" class="household-refresh-url" value="{{ route('evacuation-centers.households-refresh', $center) }}">
-        <input type="hidden" class="household-local-remote-ids" value="{{ $households->pluck('remote_id')->filter()->implode(',') }}">
-        <div class="household-new-field" @if (! ($isEditing && ! $isExistingHousehold)) style="display: none;" @endif>
-            <input type="text" name="new_household_head_name" value="{{ $isEditing ? $entry->new_household_head_name : '' }}" placeholder="New household head's full name" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
-        </div>
-    </div>
-    {{-- Optional sectoral flags for THIS one person -- collapsed by default
-         so the common case stays fast, and opened automatically when
-         editing an entry that already has some set. Unticked means "not
-         recorded", not "no". Pregnant/lactating are hidden and cleared for
-         a male evacuee (see initEcBoardEntryForm() in app.js). --}}
-    @php($flagsSet = $isEditing ? collect(array_keys(\App\Models\EcBoardEntry::SECTORAL_FLAGS))->filter(fn ($f) => $entry->{$f} === true)->count() : 0)
-    <details class="entry-sectoral col-span-2 border border-gray-200 rounded-2xl" @if ($flagsSet) open @endif>
-        <summary class="cursor-pointer select-none px-3 py-2.5 text-sm text-gray-600">
-            Sectoral details <span class="text-gray-400">(optional)</span>
-            <span class="entry-sectoral-count ml-1 text-xs px-2 py-0.5 rounded-lg bg-brand/10 text-brand" @if (! $flagsSet) style="display: none;" @endif>{{ $flagsSet }} ticked</span>
-        </summary>
-        <div class="grid grid-cols-2 gap-x-4 gap-y-2 px-3 pb-2 pt-1 text-sm text-gray-700">
-            @foreach (\App\Models\EcBoardEntry::SECTORAL_FLAGS as $flag => [$label])
-                <label class="flex items-center gap-2" @if (in_array($flag, \App\Models\EcBoardEntry::FEMALE_ONLY_FLAGS, true)) data-female-only @endif>
-                    <input type="checkbox" name="{{ $flag }}" value="1" class="entry-sectoral-flag" @checked($isEditing && $entry->{$flag} === true)> {{ $label }}
+        {{-- Shown whenever this person is being recorded as the household
+             head, right under the two answers that then describe the head. --}}
+        <p class="entry-head-note mt-2 items-start gap-1.5 text-xs text-brand-dark" style="display: none;">
+            <i class="ti ti-user-check shrink-0 mt-px" style="font-size: 14px;" aria-hidden="true"></i>
+            <span>This person's age group and sex will be used for the household head.</span>
+        </p>
+    </fieldset>
+
+    {{-- 2. Their household. --}}
+    <fieldset class="entry-section">
+        <legend class="entry-section-title">Household</legend>
+
+        @if ($isOriginated)
+            {{-- This entry created the household, so it can't be moved to
+                 another one -- only the household's own answers change. --}}
+            <input type="hidden" name="household_type" value="new">
+            <p class="text-xs text-gray-500 mb-2">This person was added with a new household -- you can correct its details below.</p>
+        @else
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-0.5 grid grid-cols-2 text-sm mb-3" role="radiogroup" aria-label="Household">
+                <label class="entry-mode-option cursor-pointer text-center rounded-lg px-2 py-1.5 font-medium text-gray-500 has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/40">
+                    <input type="radio" name="household_type" value="existing" class="household-type-radio sr-only" @checked($mode === 'existing')> Already here
                 </label>
-            @endforeach
+                <label class="entry-mode-option cursor-pointer text-center rounded-lg px-2 py-1.5 font-medium text-gray-500 has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/40">
+                    <input type="radio" name="household_type" value="new" class="household-type-radio sr-only" @checked($mode === 'new')> New household
+                </label>
+            </div>
+
+            <div class="household-existing-field flex flex-col gap-2" @if ($mode !== 'existing') style="display: none;" @endif>
+                <select name="household_family_local_id" aria-label="Household already at this center" class="household-select w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <option value="">Select household</option>
+                    @foreach ($households as $h)
+                        {{-- data-head-open: whether this household can still take a
+                             head -- none linked yet, or it's this very entry. --}}
+                        <option value="{{ $h->id }}"
+                            data-head-open="{{ (! $h->hasLinkedHead() || ($isEditing && (int) $h->head_ec_board_entry_id === $entry->id)) ? '1' : '0' }}"
+                            @selected($isEditing && $entry->household_family_local_id === $h->id)>
+                            {{ $h->displayName() }}
+                        </option>
+                    @endforeach
+                    {{-- Households known on the central server but not yet
+                         cached locally are appended here by JS after an
+                         on-demand fetch while online (see initEcBoardEntryForm()
+                         in app.js) -- never blocks this list offline. --}}
+                    @if ($isEditing && $entry->existing_household_remote_id)
+                        <option value="remote-{{ $entry->existing_household_remote_id }}" data-head-open="{{ $entry->head_is_self ? '1' : '0' }}" selected>{{ $entry->new_household_head_name }}</option>
+                    @endif
+                </select>
+                <p class="household-empty-hint text-xs text-gray-400" @if ($households->isNotEmpty()) style="display: none;" @endif>No households registered at this center yet.</p>
+                <p class="household-loading-hint text-xs text-gray-400" style="display: none;">Checking the central server for more households...</p>
+                {{-- Only for a household with no head linked yet -- the real
+                     head arriving later. An existing head is never replaced. --}}
+                <label class="entry-existing-head items-start gap-2 text-sm text-gray-700" style="display: none;">
+                    <input type="checkbox" name="head_is_self" value="1" data-head-self="existing" class="mt-0.5" @checked($headIsSelfExisting) @disabled($mode !== 'existing')>
+                    <span>This person is the household head <span class="block text-xs text-gray-500">This household has no head linked yet.</span></span>
+                </label>
+            </div>
+            <input type="hidden" name="household_label" class="household-label-input" value="{{ $isEditing && $entry->existing_household_remote_id ? $entry->new_household_head_name : '' }}">
+            <input type="hidden" class="household-refresh-url" value="{{ route('evacuation-centers.households-refresh', $center) }}">
+            <input type="hidden" class="household-local-remote-ids" value="{{ $households->pluck('remote_id')->filter()->implode(',') }}">
+        @endif
+
+        {{-- Asked once per NEW household, never per person. "Not yet known"
+             is always allowed and is stored as null, never guessed as "no". --}}
+        <div class="household-new-field flex flex-col gap-3" @if ($mode !== 'new') style="display: none;" @endif>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">Household head's name</label>
+                <input type="text" name="new_household_head_name" value="{{ $householdName }}" placeholder="e.g. Juan Dela Cruz" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" name="head_is_self" value="1" data-head-self="new" @checked($headIsSelfNew) @disabled($mode !== 'new')> This person is the household head
+            </label>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">Only one household head? (single-headed)</label>
+                <select name="is_single_headed" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <option value="" @selected($triState($ownHousehold?->is_single_headed) === '')>Not yet known</option>
+                    <option value="1" @selected($triState($ownHousehold?->is_single_headed) === '1')>Yes</option>
+                    <option value="0" @selected($triState($ownHousehold?->is_single_headed) === '0')>No</option>
+                </select>
+            </div>
         </div>
-        <p class="px-3 pb-3 text-xs text-gray-400">Tick only what you know. Leaving a box unticked records nothing -- it doesn't mean "no".</p>
-    </details>
+    </fieldset>
+
+    {{-- 3. Only when the head is someone OTHER than this person: set apart
+         (dashed inset) so these answers can't be mistaken for this
+         person's own. --}}
+    <div class="entry-head-section entry-section" role="group" aria-label="About the actual household head" style="display: none;">
+        <div class="border border-dashed border-gray-300 bg-gray-50 rounded-xl p-3">
+            <p class="text-xs font-semibold text-gray-800">About the actual household head</p>
+            <p class="text-xs text-gray-500 mt-0.5 mb-2">Someone other than the person you're adding. Used until they're added and linked.</p>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1">Head's sex</label>
+                    <select name="head_sex" class="w-full border border-gray-300 bg-white rounded-xl px-3 py-2 text-sm">
+                        <option value="" @selected(($ownHousehold?->head_sex ?? '') === '')>Not yet known</option>
+                        <option value="male" @selected($ownHousehold?->head_sex === 'male')>Male</option>
+                        <option value="female" @selected($ownHousehold?->head_sex === 'female')>Female</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 block mb-1">Head is a minor?</label>
+                    <select name="head_is_minor" class="w-full border border-gray-300 bg-white rounded-xl px-3 py-2 text-sm">
+                        <option value="" @selected($triState($ownHousehold?->head_is_minor) === '')>Not yet known</option>
+                        <option value="1" @selected($triState($ownHousehold?->head_is_minor) === '1')>Yes (under 18)</option>
+                        <option value="0" @selected($triState($ownHousehold?->head_is_minor) === '0')>No</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- 4. Optional sectoral flags for THIS one person -- collapsed so the
+         common case stays fast; opened when editing an entry that has some.
+         Unticked means "not recorded", not "no". Pregnant/lactating are
+         hidden and cleared for a male evacuee. --}}
+    <div class="entry-section">
+        <details class="entry-sectoral border border-gray-200 rounded-xl" @if ($flagsSet) open @endif>
+            <summary class="cursor-pointer select-none px-3 py-2.5 text-sm text-gray-700">
+                Sectoral details <span class="text-gray-400">(optional)</span>
+                <span class="entry-sectoral-count ml-1 text-xs px-2 py-0.5 rounded-lg bg-brand/10 text-brand" @if (! $flagsSet) style="display: none;" @endif>{{ $flagsSet }} ticked</span>
+            </summary>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2 px-3 pb-2 pt-1 text-sm text-gray-700">
+                @foreach (\App\Models\EcBoardEntry::SECTORAL_FLAGS as $flag => [$label])
+                    <label class="flex items-center gap-2" @if (in_array($flag, \App\Models\EcBoardEntry::FEMALE_ONLY_FLAGS, true)) data-female-only @endif>
+                        <input type="checkbox" name="{{ $flag }}" value="1" class="entry-sectoral-flag" @checked($isEditing && $entry->{$flag} === true)> {{ $label }}
+                    </label>
+                @endforeach
+            </div>
+            <p class="px-3 pb-3 text-xs text-gray-400">Tick only what you know. Leaving a box unticked records nothing -- it doesn't mean "no".</p>
+        </details>
+    </div>
+
+    {{-- Pinned to the bottom of whatever is scrolling (the page, or the
+         modal), so the read-back and the save button stay in view however
+         many questions are open above them. --}}
+    <div class="sticky bottom-0 z-10 bg-white mt-4 pt-3 pb-4 border-t border-gray-200">
+        <div class="rounded-xl bg-brand/5 border border-brand/15 px-3 py-2.5 mb-3" aria-live="polite">
+            <p class="text-xs font-semibold text-gray-800 mb-1">Will be recorded</p>
+            <ul class="entry-summary text-xs text-gray-700 space-y-0.5"></ul>
+        </div>
+        <button type="submit" class="btn-modern btn-primary-modern w-full bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5">
+            {{ $submitLabel }}
+        </button>
+    </div>
 </div>

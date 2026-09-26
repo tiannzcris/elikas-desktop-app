@@ -437,12 +437,12 @@ function openEcBoardEntryModal(url) {
 }
 
 /**
- * Wires an EC Board entry form's household_type toggle plus the same
- * fetch-based submit/close handling the family form uses (wireModalSubmit/
- * wireModalClose are already generic -- not family-specific -- so this
- * reuses them rather than inventing a second submit mechanism). Called for
- * BOTH the inline "Add evacuee" card on the center page (root has no close
- * button, so wireModalClose() no-ops) and the fetched "Edit" modal.
+ * Wires an EC Board entry form (see _entry_fields.blade.php): the household
+ * mode toggle, the household-head questions, the optional sectoral flags,
+ * the live "Will be recorded" read-back, and the same fetch-based submit/
+ * close handling the family form uses. Called for BOTH the inline "Add
+ * evacuee" card and the fetched "Edit" modal -- which can be on the page at
+ * the same time, so everything is looked up inside `root`, never by id.
  */
 window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
     if (!root) return;
@@ -450,27 +450,109 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
     wireModalClose(root);
     wireModalSubmit(root);
 
-    const existingField = root.querySelector('.household-existing-field');
-    const newField = root.querySelector('.household-new-field');
+    const q = (selector) => root.querySelector(selector);
+    const show = (el, visible, display = 'block') => { if (el) el.style.display = visible ? display : 'none'; };
 
-    function applyHouseholdType() {
-        const checked = root.querySelector('.household-type-radio:checked');
-        const isExisting = !checked || checked.value === 'existing';
-        existingField.style.display = isExisting ? 'block' : 'none';
-        newField.style.display = isExisting ? 'none' : 'block';
+    const existingField = q('.household-existing-field');
+    const newField = q('.household-new-field');
+    const householdSelect = q('.household-select');
+    const headSelfNew = q('[data-head-self="new"]');
+    const headSelfExisting = q('[data-head-self="existing"]');
+    const sexSelect = q('select[name="sex"]');
+    const ageSelect = q('select[name="age_bracket"]');
+
+    // The entry that created its household renders a fixed hidden "new"
+    // instead of the toggle (see _entry_fields.blade.php).
+    const mode = () => q('.household-type-radio:checked')?.value
+        ?? q('input[type="hidden"][name="household_type"]')?.value
+        ?? 'existing';
+
+    const selectedHousehold = () => (householdSelect?.value ? householdSelect.options[householdSelect.selectedIndex] : null);
+
+    // "This person is the household head" is only offered for an existing
+    // household with no head linked yet -- the real head arriving later.
+    const existingHeadOffered = () => mode() === 'existing' && selectedHousehold()?.dataset.headOpen === '1';
+
+    const personIsHead = () => (mode() === 'new'
+        ? Boolean(headSelfNew?.checked)
+        : existingHeadOffered() && Boolean(headSelfExisting?.checked));
+
+    function applyHousehold() {
+        const current = mode();
+        show(existingField, current === 'existing', 'flex');
+        show(newField, current === 'new', 'flex');
+
+        // A hidden/unoffered tickbox is disabled, not just hidden -- both
+        // share the name head_is_self, and a disabled input is never sent.
+        const offered = existingHeadOffered();
+        show(q('.entry-existing-head'), offered, 'flex');
+        if (headSelfExisting) {
+            headSelfExisting.disabled = !offered;
+            if (!offered) headSelfExisting.checked = false;
+        }
+        if (headSelfNew) headSelfNew.disabled = current !== 'new';
+
+        show(q('.entry-head-note'), personIsHead(), 'flex');
+        show(q('.entry-head-section'), current === 'new' && !headSelfNew?.checked);
+        renderSummary();
     }
 
-    root.querySelectorAll('.household-type-radio').forEach((radio) => {
-        radio.addEventListener('change', applyHouseholdType);
-    });
+    // The "Will be recorded" read-back: plain sentences built from exactly
+    // what the form will save, so a wrong answer is visible before saving.
+    // Mirrors the web dashboard's own renderAddEvacueeSummary().
+    const optionText = (select) => (select?.value ? select.options[select.selectedIndex].textContent.trim() : '');
+    const isMinorBracket = (bracket) => ['infant', 'toddler', 'preschooler', 'school_age', 'teenage'].includes(bracket);
+    const minorText = (isMinor) => (isMinor === null ? 'minor or not: not yet known' : (isMinor ? 'a minor' : 'not a minor'));
+    const answerText = (value) => ({ 1: 'yes', 0: 'no' })[value] ?? 'not yet known';
+
+    function renderSummary() {
+        const summary = q('.entry-summary');
+        if (!summary) return;
+
+        const age = optionText(ageSelect);
+        const headIsMinor = ageSelect?.value ? isMinorBracket(ageSelect.value) : null;
+        const lines = [sexSelect?.value && age ? `Adding 1 ${sexSelect.value}, ${age.toLowerCase()}.` : 'Choose this person\'s age group and sex.'];
+
+        if (mode() === 'existing') {
+            const label = optionText(householdSelect);
+            lines.push(label ? `Joins the household already here: ${label}.` : 'Choose the household this person belongs to.');
+            if (personIsHead()) lines.push(`Becomes that household's head (${minorText(headIsMinor)}).`);
+        } else {
+            const name = q('input[name="new_household_head_name"]')?.value.trim();
+            lines.push(`New household: ${name || '(head\'s name not entered yet)'}.`);
+            if (personIsHead()) {
+                lines.push(`Head: this person (${minorText(headIsMinor)}).`);
+            } else {
+                const headMinor = q('select[name="head_is_minor"]')?.value ?? '';
+                lines.push(`Head: someone else, ${q('select[name="head_sex"]')?.value || 'sex not yet known'}, ${minorText(headMinor === '' ? null : headMinor === '1')}.`);
+            }
+            lines.push(`Single-headed: ${answerText(q('select[name="is_single_headed"]')?.value)}.`);
+        }
+
+        const flags = [...root.querySelectorAll('.entry-sectoral-flag:checked')].map((box) => box.parentElement.textContent.trim());
+        lines.push(flags.length ? `Sectoral: ${flags.join(', ')}.` : 'No sectoral details.');
+
+        // textContent, not innerHTML -- household names are typed by staff.
+        summary.replaceChildren(...lines.map((text) => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            return li;
+        }));
+    }
+
+    root.querySelectorAll('.household-type-radio').forEach((radio) => radio.addEventListener('change', applyHousehold));
+    headSelfNew?.addEventListener('change', applyHousehold);
+    headSelfExisting?.addEventListener('change', applyHousehold);
+    // Anything else on the form only changes the read-back.
+    root.addEventListener('input', renderSummary);
+    root.addEventListener('change', renderSummary);
 
     // Optional sectoral flags (see _entry_fields.blade.php): pregnant/
     // lactating hidden AND cleared for a male evacuee -- clearing matters,
     // since a hidden-but-still-ticked box would still be submitted -- and
     // the collapsed header's badge shows how many are ticked, so a closed
     // section never hides that something is set.
-    const sexSelect = root.querySelector('select[name="sex"]');
-    const sectoralBadge = root.querySelector('.entry-sectoral-count');
+    const sectoralBadge = q('.entry-sectoral-count');
     function applySectoralFlags() {
         const isMale = sexSelect?.value === 'male';
         root.querySelectorAll('.entry-sectoral [data-female-only]').forEach((label) => {
@@ -492,11 +574,11 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
     // uses this as the display snapshot for a household picked from the
     // live remote list below, which has no local row to look a name back
     // up from later (see that class's own docblock).
-    const householdSelect = root.querySelector('.household-select');
-    const householdLabelInput = root.querySelector('.household-label-input');
+    const householdLabelInput = q('.household-label-input');
     householdSelect?.addEventListener('change', () => {
         const option = householdSelect.options[householdSelect.selectedIndex];
-        if (householdLabelInput) householdLabelInput.value = option ? option.textContent : '';
+        if (householdLabelInput) householdLabelInput.value = option ? option.textContent.trim() : '';
+        applyHousehold();
     });
 
     // Live households fetch -- appends households known to the central
@@ -530,19 +612,22 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
             .then((r) => (r.ok ? r.json() : []))
             .then((remoteHouseholds) => {
                 // Households this device already has locally (by remote
-                // id) are skipped -- they're already in the select from
-                // the server-side render, and listing them twice would
-                // just be confusing, not more complete.
+                // id), or already in the list (an entry being edited),
+                // are skipped -- listing one twice is confusing, not more
+                // complete.
+                const present = new Set([...householdSelect.options].map((o) => o.value));
                 remoteHouseholds
-                    .filter((h) => !knownRemoteIds.includes(String(h.value).replace('remote-', '')))
+                    .filter((h) => !knownRemoteIds.includes(String(h.value).replace('remote-', '')) && !present.has(h.value))
                     .forEach((h) => {
                         const option = document.createElement('option');
                         option.value = h.value;
                         option.textContent = h.label;
+                        option.dataset.headOpen = h.head_linked ? '0' : '1';
                         householdSelect.appendChild(option);
                     });
 
                 if (emptyHint && householdSelect.options.length > 1) emptyHint.style.display = 'none';
+                applyHousehold();
             })
             .catch(() => {
                 // Offline, timeout, or session expired -- this device's
@@ -554,6 +639,7 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
             });
     }
 
+    applyHousehold();
     loadRemoteHouseholds();
     root.querySelector('[name="evacuation_event_id"]')?.addEventListener('change', loadRemoteHouseholds);
 };

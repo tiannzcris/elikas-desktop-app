@@ -30,6 +30,17 @@ class EvacuationCenterSectoralSnapshot extends Model
         'indigenous_peoples' => 'Indigenous peoples',
     ];
 
+    /**
+     * The two groups that describe a whole household, each with the Family
+     * method it's counted from -- same as the server's own
+     * HOUSEHOLD_SECTORAL_GROUPS. The other six come from per-person flags
+     * (EcBoardEntry::SECTORAL_FLAGS).
+     */
+    public const HOUSEHOLD_SECTORAL_GROUPS = [
+        'child_headed_family' => 'isChildHeaded',
+        'single_headed_family' => 'isSingleHeaded',
+    ];
+
     protected $fillable = [
         'evacuation_center_id', 'evacuation_event_id', 'beneficiaries_4ps',
         'sectoral_groups', 'updated_by_name', 'server_updated_at',

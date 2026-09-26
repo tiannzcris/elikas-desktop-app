@@ -55,6 +55,38 @@
                 @if ($family->sync_error)
                     <p class="text-xs text-red-500 mt-2 border-t border-gray-100 pt-2">{{ $family->sync_error }}</p>
                 @endif
+
+                {{-- A household added through Add Evacuee carries its own
+                     head answers -- the source of its Child-/Single-Headed
+                     Family counts. Same wording as the web dashboard's
+                     family page. --}}
+                @if ($family->created_via_ec_board)
+                    @php
+                        $yesNo = fn (?bool $v) => $v === null ? 'not yet known' : ($v ? 'yes' : 'no');
+                        $headSex = $family->headSex();
+                    @endphp
+                    <p class="text-xs text-gray-500 mt-2 border-t border-gray-100 pt-2">
+                        Household: single-headed {{ $yesNo($family->isSingleHeaded()) }}, child-headed {{ $yesNo($family->isChildHeaded()) }}{{ $headSex ? " ({$headSex})" : '' }}
+                    </p>
+                    @unless ($family->hasLinkedHead())
+                        @php
+                            $answered = array_filter([$family->head_sex, $family->head_is_minor === null ? null : ($family->head_is_minor ? 'a minor' : 'not a minor')]);
+                        @endphp
+                        <p class="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 rounded-lg px-2.5 py-2 mt-2">
+                            <i class="ti ti-user-question shrink-0 mt-px" style="font-size: 14px;" aria-hidden="true"></i>
+                            <span>
+                                Head not yet linked. {{ $answered ? 'Counts use the answers given for the head ('.implode(', ', $answered).')' : 'Nothing is known about the head yet' }} until a member is linked.
+                                When the head arrives, add them under "Already here" on
+                                @if ($family->evacuationCenter)
+                                    <a href="{{ route('evacuation-centers.ec-board', ['center' => $family->evacuationCenter, 'event' => $family->evacuation_event_id]) }}" class="font-semibold underline hover:text-amber-900">this center's EC Board</a>
+                                @else
+                                    this center's EC Board
+                                @endif
+                                and tick "This person is the household head".
+                            </span>
+                        </p>
+                    @endunless
+                @endif
             </div>
         @endforeach
     </div>

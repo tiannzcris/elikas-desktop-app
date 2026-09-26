@@ -45,7 +45,41 @@ class AddEvacueeRequest extends FormRequest
             'is_solo_parent' => ['nullable', 'boolean'],
             'is_indigenous_person' => ['nullable', 'boolean'],
             'is_4ps_beneficiary' => ['nullable', 'boolean'],
+            // Household head questions -- same fields and meaning as the
+            // central server's addEvacuee(). "Not yet known" submits an
+            // empty value, stored as null, never guessed as "no".
+            'head_is_self' => ['nullable', 'boolean'],
+            'is_single_headed' => ['nullable', 'boolean'],
+            'head_is_minor' => ['nullable', 'boolean'],
+            'head_sex' => ['nullable', 'in:male,female'],
         ];
+    }
+
+    public function headIsSelf(): bool
+    {
+        return $this->boolean('head_is_self');
+    }
+
+    /**
+     * A NEW household's one-time answers, as stored on its local Family.
+     * When this person is the head, their own sex and age group describe
+     * the head, so head_sex/head_is_minor stay null here (see
+     * Family::headSex()/isChildHeaded(), which read the linked head first).
+     */
+    public function newHouseholdAnswers(): array
+    {
+        $headIsSelf = $this->headIsSelf();
+
+        return [
+            'is_single_headed' => $this->nullableBoolean('is_single_headed'),
+            'head_sex' => $headIsSelf ? null : $this->input('head_sex'),
+            'head_is_minor' => $headIsSelf ? null : $this->nullableBoolean('head_is_minor'),
+        ];
+    }
+
+    private function nullableBoolean(string $key): ?bool
+    {
+        return $this->filled($key) ? $this->boolean($key) : null;
     }
 
     /**

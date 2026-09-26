@@ -94,3 +94,10 @@ main.page-transition.in { opacity: 1; }
     transition: opacity 250ms ease, transform 250ms ease;
 }
 .login-card.in { opacity: 1; transform: translateY(0); }
+
+/* Add evacuee's sections: a hairline between each and a plain heading --
+   the grouping itself is the structure (same as the web dashboard's). The
+   legend is floated so it sits inside the section like any other heading. */
+.entry-section { min-width: 0; border-top: 1px solid #F3F4F6; padding-top: 0.75rem; margin-top: 0.75rem; }
+.entry-section-title { float: left; width: 100%; margin-bottom: 0.5rem; font-size: 0.75rem; line-height: 1rem; font-weight: 600; color: #1F2937; }
+.entry-section-title + * { clear: both; }

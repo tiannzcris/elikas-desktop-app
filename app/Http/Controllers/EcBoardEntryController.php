@@ -11,6 +11,7 @@ use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class EcBoardEntryController extends Controller
 {
@@ -27,82 +28,57 @@ class EcBoardEntryController extends Controller
 
         $validated = $request->validated();
 
-        // A brand-new household needs a real local Family+Evacuee row
-        // created FIRST (see createNewHousehold()'s own docblock for why),
-        // so this entry can be saved pointing at it via
-        // household_family_local_id instead of the old plain-text-only
-        // new_household_head_name -- otherwise this household could never
-        // become selectable as "existing" for a second evacuee added
-        // moments later at the same center, confirmed missing before this.
-        $householdFields = $validated['household_type'] === 'new'
-            ? $this->createNewHousehold($center, $validated)
-            : $request->householdFields();
+        DB::transaction(function () use ($request, $validated, $center) {
+            // A brand-new household needs a real local Family created FIRST
+            // (see createNewHousehold()'s own docblock for why), so this
+            // entry can point at it via household_family_local_id -- that's
+            // what makes it selectable as "already here" for the next person.
+            $householdFields = $validated['household_type'] === 'new'
+                ? $this->createNewHousehold($center, $request)
+                : $request->householdFields();
 
-        EcBoardEntry::create(array_merge([
-            'evacuation_center_id' => $center->id,
-            'evacuation_event_id' => $validated['evacuation_event_id'],
-            'sex' => $validated['sex'],
-            'age_bracket' => $validated['age_bracket'],
-        ], $request->sectoralFields(), $householdFields));
+            $entry = EcBoardEntry::create(array_merge([
+                'evacuation_center_id' => $center->id,
+                'evacuation_event_id' => $validated['evacuation_event_id'],
+                'sex' => $validated['sex'],
+                'age_bracket' => $validated['age_bracket'],
+            ], $request->sectoralFields(), $householdFields));
+
+            $this->applyHeadLink($entry, $request->headIsSelf());
+            $this->syncPlaceholderHead($entry);
+        });
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
             ->with('status', 'Evacuee added on this device. Sync when you have internet.');
     }
 
     /**
-     * Creates a real local Family+Evacuee for a "new household" Add
-     * Evacuee submission, so it shows up correctly in the household
-     * picker (a real name, not "Household #N") and becomes selectable as
-     * an existing household for a later evacuee at this same center --
-     * confirmed genuinely missing before this (no Family::create() ever
-     * ran for this path).
+     * Creates a real local Family for a "new household" Add Evacuee
+     * submission, carrying the household's one-time answers (single-headed,
+     * and the head's sex/minor when the head is someone else) exactly as
+     * the central server's addEvacuee() stores them on its own Family.
      *
-     * This Family is marked created_via_ec_board and deliberately never
-     * enters FamilyController::sync()'s own registerFamily() loop -- the
-     * real /families/register endpoint requires date_of_birth AND
-     * contact_number for every member (confirmed against the backend's
-     * own RegisterFamilyRequest), neither of which "Add Evacuee" ever
-     * collects. Its Evacuee row's date_of_birth is left null for exactly
-     * that reason: it is a LOCAL-ONLY placeholder, never sent to that
-     * endpoint. This household still reaches the real central server --
-     * through the RETURNING EcBoardEntry's own addEvacuee() sync call
-     * (household_mode: 'new', unchanged from before this Family existed
-     * locally at all), flagged via originated_household so
-     * EcBoardEntry::toSyncPayload() and FamilyController::sync() both
-     * know this specific entry is what must carry that sync, not a
-     * separate registerFamily() call.
+     * This Family is marked created_via_ec_board and never enters
+     * FamilyController::sync()'s registerFamily() loop -- that endpoint
+     * requires date_of_birth and contact_number per member, which Add
+     * Evacuee never collects. It reaches the central server through the
+     * originating EcBoardEntry's own addEvacuee() call instead (household_
+     * mode "new"), flagged via originated_household.
      *
      * @return array{household_family_local_id: int, existing_household_remote_id: null, new_household_head_name: null, originated_household: true}
      */
-    private function createNewHousehold(EvacuationCenter $center, array $validated): array
+    private function createNewHousehold(EvacuationCenter $center, AddEvacueeRequest $request): array
     {
         $barangay = Barangay::where('remote_id', $center->barangay_remote_id)->firstOrFail();
 
-        $family = Family::create([
+        $family = Family::create(array_merge([
             'barangay_id' => $barangay->id,
-            'evacuation_event_id' => $validated['evacuation_event_id'],
+            'evacuation_event_id' => $request->input('evacuation_event_id'),
             'evacuation_center_id' => $center->id,
             'displacement_type' => 'inside_center',
             'created_via_ec_board' => true,
-        ]);
-
-        // Splitting purely by "first word" vs "the rest" (not a real
-        // first/last name parser) deliberately preserves multi-word
-        // surnames common in Filipino names (e.g. "Dela Cruz", "De
-        // Guzman") -- full_name's own "{first} {last}" concatenation
-        // always reconstructs the exact name that was typed, which is
-        // all this placeholder row needs: a correct DISPLAY label, not a
-        // linguistically accurate split (this row is never synced with
-        // these two fields separately -- see this method's own docblock).
-        $nameParts = preg_split('/\s+/', trim($validated['new_household_head_name']), 2);
-
-        Evacuee::create([
-            'family_id' => $family->id,
-            'first_name' => $nameParts[0],
-            'last_name' => $nameParts[1] ?? '',
-            'sex' => $validated['sex'],
-            'is_head_of_family' => true,
-        ]);
+            'name' => trim($request->input('new_household_head_name')),
+        ], $request->newHouseholdAnswers()));
 
         return [
             'household_family_local_id' => $family->id,
@@ -113,9 +89,81 @@ class EcBoardEntryController extends Controller
     }
 
     /**
-     * Shared by store() [inline on the center page] and edit() [a modal] --
-     * identical form partial either way, exactly mirroring FamilyController's
-     * renderForm() split.
+     * Links (or unlinks) $entry as its household's head -- the one place
+     * this rule lives, mirroring the central server's addEvacuee(): a head
+     * is only ever filled when the household has NONE linked yet, and an
+     * existing head is never replaced from here. For a household known only
+     * on the central server (no local row), the wish is recorded on the
+     * entry and the server applies that same rule when it syncs.
+     */
+    private function applyHeadLink(EcBoardEntry $entry, bool $wantsHead): void
+    {
+        if ($entry->existing_household_remote_id) {
+            $entry->update(['head_is_self' => $wantsHead]);
+
+            return;
+        }
+
+        $family = $entry->household()->first();
+        if (! $family) {
+            $entry->update(['head_is_self' => false]);
+
+            return;
+        }
+
+        $isThisEntryHead = (int) $family->head_ec_board_entry_id === $entry->id;
+        $linked = $wantsHead && ($isThisEntryHead || ! $family->hasLinkedHead());
+
+        if ($linked && ! $isThisEntryHead) {
+            $family->update(['head_ec_board_entry_id' => $entry->id]);
+        } elseif (! $linked && $isThisEntryHead) {
+            $family->update(['head_ec_board_entry_id' => null]);
+        }
+
+        $entry->update(['head_is_self' => $linked]);
+    }
+
+    /**
+     * Keeps the local-only head member row of a household this device
+     * created in step with who its head is. That row exists purely so the
+     * household reads by its head's name in search and on family cards --
+     * and it only exists when the head IS the person added (their sex is
+     * known). For "someone else is the head", no row is invented: the
+     * household is labelled by Family::name instead, rather than recording
+     * a head member with a guessed sex.
+     */
+    private function syncPlaceholderHead(EcBoardEntry $entry): void
+    {
+        if (! $entry->originated_household) {
+            return;
+        }
+
+        $family = $entry->household()->first();
+        if (! $family) {
+            return;
+        }
+
+        $placeholder = $family->evacuees()->where('is_head_of_family', true)->first();
+
+        if (! $entry->head_is_self) {
+            $placeholder?->delete();
+
+            return;
+        }
+
+        // Split on the first space only, preserving multi-word surnames
+        // ("Dela Cruz") -- full_name rejoins them exactly as typed.
+        $nameParts = preg_split('/\s+/', trim((string) $family->name), 2);
+
+        Evacuee::updateOrCreate(
+            ['family_id' => $family->id, 'is_head_of_family' => true],
+            ['first_name' => $nameParts[0], 'last_name' => $nameParts[1] ?? '', 'sex' => $entry->sex]
+        );
+    }
+
+    /**
+     * Shared by the inline "Add Evacuee" card and the edit modal --
+     * identical form partial either way.
      */
     private function renderForm(Request $request, LocalAuth $auth, EvacuationCenter $center, ?EcBoardEntry $entry = null)
     {
@@ -163,15 +211,39 @@ class EcBoardEntryController extends Controller
 
         $validated = $request->validated();
 
-        $entry->update(array_merge([
-            'evacuation_event_id' => $validated['evacuation_event_id'],
-            'sex' => $validated['sex'],
-            'age_bracket' => $validated['age_bracket'],
-            // Clears out whatever validation error sent this record back
-            // here in the first place -- it's about to get fresh data,
-            // same reasoning as FamilyController::update().
-            'sync_error' => null,
-        ], $request->sectoralFields(), $request->householdFields()));
+        DB::transaction(function () use ($request, $validated, $entry) {
+            $fields = array_merge([
+                'evacuation_event_id' => $validated['evacuation_event_id'],
+                'sex' => $validated['sex'],
+                'age_bracket' => $validated['age_bracket'],
+                // Clears whatever validation error sent this record back
+                // here -- it's about to get fresh data.
+                'sync_error' => null,
+            ], $request->sectoralFields());
+
+            if ($entry->originated_household) {
+                // The entry that CREATES its household stays tied to it (other
+                // entries may already have joined it) -- only the household's
+                // own name and answers are corrected, never re-pointed.
+                $entry->household()->first()?->update(array_merge(
+                    ['name' => trim((string) $request->input('new_household_head_name'))],
+                    $request->newHouseholdAnswers()
+                ));
+            } else {
+                // Moving this person to a different household must not leave
+                // them recorded as the OLD household's head.
+                $oldFamilyId = $entry->household_family_local_id;
+                $fields = array_merge($fields, $request->householdFields());
+                if ($oldFamilyId && $oldFamilyId !== ($fields['household_family_local_id'] ?? null)) {
+                    Family::whereKey($oldFamilyId)->where('head_ec_board_entry_id', $entry->id)
+                        ->update(['head_ec_board_entry_id' => null]);
+                }
+            }
+
+            $entry->update($fields);
+            $this->applyHeadLink($entry, $request->headIsSelf());
+            $this->syncPlaceholderHead($entry);
+        });
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $entry->evacuation_center_id, 'event' => $entry->evacuation_event_id])
             ->with('status', 'Entry updated on this device. Sync when you have internet.');
@@ -191,16 +263,21 @@ class EcBoardEntryController extends Controller
 
         $centerId = $entry->evacuation_center_id;
         $originatedFamilyId = $entry->originated_household ? $entry->household_family_local_id : null;
-        $entry->delete();
 
-        // The Family this entry created has no other way to ever sync
-        // (see its own created_via_ec_board docblock) -- if nothing else
-        // still references it, remove it too rather than leaving an
-        // orphaned, permanently-"pending" row behind on the Registered
-        // Families page.
-        if ($originatedFamilyId && ! EcBoardEntry::where('household_family_local_id', $originatedFamilyId)->exists()) {
-            Family::whereKey($originatedFamilyId)->delete();
-        }
+        DB::transaction(function () use ($entry, $originatedFamilyId) {
+            // The household goes back to "head not yet linked" -- its own
+            // head_sex/head_is_minor answers, kept all along, apply again.
+            Family::where('head_ec_board_entry_id', $entry->id)->update(['head_ec_board_entry_id' => null]);
+            $entry->delete();
+
+            // The Family this entry created has no other way to ever sync --
+            // if nothing else still references it, remove it too rather than
+            // leaving an orphaned, permanently-"pending" row behind.
+            if ($originatedFamilyId && ! EcBoardEntry::where('household_family_local_id', $originatedFamilyId)->exists()) {
+                Evacuee::where('family_id', $originatedFamilyId)->delete();
+                Family::whereKey($originatedFamilyId)->delete();
+            }
+        });
 
         return redirect()->route('evacuation-centers.ec-board', $centerId)
             ->with('status', 'Pending entry removed.');

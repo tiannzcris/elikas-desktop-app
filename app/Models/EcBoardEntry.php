@@ -49,13 +49,14 @@ class EcBoardEntry extends Model
     public const FEMALE_ONLY_FLAGS = ['is_pregnant', 'is_lactating'];
 
     protected $fillable = [
-        'evacuation_center_id', 'evacuation_event_id', 'sex', 'age_bracket',
+        'evacuation_center_id', 'evacuation_event_id', 'sex', 'age_bracket', 'head_is_self',
         'is_pwd', 'is_pregnant', 'is_lactating', 'is_solo_parent', 'is_indigenous_person', 'is_4ps_beneficiary',
         'household_family_local_id', 'existing_household_remote_id', 'new_household_head_name',
         'originated_household', 'remote_id', 'synced_at', 'sync_error',
     ];
 
     protected $casts = [
+        'head_is_self' => 'boolean',
         'originated_household' => 'boolean',
         'synced_at' => 'datetime',
         // Nullable booleans: null ("not recorded") survives the cast as null.
@@ -118,9 +119,35 @@ class EcBoardEntry extends Model
             return $this->new_household_head_name;
         }
 
-        $head = $this->household?->evacuees->firstWhere('is_head_of_family', true);
+        return $this->household?->displayName() ?? 'Unknown household';
+    }
 
-        return $head?->full_name ?? 'Unknown household';
+    /**
+     * The household-head fields of the central server's addEvacuee()
+     * contract (verified against the running backend): for a NEW household,
+     * head_is_self + is_single_headed always, and head_sex + head_is_minor
+     * only when the head is someone else; for an EXISTING household,
+     * head_is_self only when this person is being linked as its head.
+     * Mirrors exactly what the web dashboard's own Add Evacuee sends.
+     */
+    private function headPayload(bool $isNewHousehold): array
+    {
+        if (! $isNewHousehold) {
+            return $this->head_is_self ? ['head_is_self' => true] : [];
+        }
+
+        $family = $this->household;
+        $payload = [
+            'head_is_self' => (bool) $this->head_is_self,
+            'is_single_headed' => $family?->is_single_headed,
+        ];
+
+        if (! $this->head_is_self) {
+            $payload['head_sex'] = $family?->head_sex;
+            $payload['head_is_minor'] = $family?->head_is_minor;
+        }
+
+        return $payload;
     }
 
     /**
@@ -164,6 +191,7 @@ class EcBoardEntry extends Model
                 'barangay_id' => null,
                 'family_name' => null,
                 ...$this->sectoralFlagsPayload(),
+                ...$this->headPayload(false),
             ];
         }
 
@@ -191,8 +219,9 @@ class EcBoardEntry extends Model
                 'household_mode' => 'new',
                 'family_id' => null,
                 'barangay_id' => $this->evacuationCenter->barangay_remote_id,
-                'family_name' => $this->household?->evacuees->firstWhere('is_head_of_family', true)?->full_name,
+                'family_name' => $this->household?->displayName(),
                 ...$this->sectoralFlagsPayload(),
+                ...$this->headPayload(true),
             ];
         }
 
@@ -213,6 +242,10 @@ class EcBoardEntry extends Model
             'barangay_id' => $isExistingHousehold ? null : $this->evacuationCenter->barangay_remote_id,
             'family_name' => $isExistingHousehold ? null : $this->new_household_head_name,
             ...$this->sectoralFlagsPayload(),
+            // A legacy new-household entry (pre-dating local Families) has
+            // no household answers to send -- the server records them as
+            // "not yet known", same as any unanswered question.
+            ...($isExistingHousehold ? $this->headPayload(false) : []),
         ];
     }
 }

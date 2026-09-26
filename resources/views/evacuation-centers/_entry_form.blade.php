@@ -19,12 +19,9 @@
         {{ $errors->first() }}
     </div>
 
-    <form method="POST" action="{{ route('ec-board-entries.update', $entry) }}" class="flex flex-col gap-4 p-6">
+    <form method="POST" action="{{ route('ec-board-entries.update', $entry) }}" class="flex flex-col px-6 pt-4">
         @csrf
         @method('PUT')
-        @include('evacuation-centers._entry_fields')
-        <button type="submit" class="btn-modern btn-primary-modern bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5 w-fit">
-            Save changes (offline)
-        </button>
+        @include('evacuation-centers._entry_fields', ['submitLabel' => 'Save changes (offline)'])
     </form>
 </div>

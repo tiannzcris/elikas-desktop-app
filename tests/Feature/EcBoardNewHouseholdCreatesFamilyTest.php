@@ -49,6 +49,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             'age_bracket' => 'adult',
             'household_type' => 'new',
             'new_household_head_name' => 'Juan Dela Cruz',
+            'head_is_self' => '1',
         ]);
 
         $this->assertSame(1, Family::count());

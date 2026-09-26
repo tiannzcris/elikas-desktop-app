@@ -10,15 +10,77 @@ class Family extends Model
 {
     protected $fillable = [
         'barangay_id', 'evacuation_event_id', 'evacuation_center_id',
-        'displacement_type', 'is_4ps_beneficiary', 'home_address',
+        'displacement_type', 'is_4ps_beneficiary', 'home_address', 'name',
+        'is_single_headed', 'head_is_minor', 'head_sex', 'head_ec_board_entry_id',
         'created_via_ec_board', 'remote_id', 'synced_at', 'sync_error',
     ];
 
     protected $casts = [
         'is_4ps_beneficiary' => 'boolean',
+        'is_single_headed' => 'boolean',
+        'head_is_minor' => 'boolean',
         'created_via_ec_board' => 'boolean',
         'synced_at' => 'datetime',
     ];
+
+    /**
+     * Age groups under 18 -- how "is the head a minor?" is answered when the
+     * head is a person added through Add Evacuee (their age group is all
+     * that's known). Same list as the central server's Family::MINOR_AGE_BRACKETS.
+     */
+    public const MINOR_AGE_BRACKETS = ['infant', 'toddler', 'preschooler', 'school_age', 'teenage'];
+
+    /** The Add Evacuee entry recorded as this household's head, if linked. */
+    public function headEntry(): BelongsTo
+    {
+        return $this->belongsTo(EcBoardEntry::class, 'head_ec_board_entry_id');
+    }
+
+    /**
+     * A family from full registration always has a real, named head member.
+     * One created through Add Evacuee only has a head once an entry is
+     * linked as head -- until then its head_sex/head_is_minor answers stand in.
+     */
+    public function hasLinkedHead(): bool
+    {
+        return ! $this->created_via_ec_board || $this->head_ec_board_entry_id !== null;
+    }
+
+    /** Mirrors the central server's Family::isSingleHeaded(). null = not yet known. */
+    public function isSingleHeaded(): ?bool
+    {
+        return $this->is_single_headed;
+    }
+
+    /**
+     * Mirrors the central server's Family::isChildHeaded(): the linked head's
+     * own age wins over the head_is_minor answer. null = not yet known.
+     */
+    public function isChildHeaded(): ?bool
+    {
+        if ($this->headEntry) {
+            return in_array($this->headEntry->age_bracket, self::MINOR_AGE_BRACKETS, true);
+        }
+
+        return $this->head_is_minor;
+    }
+
+    /**
+     * Mirrors the central server's Family::headSex(): the linked head's own
+     * sex wins over the head_sex answer. null = not yet known.
+     */
+    public function headSex(): ?string
+    {
+        return $this->headEntry?->sex ?? $this->head_sex;
+    }
+
+    /** The household's label: its recorded name, else its named head member. */
+    public function displayName(): string
+    {
+        return $this->name
+            ?? $this->evacuees->firstWhere('is_head_of_family', true)?->full_name
+            ?? 'Household #'.$this->id;
+    }
 
     public function barangay(): BelongsTo
     {
@@ -57,7 +119,7 @@ class Family extends Model
      */
     public function headOfFamilyName(): string
     {
-        return $this->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? 'Unknown household';
+        return $this->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? $this->name ?? 'Unknown household';
     }
 
     /**

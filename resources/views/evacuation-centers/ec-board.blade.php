@@ -84,17 +84,15 @@
             </div>
         </div>
 
-        <div class="card-modern p-4 mb-6" data-ec-board-entry-form>
-            <h2 class="text-sm font-bold text-gray-700 mb-3">Add evacuee</h2>
+        <div class="card-modern px-4 pt-4 mb-6" data-ec-board-entry-form>
+            <h2 class="text-sm font-bold text-gray-700">Add evacuee</h2>
+            <p class="text-xs text-gray-500 mt-0.5 mb-3">Saved on this device first -- name and birthdate can be added later.</p>
             <div class="form-errors bg-red-50 text-red-700 text-sm rounded-xl p-3 mb-3" @if (! $errors->any()) style="display: none;" @endif>
                 {{ $errors->first() }}
             </div>
-            <form method="POST" action="{{ route('ec-board-entries.store', $center) }}" class="flex flex-col gap-4">
+            <form method="POST" action="{{ route('ec-board-entries.store', $center) }}" class="flex flex-col">
                 @csrf
-                @include('evacuation-centers._entry_fields', ['entry' => null])
-                <button type="submit" class="btn-modern btn-primary-modern bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5 w-fit">
-                    Add evacuee (offline)
-                </button>
+                @include('evacuation-centers._entry_fields', ['entry' => null, 'submitLabel' => 'Add evacuee (offline)'])
             </form>
         </div>
 
@@ -223,7 +221,7 @@
                     <i class="ti ti-device-desktop text-amber-500" style="font-size: 16px;" aria-hidden="true"></i>
                     <p class="text-sm font-bold text-gray-700">Sectoral -- added on this device (pending sync)</p>
                 </div>
-                <p class="text-xs text-gray-400 mb-3">From this device's not-yet-synced Add Evacuee entries: each person's ticked details.</p>
+                <p class="text-xs text-gray-400 mb-3">From this device's not-yet-synced Add Evacuee entries: each person's ticked details, and child- or single-headed households from the household answers.</p>
             @if ($pendingSectoral->sum(fn ($row) => $row['male'] + $row['female']) === 0)
                 <p class="text-sm text-gray-400">Nothing pending for this event.</p>
             @else

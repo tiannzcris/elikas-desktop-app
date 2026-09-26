@@ -322,6 +322,42 @@ class EvacuationCenterController extends Controller
     }
 
     /**
+     * This device's not-yet-synced contribution to the sectoral table, by
+     * the central server's own rule (EvacuationCenterQuickCount::
+     * liveSectoralBreakdown() there), in its row order: the six per-person
+     * groups from each pending entry's own flags, by that person's sex, and
+     * Child-/Single-Headed Family once per household this device created,
+     * by the head's sex. null answers and unknown sexes count nowhere.
+     *
+     * @return \Illuminate\Support\Collection<int, array{label: string, male: int, female: int}>
+     */
+    private function pendingSectoralBreakdown(Collection $pendingEntries): Collection
+    {
+        $households = Family::whereIn('id', $pendingEntries->where('originated_household', true)->pluck('household_family_local_id'))
+            ->with('headEntry')
+            ->get();
+
+        $flagByGroup = collect(EcBoardEntry::SECTORAL_FLAGS)->mapWithKeys(fn ($meta, $flag) => [$meta[1] => $flag]);
+
+        return collect(EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS)->map(function ($label, $group) use ($households, $pendingEntries, $flagByGroup) {
+            if ($method = EvacuationCenterSectoralSnapshot::HOUSEHOLD_SECTORAL_GROUPS[$group] ?? null) {
+                $counted = $households->filter(fn (Family $f) => $f->{$method}() === true);
+                $sexOf = fn (Family $f) => $f->headSex();
+            } else {
+                $flag = $flagByGroup[$group];
+                $counted = $pendingEntries->filter(fn (EcBoardEntry $e) => $e->{$flag} === true);
+                $sexOf = fn (EcBoardEntry $e) => $e->sex;
+            }
+
+            return [
+                'label' => $label,
+                'male' => $counted->filter(fn ($x) => $sexOf($x) === 'male')->count(),
+                'female' => $counted->filter(fn ($x) => $sexOf($x) === 'female')->count(),
+            ];
+        })->values();
+    }
+
+    /**
      * Called client-side (fetch(), after the page itself has rendered) to
      * refresh the "As of last sync" breakdown for one center+event -- see
      * ecBoard()'s own docblock for why this is no longer part of that
@@ -484,6 +520,10 @@ class EvacuationCenterController extends Controller
             ->map(fn ($f) => [
                 'value' => 'remote-'.$f['id'],
                 'label' => $f['name'] ?? ($f['head_of_family']['full_name'] ?? null) ?? 'Household #'.$f['id'],
+                // Drives whether Add Evacuee offers "This person is the
+                // household head" for it -- the server's head_of_family is
+                // null until a head is linked (verified live).
+                'head_linked' => ! empty($f['head_of_family']),
             ])
             ->values();
 
@@ -551,27 +591,6 @@ class EvacuationCenterController extends Controller
         }
 
         return response()->json(['message' => "{$validated['quantity']} evacuee(s) marked as departed."]);
-    }
-
-    /**
-     * This device's not-yet-synced contribution to the sectoral table, by
-     * the central server's own rule: each per-person group counts the
-     * pending entries whose flag is actually TRUE, by that person's sex.
-     * null ("not recorded") counts nowhere.
-     *
-     * @return \Illuminate\Support\Collection<int, array{label: string, male: int, female: int}>
-     */
-    private function pendingSectoralBreakdown(Collection $pendingEntries): Collection
-    {
-        return collect(EcBoardEntry::SECTORAL_FLAGS)->map(function ($meta, $flag) use ($pendingEntries) {
-            $counted = $pendingEntries->filter(fn (EcBoardEntry $e) => $e->{$flag} === true);
-
-            return [
-                'label' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS[$meta[1]],
-                'male' => $counted->where('sex', 'male')->count(),
-                'female' => $counted->where('sex', 'female')->count(),
-            ];
-        })->values();
     }
 
     /**

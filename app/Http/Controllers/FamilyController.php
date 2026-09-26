@@ -369,7 +369,7 @@ class FamilyController extends Controller
         return Family::where('barangay_id', $barangay->id)
             ->when($centerParam === 'none', fn ($q) => $q->whereNull('evacuation_center_id'))
             ->when($centerParam !== 'none', fn ($q) => $q->where('evacuation_center_id', $centerParam))
-            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
+            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter', 'headEntry'])
             ->latest()
             ->get();
     }
@@ -385,12 +385,17 @@ class FamilyController extends Controller
      */
     private function searchFamilies(string $search)
     {
-        return Family::whereHas('evacuees', function ($q) use ($search) {
-            $q->where('first_name', 'like', "%{$search}%")
-                ->orWhere('middle_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%");
+        return Family::where(function ($q) use ($search) {
+            $q->whereHas('evacuees', function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('middle_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%");
+            })
+                // A household added through Add Evacuee whose head is someone
+                // else has no head member row -- only its recorded name.
+                ->orWhere('name', 'like', "%{$search}%");
         })
-            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
+            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter', 'headEntry'])
             ->latest()
             ->get();
     }

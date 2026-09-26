@@ -42,6 +42,8 @@ class EcBoardEntryManagementTest extends TestCase
             'age_bracket' => 'adult',
             'household_type' => 'new',
             'new_household_head_name' => 'Juan Dela Cruz',
+            // The form's own default: this person is the household head.
+            'head_is_self' => '1',
         ]);
 
         $response->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
@@ -553,7 +555,10 @@ class EcBoardEntryManagementTest extends TestCase
             'new_household_head_name' => null,
             'synced_at' => null,
         ]);
-        $this->assertDatabaseHas('evacuees', ['first_name' => 'Rosa', 'last_name' => 'Santos']);
+        // Head is someone else (box not ticked): the household is labelled
+        // by its recorded name -- no head member is invented with a guessed sex.
+        $this->assertDatabaseHas('families', ['name' => 'Rosa Santos', 'created_via_ec_board' => true, 'head_ec_board_entry_id' => null]);
+        $this->assertDatabaseMissing('evacuees', ['first_name' => 'Rosa', 'last_name' => 'Santos']);
 
         $afterAdd = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $afterAdd->assertSee('Rosa Santos');
