@@ -43,7 +43,7 @@ class EcBoardEntryController extends Controller
             'evacuation_event_id' => $validated['evacuation_event_id'],
             'sex' => $validated['sex'],
             'age_bracket' => $validated['age_bracket'],
-        ], $householdFields));
+        ], $request->sectoralFields(), $householdFields));
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
             ->with('status', 'Evacuee added on this device. Sync when you have internet.');
@@ -171,7 +171,7 @@ class EcBoardEntryController extends Controller
             // here in the first place -- it's about to get fresh data,
             // same reasoning as FamilyController::update().
             'sync_error' => null,
-        ], $request->householdFields()));
+        ], $request->sectoralFields(), $request->householdFields()));
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $entry->evacuation_center_id, 'event' => $entry->evacuation_event_id])
             ->with('status', 'Entry updated on this device. Sync when you have internet.');

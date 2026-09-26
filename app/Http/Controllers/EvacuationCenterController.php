@@ -263,6 +263,8 @@ class EvacuationCenterController extends Controller
             $breakdownBrackets
         );
 
+        $pendingSectoral = $this->pendingSectoralBreakdown((clone $pendingEntriesQuery)->get());
+
         $pendingEntries = $pendingEntriesQuery->with(['evacuationEvent', 'household.evacuees'])->latest()->get();
 
         // Existing-household picker: households already associated with
@@ -315,6 +317,7 @@ class EvacuationCenterController extends Controller
             'selectedEventId' => $selectedEventId,
             'lastKnownBreakdown' => $lastKnownBreakdown,
             'pendingBreakdown' => $pendingBreakdown,
+            'pendingSectoral' => $pendingSectoral,
             'pendingEntries' => $pendingEntries,
             'households' => $households,
             // The Add Evacuee form's own picker -- the 7 real brackets
@@ -691,6 +694,27 @@ class EvacuationCenterController extends Controller
         }
 
         return response()->json(['message' => "{$validated['quantity']} evacuee(s) marked as departed."]);
+    }
+
+    /**
+     * This device's not-yet-synced contribution to the sectoral table, by
+     * the central server's own rule: each per-person group counts the
+     * pending entries whose flag is actually TRUE, by that person's sex.
+     * null ("not recorded") counts nowhere.
+     *
+     * @return \Illuminate\Support\Collection<int, array{label: string, male: int, female: int}>
+     */
+    private function pendingSectoralBreakdown(Collection $pendingEntries): Collection
+    {
+        return collect(EcBoardEntry::SECTORAL_FLAGS)->map(function ($meta, $flag) use ($pendingEntries) {
+            $counted = $pendingEntries->filter(fn (EcBoardEntry $e) => $e->{$flag} === true);
+
+            return [
+                'label' => EvacuationCenterQuickCount::SECTORAL_GROUPS[$meta[1]],
+                'male' => $counted->where('sex', 'male')->count(),
+                'female' => $counted->where('sex', 'female')->count(),
+            ];
+        })->values();
     }
 
     /**

@@ -464,6 +464,29 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
         radio.addEventListener('change', applyHouseholdType);
     });
 
+    // Optional sectoral flags (see _entry_fields.blade.php): pregnant/
+    // lactating hidden AND cleared for a male evacuee -- clearing matters,
+    // since a hidden-but-still-ticked box would still be submitted -- and
+    // the collapsed header's badge shows how many are ticked, so a closed
+    // section never hides that something is set.
+    const sexSelect = root.querySelector('select[name="sex"]');
+    const sectoralBadge = root.querySelector('.entry-sectoral-count');
+    function applySectoralFlags() {
+        const isMale = sexSelect?.value === 'male';
+        root.querySelectorAll('.entry-sectoral [data-female-only]').forEach((label) => {
+            label.style.display = isMale ? 'none' : '';
+            if (isMale) label.querySelector('input').checked = false;
+        });
+        const ticked = root.querySelectorAll('.entry-sectoral-flag:checked').length;
+        if (sectoralBadge) {
+            sectoralBadge.textContent = `${ticked} ticked`;
+            sectoralBadge.style.display = ticked ? '' : 'none';
+        }
+    }
+    sexSelect?.addEventListener('change', applySectoralFlags);
+    root.querySelector('.entry-sectoral')?.addEventListener('change', applySectoralFlags);
+    applySectoralFlags();
+
     // Keeps the hidden household_label input in sync with whichever
     // option is currently selected -- AddEvacueeRequest::householdFields()
     // uses this as the display snapshot for a household picked from the

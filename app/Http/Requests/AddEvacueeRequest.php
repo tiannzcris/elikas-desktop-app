@@ -37,7 +37,28 @@ class AddEvacueeRequest extends FormRequest
             'household_type' => ['required', 'in:existing,new'],
             'household_family_local_id' => ['nullable', 'required_if:household_type,existing', 'string', 'max:30'],
             'new_household_head_name' => ['nullable', 'required_if:household_type,new', 'string', 'max:150'],
+            // Optional sectoral checkboxes (see EcBoardEntry::SECTORAL_FLAGS)
+            // -- a ticked box submits "1", an unticked one submits nothing.
+            'is_pwd' => ['nullable', 'boolean'],
+            'is_pregnant' => ['nullable', 'boolean'],
+            'is_lactating' => ['nullable', 'boolean'],
+            'is_solo_parent' => ['nullable', 'boolean'],
+            'is_indigenous_person' => ['nullable', 'boolean'],
+            'is_4ps_beneficiary' => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * All six sectoral flags as stored: true if ticked, otherwise null
+     * ("not recorded" -- never false). Returned for every flag, not just
+     * the ticked ones, so unticking a box while editing a pending entry
+     * really clears it.
+     */
+    public function sectoralFields(): array
+    {
+        return collect(array_keys(EcBoardEntry::SECTORAL_FLAGS))
+            ->mapWithKeys(fn ($flag) => [$flag => $this->boolean($flag) ? true : null])
+            ->all();
     }
 
     public function withValidator(Validator $validator): void
@@ -59,6 +80,17 @@ class AddEvacueeRequest extends FormRequest
 
             if ($this->input('household_type') === 'new' && ! $this->filled('new_household_head_name')) {
                 $validator->errors()->add('new_household_head_name', 'Enter the new household\'s head name.');
+            }
+
+            // Same guard as the central server's addEvacuee(), checked here
+            // too so the mistake is caught on this device instead of only
+            // surfacing later as a sync failure.
+            if ($this->input('sex') === 'male') {
+                foreach (EcBoardEntry::FEMALE_ONLY_FLAGS as $flag) {
+                    if ($this->boolean($flag)) {
+                        $validator->errors()->add($flag, 'Only a female evacuee can be marked pregnant or lactating.');
+                    }
+                }
             }
         });
     }

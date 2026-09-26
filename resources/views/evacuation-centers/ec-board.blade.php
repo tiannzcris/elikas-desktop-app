@@ -283,6 +283,40 @@
                 @endif
             </div>
         </div>
+
+        {{-- This device's not-yet-synced contribution to the sectoral
+             table, counted by the server's own rule (see
+             EvacuationCenterController::pendingSectoralBreakdown()) --
+             never merged into the server's "last known" figures. --}}
+        <div class="card-modern p-4 mt-4">
+            <div class="flex items-center gap-2 mb-1">
+                <i class="ti ti-device-desktop text-amber-500" style="font-size: 16px;" aria-hidden="true"></i>
+                <p class="text-sm font-bold text-gray-700">Sectoral -- added on this device (pending sync)</p>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">From this device's not-yet-synced Add Evacuee entries: each person's ticked details.</p>
+            @if ($pendingSectoral->sum(fn ($row) => $row['male'] + $row['female']) === 0)
+                <p class="text-sm text-gray-400">Nothing pending for this event.</p>
+            @else
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="text-gray-400 text-left">
+                            <th class="pb-2 font-medium">Sectoral group</th>
+                            <th class="pb-2 font-medium text-right">Male</th>
+                            <th class="pb-2 font-medium text-right">Female</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pendingSectoral as $row)
+                            <tr class="border-t border-gray-100">
+                                <td class="py-1.5 text-gray-600">{{ $row['label'] }}</td>
+                                <td class="py-1.5 text-right text-gray-800">{{ $row['male'] }}</td>
+                                <td class="py-1.5 text-right text-gray-800">{{ $row['female'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </div>
     @endif
 @endsection
 

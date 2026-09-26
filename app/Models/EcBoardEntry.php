@@ -28,8 +28,29 @@ class EcBoardEntry extends Model
         'senior_citizen' => 'Senior citizen',
     ];
 
+    /**
+     * Optional per-person sectoral flags Add Evacuee can record, in the
+     * order the form shows them: column => [form label, the central
+     * server's EC Board sectoral_group it counts toward]. Matches the
+     * central server's EvacuationCenterQuickCount::PER_PERSON_SECTORAL_FLAGS.
+     * Child/Single-Headed Family are deliberately absent -- they describe a
+     * whole family, not a person.
+     */
+    public const SECTORAL_FLAGS = [
+        'is_pwd' => ['PWD', 'pwd'],
+        'is_pregnant' => ['Pregnant', 'pregnant_women'],
+        'is_lactating' => ['Lactating', 'lactating_mothers'],
+        'is_solo_parent' => ['Solo parent', 'solo_parent'],
+        'is_indigenous_person' => ['Indigenous person', 'indigenous_peoples'],
+        'is_4ps_beneficiary' => ['4Ps beneficiary', 'four_ps_beneficiary'],
+    ];
+
+    /** Flags only a female evacuee can carry (the form hides them otherwise). */
+    public const FEMALE_ONLY_FLAGS = ['is_pregnant', 'is_lactating'];
+
     protected $fillable = [
         'evacuation_center_id', 'evacuation_event_id', 'sex', 'age_bracket',
+        'is_pwd', 'is_pregnant', 'is_lactating', 'is_solo_parent', 'is_indigenous_person', 'is_4ps_beneficiary',
         'household_family_local_id', 'existing_household_remote_id', 'new_household_head_name',
         'originated_household', 'remote_id', 'synced_at', 'sync_error',
     ];
@@ -37,7 +58,27 @@ class EcBoardEntry extends Model
     protected $casts = [
         'originated_household' => 'boolean',
         'synced_at' => 'datetime',
+        // Nullable booleans: null ("not recorded") survives the cast as null.
+        'is_pwd' => 'boolean',
+        'is_pregnant' => 'boolean',
+        'is_lactating' => 'boolean',
+        'is_solo_parent' => 'boolean',
+        'is_indigenous_person' => 'boolean',
+        'is_4ps_beneficiary' => 'boolean',
     ];
+
+    /**
+     * Only the flags actually ticked, as true -- anything else is left out
+     * of the sync payload entirely, which the central server stores as
+     * "not recorded" (null). Same as the web dashboard's own Add Evacuee.
+     */
+    public function sectoralFlagsPayload(): array
+    {
+        return collect(array_keys(self::SECTORAL_FLAGS))
+            ->filter(fn ($flag) => $this->{$flag} === true)
+            ->mapWithKeys(fn ($flag) => [$flag => true])
+            ->all();
+    }
 
     public function evacuationCenter(): BelongsTo
     {
@@ -122,6 +163,7 @@ class EcBoardEntry extends Model
                 'family_id' => $this->existing_household_remote_id,
                 'barangay_id' => null,
                 'family_name' => null,
+                ...$this->sectoralFlagsPayload(),
             ];
         }
 
@@ -150,6 +192,7 @@ class EcBoardEntry extends Model
                 'family_id' => null,
                 'barangay_id' => $this->evacuationCenter->barangay_remote_id,
                 'family_name' => $this->household?->evacuees->firstWhere('is_head_of_family', true)?->full_name,
+                ...$this->sectoralFlagsPayload(),
             ];
         }
 
@@ -169,6 +212,7 @@ class EcBoardEntry extends Model
             'family_id' => $isExistingHousehold ? $this->household->remote_id : null,
             'barangay_id' => $isExistingHousehold ? null : $this->evacuationCenter->barangay_remote_id,
             'family_name' => $isExistingHousehold ? null : $this->new_household_head_name,
+            ...$this->sectoralFlagsPayload(),
         ];
     }
 }

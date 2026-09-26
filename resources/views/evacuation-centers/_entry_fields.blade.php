@@ -75,4 +75,24 @@
             <input type="text" name="new_household_head_name" value="{{ $isEditing ? $entry->new_household_head_name : '' }}" placeholder="New household head's full name" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
         </div>
     </div>
+    {{-- Optional sectoral flags for THIS one person -- collapsed by default
+         so the common case stays fast, and opened automatically when
+         editing an entry that already has some set. Unticked means "not
+         recorded", not "no". Pregnant/lactating are hidden and cleared for
+         a male evacuee (see initEcBoardEntryForm() in app.js). --}}
+    @php($flagsSet = $isEditing ? collect(array_keys(\App\Models\EcBoardEntry::SECTORAL_FLAGS))->filter(fn ($f) => $entry->{$f} === true)->count() : 0)
+    <details class="entry-sectoral col-span-2 border border-gray-200 rounded-2xl" @if ($flagsSet) open @endif>
+        <summary class="cursor-pointer select-none px-3 py-2.5 text-sm text-gray-600">
+            Sectoral details <span class="text-gray-400">(optional)</span>
+            <span class="entry-sectoral-count ml-1 text-xs px-2 py-0.5 rounded-lg bg-brand/10 text-brand" @if (! $flagsSet) style="display: none;" @endif>{{ $flagsSet }} ticked</span>
+        </summary>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 px-3 pb-2 pt-1 text-sm text-gray-700">
+            @foreach (\App\Models\EcBoardEntry::SECTORAL_FLAGS as $flag => [$label])
+                <label class="flex items-center gap-2" @if (in_array($flag, \App\Models\EcBoardEntry::FEMALE_ONLY_FLAGS, true)) data-female-only @endif>
+                    <input type="checkbox" name="{{ $flag }}" value="1" class="entry-sectoral-flag" @checked($isEditing && $entry->{$flag} === true)> {{ $label }}
+                </label>
+            @endforeach
+        </div>
+        <p class="px-3 pb-3 text-xs text-gray-400">Tick only what you know. Leaving a box unticked records nothing -- it doesn't mean "no".</p>
+    </details>
 </div>
