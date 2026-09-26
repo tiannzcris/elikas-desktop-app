@@ -7,7 +7,6 @@ use App\Models\Barangay;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationCenterBreakdown;
-use App\Models\EvacuationCenterQuickCount;
 use App\Models\EvacuationCenterSectoralSnapshot;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
@@ -289,13 +288,6 @@ class EvacuationCenterController extends Controller
         // Null only if that barangay somehow isn't cached locally.
         $backBarangay = Barangay::where('remote_id', $center->barangay_remote_id)->first();
 
-        $quickCount = $selectedEventId
-            ? EvacuationCenterQuickCount::with('sectoralGroups')
-                ->where('evacuation_center_id', $center->id)
-                ->where('evacuation_event_id', $selectedEventId)
-                ->first()
-            : null;
-
         // The "Last known" half of the sectoral/4Ps dual view -- see
         // EvacuationCenterSectoralSnapshot's own docblock. Whatever was
         // last fetched from the server (or nothing yet, if this
@@ -324,144 +316,9 @@ class EvacuationCenterController extends Controller
             // only, distinct from $breakdownAgeBrackets below.
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
             'breakdownAgeBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
-            'quickCount' => $quickCount,
             'sectoralSnapshot' => $sectoralSnapshot,
-            'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
+            'sectoralGroups' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS,
         ]);
-    }
-
-    /**
-     * Saves this device's locally-reported sectoral/4Ps figures for one
-     * center+event -- confirmed missing from this app entirely until now
-     * (see EvacuationCenterQuickCount's own docblock). Always saves
-     * entirely to the LOCAL database first, same as EcBoardEntryController
-     * ::store() -- no live API call from this request, synced_at stays
-     * null (pending) until the next manual "Sync now". Overwrites the
-     * SAME row on every save (not a growing queue): there is only ever
-     * one current figure to report per center+event, matching how the
-     * web dashboard's own "Save beneficiaries & sectoral figures" form
-     * always submits the full table.
-     */
-    public function saveSectoral(EvacuationCenter $center, Request $request)
-    {
-        $auth = LocalAuth::current();
-        if (! $auth) {
-            return redirect()->route('login');
-        }
-
-        $validated = $request->validate([
-            'evacuation_event_id' => ['required', 'integer', 'exists:evacuation_events,id'],
-            'beneficiaries_4ps' => ['required', 'integer', 'min:0'],
-            'sectoral_groups' => ['array'],
-            'sectoral_groups.*.sectoral_group' => ['required', 'in:'.implode(',', array_keys(EvacuationCenterQuickCount::SECTORAL_GROUPS))],
-            'sectoral_groups.*.male_count' => ['required', 'integer', 'min:0'],
-            'sectoral_groups.*.female_count' => ['required', 'integer', 'min:0'],
-        ]);
-
-        $quickCount = EvacuationCenterQuickCount::updateOrCreate(
-            ['evacuation_center_id' => $center->id, 'evacuation_event_id' => $validated['evacuation_event_id']],
-            [
-                'beneficiaries_4ps' => $validated['beneficiaries_4ps'],
-                // Changed just now -- needs pushing again, same reasoning
-                // as FamilyController::update() clearing sync_error on edit.
-                'synced_at' => null,
-                'sync_error' => null,
-            ]
-        );
-
-        foreach ($validated['sectoral_groups'] ?? [] as $group) {
-            $quickCount->sectoralGroups()->updateOrCreate(
-                ['sectoral_group' => $group['sectoral_group']],
-                ['male_count' => $group['male_count'], 'female_count' => $group['female_count']]
-            );
-        }
-
-        return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
-            ->with('status', 'Sectoral figures saved on this device. Sync when you have internet.');
-    }
-
-    /**
-     * Opens the sectoral/4Ps edit form, pre-filled from whichever source
-     * is most current: this device's own PENDING not-yet-synced edit if
-     * one exists, else the "Last known" synced snapshot, else empty
-     * defaults -- same three-way precedence as the mobile app's own
-     * now-proven version of this exact form. Rendered as a modal
-     * fragment (X-Modal-Request) or a full page, same convention as
-     * EcBoardEntryController::renderForm().
-     */
-    public function editSectoral(EvacuationCenter $center, Request $request)
-    {
-        $auth = LocalAuth::current();
-        if (! $auth) {
-            return redirect()->route('login');
-        }
-
-        $eventId = (int) $request->query('event', 0);
-        $event = $eventId ? EvacuationEvent::find($eventId) : null;
-        if (! $event) {
-            return redirect()->route('evacuation-centers.ec-board', $center)
-                ->with('status', 'Select a disaster event first.');
-        }
-
-        // Only a genuinely PENDING (not-yet-synced) row counts as "this
-        // device's own more recent, unsynced intent" to resume -- an
-        // already-synced leftover row (kept around after a successful
-        // sync, never deleted -- see FamilyController::sync()) is no
-        // longer a draft in progress, so pre-filling from it here would
-        // resurrect stale values instead of falling through to the
-        // actually-current "Last known" snapshot below.
-        $quickCount = EvacuationCenterQuickCount::with('sectoralGroups')
-            ->where('evacuation_center_id', $center->id)
-            ->where('evacuation_event_id', $event->id)
-            ->whereNull('synced_at')
-            ->first();
-
-        $snapshot = EvacuationCenterSectoralSnapshot::where('evacuation_center_id', $center->id)
-            ->where('evacuation_event_id', $event->id)
-            ->first();
-
-        $data = [
-            'center' => $center,
-            'event' => $event,
-            'quickCount' => $quickCount,
-            'snapshot' => $snapshot,
-            'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
-        ];
-
-        if ($request->header('X-Modal-Request')) {
-            return view('evacuation-centers._sectoral_form', $data);
-        }
-
-        return view('evacuation-centers.edit-sectoral', $data);
-    }
-
-    /**
-     * Removes this device's own pending (not-yet-synced) sectoral/4Ps
-     * edit -- same synced-record-is-immutable convention as
-     * EcBoardEntryController::destroy(). This never touches the "Last
-     * known" snapshot (a separate model entirely -- see
-     * EvacuationCenterSectoralSnapshot's own docblock): deleting a
-     * pending edit just abandons this device's own unsynced draft, it
-     * never un-reports whatever the server already has on record.
-     */
-    public function destroySectoral(EvacuationCenterQuickCount $quickCount)
-    {
-        $auth = LocalAuth::current();
-        if (! $auth) {
-            return redirect()->route('login');
-        }
-
-        if ($quickCount->isSynced()) {
-            return redirect()->route('evacuation-centers.ec-board', $quickCount->evacuation_center_id)
-                ->with('status', 'This sectoral report has already synced -- it can no longer be deleted from this device.');
-        }
-
-        $centerId = $quickCount->evacuation_center_id;
-        $eventId = $quickCount->evacuation_event_id;
-        $quickCount->delete();
-
-        return redirect()->route('evacuation-centers.ec-board', ['center' => $centerId, 'event' => $eventId])
-            ->with('status', 'Pending sectoral edit removed.');
     }
 
     /**
@@ -580,7 +437,7 @@ class EvacuationCenterController extends Controller
 
         return view('evacuation-centers._sectoral_last_known', [
             'snapshot' => $snapshot,
-            'sectoralGroups' => EvacuationCenterQuickCount::SECTORAL_GROUPS,
+            'sectoralGroups' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS,
         ]);
     }
 
@@ -710,7 +567,7 @@ class EvacuationCenterController extends Controller
             $counted = $pendingEntries->filter(fn (EcBoardEntry $e) => $e->{$flag} === true);
 
             return [
-                'label' => EvacuationCenterQuickCount::SECTORAL_GROUPS[$meta[1]],
+                'label' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS[$meta[1]],
                 'male' => $counted->where('sex', 'male')->count(),
                 'female' => $counted->where('sex', 'female')->count(),
             ];

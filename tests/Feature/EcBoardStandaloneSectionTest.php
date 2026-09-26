@@ -4,21 +4,18 @@ namespace Tests\Feature;
 
 use App\Models\Barangay;
 use App\Models\EvacuationCenter;
-use App\Models\EvacuationCenterQuickCount;
 use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Covers the REAL standalone EC Board section (barangay -> centers ->
- * board, replacing the earlier stopgap that just relabeled the old
- * Evacuation Centers management link) and the sectoral/4Ps aggregate
- * reporting confirmed missing until now -- see
- * EvacuationCenterQuickCount's own docblock for why this stays a
- * manually-reported figure, never derived from individual evacuee
- * entries the way age/sex is.
+ * Covers the standalone EC Board section (barangay -> centers -> board)
+ * and its sectoral display -- every sectoral figure is counted live by the
+ * central server now; nothing is typed in on this device.
  */
 class EcBoardStandaloneSectionTest extends TestCase
 {
@@ -108,7 +105,11 @@ class EcBoardStandaloneSectionTest extends TestCase
     // Part 2: sectoral group reporting
     // -----------------------------------------------------------------
 
-    public function test_ec_board_page_shows_the_sectoral_dual_view_with_an_edit_trigger(): void
+    /**
+     * Typed family counts are retired: the central server discards them,
+     * so offering the form at all would be a silent data-loss trap.
+     */
+    public function test_ec_board_page_no_longer_offers_typing_family_counts(): void
     {
         $this->login();
         Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
@@ -118,12 +119,10 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        // Two separate cards, never merged -- see ec-board.blade.php's own
-        // note mirroring _breakdown_table.blade.php's reasoning.
         $page->assertSee('Sectoral group &amp; 4Ps -- last known', false);
-        $page->assertSee('Sectoral group &amp; 4Ps -- pending', false);
-        $page->assertSee('Edit sectoral &amp; 4Ps', false);
-        $page->assertSee(route('evacuation-centers.sectoral.edit', $center), false);
+        $page->assertSee('Sectoral -- added on this device (pending sync)', false);
+        $page->assertDontSee('Edit family counts');
+        $page->assertDontSee('family counts');
     }
 
     /**
@@ -147,157 +146,43 @@ class EcBoardStandaloneSectionTest extends TestCase
     }
 
     /**
-     * The modal edit form is the one place all 8 categories actually
-     * need to be listed -- the main page's own two dual-view cards
-     * deliberately stay empty-state/read-only until something has
-     * actually been fetched or reported (see _sectoral_last_known.blade
-     * .php and the Pending card's own empty state).
+     * The typed-family-counts write path is gone entirely, not just hidden:
+     * the central server discards typed figures, so any way to save one
+     * would be a silent data-loss trap.
      */
-    public function test_the_sectoral_edit_form_lists_all_eight_categories(): void
+    public function test_the_retired_family_counts_endpoints_no_longer_exist(): void
     {
         $this->login();
         Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
         $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
         $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
 
-        $page = $this->get(route('evacuation-centers.sectoral.edit', $center).'?event='.$event->id);
+        $this->assertFalse(Route::has('evacuation-centers.sectoral.update'));
+        $this->assertFalse(Route::has('evacuation-centers.sectoral.edit'));
+        $this->assertFalse(Route::has('quick-counts.destroy'));
 
-        $page->assertOk();
-        $page->assertSee('4Ps beneficiary families');
-        foreach (EvacuationCenterQuickCount::SECTORAL_GROUPS as $label) {
-            $page->assertSee($label);
-        }
+        $this->post("/evacuation-centers/{$center->id}/sectoral", [
+            'evacuation_event_id' => $event->id,
+            'sectoral_groups' => [['sectoral_group' => 'child_headed_family', 'male_count' => 2, 'female_count' => 1]],
+        ])->assertNotFound();
+        $this->get("/evacuation-centers/{$center->id}/sectoral/edit?event={$event->id}")->assertNotFound();
+
+        $this->assertFalse(Schema::hasTable('evacuation_center_quick_counts'));
+        $this->assertFalse(Schema::hasTable('evacuation_center_quick_count_sectoral_groups'));
     }
 
-    public function test_saving_sectoral_figures_stores_them_locally_as_pending(): void
+    public function test_sync_sends_nothing_for_sectoral_figures(): void
     {
         $this->login();
         Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
+        EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
 
-        $response = $this->post(route('evacuation-centers.sectoral.update', $center), [
-            'evacuation_event_id' => $event->id,
-            'beneficiaries_4ps' => 5,
-            'sectoral_groups' => [
-                ['sectoral_group' => 'pwd', 'male_count' => 2, 'female_count' => 1],
-                ['sectoral_group' => 'pregnant_women', 'male_count' => 0, 'female_count' => 3],
-            ],
-        ]);
-
-        $response->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
-
-        $quickCount = EvacuationCenterQuickCount::where('evacuation_center_id', $center->id)
-            ->where('evacuation_event_id', $event->id)
-            ->first();
-        $this->assertNotNull($quickCount);
-        $this->assertSame(5, $quickCount->beneficiaries_4ps);
-        $this->assertNull($quickCount->synced_at);
-        $this->assertDatabaseHas('evacuation_center_quick_count_sectoral_groups', [
-            'evacuation_center_quick_count_id' => $quickCount->id, 'sectoral_group' => 'pwd', 'male_count' => 2, 'female_count' => 1,
-        ]);
-
-        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
-        $page->assertSee('Saved on this device, not yet synced.');
-    }
-
-    public function test_resaving_sectoral_figures_overwrites_the_same_row_instead_of_creating_a_new_one(): void
-    {
-        $this->login();
-        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
-
-        $payload = fn (int $pwdMale) => [
-            'evacuation_event_id' => $event->id,
-            'beneficiaries_4ps' => 5,
-            'sectoral_groups' => [['sectoral_group' => 'pwd', 'male_count' => $pwdMale, 'female_count' => 0]],
-        ];
-
-        $this->post(route('evacuation-centers.sectoral.update', $center), $payload(2));
-        $this->post(route('evacuation-centers.sectoral.update', $center), $payload(9));
-
-        $this->assertSame(1, EvacuationCenterQuickCount::where('evacuation_center_id', $center->id)->count());
-        $quickCount = EvacuationCenterQuickCount::where('evacuation_center_id', $center->id)->firstOrFail();
-        $this->assertDatabaseHas('evacuation_center_quick_count_sectoral_groups', [
-            'evacuation_center_quick_count_id' => $quickCount->id, 'sectoral_group' => 'pwd', 'male_count' => 9,
-        ]);
-    }
-
-    public function test_an_invalid_sectoral_group_key_is_rejected(): void
-    {
-        $this->login();
-        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
-
-        $response = $this->post(route('evacuation-centers.sectoral.update', $center), [
-            'evacuation_event_id' => $event->id,
-            'beneficiaries_4ps' => 0,
-            'sectoral_groups' => [['sectoral_group' => 'not_a_real_group', 'male_count' => 1, 'female_count' => 0]],
-        ]);
-
-        $response->assertSessionHasErrors('sectoral_groups.0.sectoral_group');
-        $this->assertSame(0, EvacuationCenterQuickCount::count());
-    }
-
-    public function test_sync_now_pushes_pending_sectoral_figures_to_the_central_server(): void
-    {
-        $this->login();
-        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
-
-        $this->post(route('evacuation-centers.sectoral.update', $center), [
-            'evacuation_event_id' => $event->id,
-            'beneficiaries_4ps' => 3,
-            'sectoral_groups' => [['sectoral_group' => 'solo_parent', 'male_count' => 1, 'female_count' => 2]],
-        ]);
-
-        Http::fake(['*/evacuation-centers/1/quick-count' => Http::response(['data' => []], 200)]);
+        Http::fake();
 
         $response = $this->post(route('families.sync'));
 
-        $response->assertSessionHas('status', '1 record(s) synced successfully.');
-
-        Http::assertSent(function ($request) {
-            return $request->method() === 'PUT'
-                && str_contains($request->url(), '/evacuation-centers/1/quick-count')
-                && $request['evacuation_event_id'] === 1
-                && $request['beneficiaries_4ps'] === 3
-                && collect($request['sectoral_groups'])->firstWhere('sectoral_group', 'solo_parent')['male_count'] === 1;
-        });
-
-        $quickCount = EvacuationCenterQuickCount::where('evacuation_center_id', $center->id)->firstOrFail();
-        $this->assertNotNull($quickCount->synced_at);
-        $this->assertNull($quickCount->sync_error);
-    }
-
-    public function test_a_sectoral_sync_failure_is_recorded_and_shown_on_the_board(): void
-    {
-        $this->login();
-        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
-
-        $this->post(route('evacuation-centers.sectoral.update', $center), [
-            'evacuation_event_id' => $event->id,
-            'beneficiaries_4ps' => 3,
-            'sectoral_groups' => [],
-        ]);
-
-        Http::fake(['*/evacuation-centers/1/quick-count' => Http::response([
-            'message' => 'The given data was invalid.',
-            'errors' => ['beneficiaries_4ps' => ['The beneficiaries 4ps field is required.']],
-        ], 422)]);
-
-        $this->post(route('families.sync'));
-
-        $quickCount = EvacuationCenterQuickCount::where('evacuation_center_id', $center->id)->firstOrFail();
-        $this->assertNull($quickCount->synced_at);
-        $this->assertNotNull($quickCount->sync_error);
-
-        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
-        $page->assertSee($quickCount->sync_error);
+        $response->assertSessionHas('status', 'Nothing to sync -- everything is already up to date.');
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/quick-count'));
     }
 }

@@ -334,42 +334,4 @@ class CentralApiService
             throw new \RuntimeException($message);
         }
     }
-
-    /**
-     * Pushes this device's locally-saved EC Board sectoral/4Ps figures to
-     * the CENTRAL server's real quick-count save endpoint (confirmed
-     * against elikas-backend's EvacuationCenterController::
-     * updateQuickCount()). Unlike registerFamily()/addEvacuee() above,
-     * this is a single upsert-by-(center,event) PUT, not a "create a new
-     * record" POST -- matching how this figure is a "simple value update"
-     * on this device too (see EvacuationCenterQuickCount's own docblock),
-     * not a growing queue of individual entries. No id is returned or
-     * needed: the server resolves the row to update from
-     * evacuation_event_id (in the payload) plus {center} in the URL, the
-     * same two keys this device's own local row is unique on.
-     */
-    public function updateQuickCount(string $token, int $centerRemoteId, array $payload): void
-    {
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => "Bearer {$token}",
-                'Accept' => 'application/json',
-            ])->timeout(15)->put("{$this->baseUrl()}/evacuation-centers/{$centerRemoteId}/quick-count", $payload);
-        } catch (ConnectionException $e) {
-            throw new \RuntimeException('Could not reach the central server.');
-        }
-
-        if ($response->status() === 401) {
-            throw new CentralApiAuthenticationException($response->json('message') ?? 'Unauthenticated.');
-        }
-
-        if (! $response->successful()) {
-            $message = $response->json('message') ?? 'The central server rejected these figures.';
-            $errors = $response->json('errors');
-            if ($errors) {
-                $message .= ' '.collect($errors)->flatten()->implode(' ');
-            }
-            throw new \RuntimeException($message);
-        }
-    }
 }

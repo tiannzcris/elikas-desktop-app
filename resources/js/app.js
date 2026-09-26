@@ -559,44 +559,6 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
 };
 
 // ---------------------------------------------------------------------
-// "Edit sectoral & 4Ps" modal -- same dynamic-modal mechanism as
-// openEcBoardEntryModal() above, targeting the sectoral form's own mount
-// point instead. Unlike that form, this one needs no special init
-// beyond the generic close/submit wiring every modal here shares -- no
-// household picker, no conditional fields.
-// ---------------------------------------------------------------------
-function openSectoralEditModal(url) {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4';
-    backdrop.style.background = 'rgba(15, 36, 71, 0.55)';
-    backdrop.style.backdropFilter = 'blur(4px)';
-    backdrop.style.webkitBackdropFilter = 'blur(4px)';
-    backdrop.setAttribute('data-dynamic-modal-backdrop', '');
-    backdrop.innerHTML = '<div class="bg-white rounded-2xl px-6 py-5 text-sm text-gray-500 mt-10">Loading...</div>';
-    document.body.appendChild(backdrop);
-
-    backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) closeDynamicModal(backdrop);
-    });
-
-    fetch(url, { headers: { 'X-Modal-Request': '1' }, credentials: 'same-origin' })
-        .then((r) => r.text())
-        .then((html) => {
-            backdrop.innerHTML = html;
-            window.ELIKAS.initSectoralForm(backdrop.querySelector('[data-sectoral-modal]'));
-        })
-        .catch(() => {
-            backdrop.innerHTML = '<div class="bg-white rounded-2xl p-6 text-sm text-red-600 mt-10">Could not load the form. Please try again.</div>';
-        });
-}
-
-window.ELIKAS.initSectoralForm = function initSectoralForm(root) {
-    if (!root) return;
-    wireModalClose(root);
-    wireModalSubmit(root);
-};
-
-// ---------------------------------------------------------------------
 // Delegated click handler for the whole document -- opens the register-
 // family modal for [data-modal-trigger] links, otherwise runs the page
 // transition for normal same-origin navigation.
@@ -613,13 +575,6 @@ document.addEventListener('click', (e) => {
     if (ecBoardTrigger) {
         e.preventDefault();
         openEcBoardEntryModal(ecBoardTrigger.href);
-        return;
-    }
-
-    const sectoralTrigger = e.target.closest('[data-modal-trigger="sectoral-edit"]');
-    if (sectoralTrigger) {
-        e.preventDefault();
-        openSectoralEditModal(sectoralTrigger.href);
         return;
     }
 
