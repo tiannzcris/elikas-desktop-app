@@ -23,18 +23,25 @@
 @endphp
 
 <div class="flex flex-col" data-entry-fields>
-    <div class="pb-3">
-        <label class="text-xs text-gray-500 block mb-1">Disaster event</label>
-        <select name="evacuation_event_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
-            <option value="">Select event</option>
-            @foreach ($events as $e)
-                <option value="{{ $e->id }}" @selected($isEditing ? $entry->evacuation_event_id === $e->id : ($selectedEventId ?? null) === $e->id)>{{ $e->name }}</option>
-            @endforeach
-        </select>
-        @if ($events->isEmpty())
-            <p class="text-xs text-amber-600 mt-1">No events cached -- refresh reference data while online.</p>
-        @endif
-    </div>
+    {{-- The board's Add evacuee panel adds to the event the board is
+         showing (its own picker sits in the board header); the edit modal
+         lets the event be changed. --}}
+    @if (! empty($fixedEventId))
+        <input type="hidden" name="evacuation_event_id" value="{{ $fixedEventId }}">
+    @else
+        <div class="pb-3">
+            <label class="text-xs text-gray-500 block mb-1">Disaster event</label>
+            <select name="evacuation_event_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <option value="">Select event</option>
+                @foreach ($events as $e)
+                    <option value="{{ $e->id }}" @selected($isEditing ? $entry->evacuation_event_id === $e->id : ($selectedEventId ?? null) === $e->id)>{{ $e->name }}</option>
+                @endforeach
+            </select>
+            @if ($events->isEmpty())
+                <p class="text-xs text-amber-600 mt-1">No events cached -- refresh reference data while online.</p>
+            @endif
+        </div>
+    @endif
 
     {{-- 1. The person being added. --}}
     <fieldset class="entry-section">

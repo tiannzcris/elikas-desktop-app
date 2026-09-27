@@ -4,7 +4,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
-use App\Http\Controllers\EvacueeController;
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\SystemUpdateController;
 use Illuminate\Support\Facades\Route;
@@ -35,8 +34,6 @@ Route::get('/families/{family}/edit', [FamilyController::class, 'edit'])->name('
 Route::put('/families/{family}', [FamilyController::class, 'update'])->name('families.update');
 Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->name('families.destroy');
 
-Route::get('/evacuees', [EvacueeController::class, 'index'])->name('evacuees.index');
-
 // Standalone fast-entry path to EC Board: barangay -> center -> that
 // center's board. Kept under its own /ec-board/... prefix (not nested
 // under /evacuation-centers/...) so the URL itself signals this is a
@@ -54,10 +51,7 @@ Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController:
 // blocking live call there starves this single-request-at-a-time local
 // server's concurrent CSS/JS asset requests while offline (see
 // EvacuationCenterController::ecBoard()'s docblock).
-Route::get('/evacuation-centers/{center}/breakdown-refresh', [EvacuationCenterController::class, 'refreshBreakdown'])->name('evacuation-centers.breakdown-refresh');
-// Sectoral/4Ps equivalent of breakdown-refresh above -- see
-// EvacuationCenterController::refreshSectoralLastKnown()'s own docblock.
-Route::get('/evacuation-centers/{center}/sectoral-refresh', [EvacuationCenterController::class, 'refreshSectoralLastKnown'])->name('evacuation-centers.sectoral-refresh');
+Route::get('/evacuation-centers/{center}/board-refresh', [EvacuationCenterController::class, 'refreshBoard'])->name('evacuation-centers.board-refresh');
 Route::get('/evacuation-centers/{center}/households-refresh', [EvacuationCenterController::class, 'refreshHouseholds'])->name('evacuation-centers.households-refresh');
 // "Quick Departure" -- called client-side via fetch(), online-only, no
 // offline/local path at all. See EvacuationCenterController::

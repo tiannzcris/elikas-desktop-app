@@ -354,13 +354,13 @@ class EcBoardHouseholdHeadTest extends TestCase
         $entry = $this->addNewHousehold($event, $center, ['is_single_headed' => '1', 'head_sex' => 'male', 'head_is_minor' => '0']);
         $family = $entry->household()->firstOrFail();
 
-        $page = $this->get(route('families.index', ['barangay' => $family->barangay_id, 'center' => $center->id]));
+        $page = $this->get(route('families.index'));
         $page->assertSee('Head not yet linked. Counts use the answers given for the head (male, not a minor) until a member is linked.');
         $page->assertSee('Household: single-headed yes, child-headed no (male)');
 
         $this->addToExisting($event, $center, (string) $family->id, ['sex' => 'female', 'head_is_self' => '1']);
 
-        $page = $this->get(route('families.index', ['barangay' => $family->barangay_id, 'center' => $center->id]));
+        $page = $this->get(route('families.index'));
         $page->assertDontSee('Head not yet linked');
         $page->assertSee('Household: single-headed yes, child-headed no (female)');
     }

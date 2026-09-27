@@ -101,3 +101,47 @@ main.page-transition.in { opacity: 1; }
 .entry-section { min-width: 0; border-top: 1px solid #F3F4F6; padding-top: 0.75rem; margin-top: 0.75rem; }
 .entry-section-title { float: left; width: 100%; margin-bottom: 0.5rem; font-size: 0.75rem; line-height: 1rem; font-weight: 600; color: #1F2937; }
 .entry-section-title + * { clear: both; }
+
+/* Page-level section headings (Registered families' Not yet synced /
+   Synced split) -- a plain bold label with a count pill beside it. */
+.section-heading { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.95rem; font-weight: 700; color: #1F2937; }
+.section-heading i { font-size: 17px; }
+.section-count { font-size: 0.7rem; font-weight: 700; line-height: 1; padding: 0.25rem 0.55rem; border-radius: 9999px; background: #EEF2F7; color: #475569; }
+.section-count-pending { background: #FEF3C7; color: #92400E; }
+
+/* EC Information Board: one ruled sheet -- header figures, Age & Sex, then
+   Sectoral -- with both tables sharing one column grid so the numbers line
+   up down the whole board, like the printed DSWD board it mirrors. The
+   amber "On this device" column is this device's unsynced additions, kept
+   beside the server's figures, never added into them. */
+.ecb-sheet { overflow: hidden; }
+.ecb-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; }
+.ecb-strip > div { padding: 0.625rem 1.25rem; }
+.ecb-strip > div + div { border-left: 1px solid #E5E7EB; }
+.ecb-strip-label { font-size: 0.75rem; color: #6B7280; }
+.ecb-strip-value { font-size: 1.25rem; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+.ecb-strip-pending { background: #FFFBEB; }
+.ecb-strip-pending .ecb-strip-value { color: #B45309; }
+
+.ecb-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.ecb-table col.ecb-num { width: 4.75rem; }
+.ecb-table col.ecb-pending-col { width: 6.5rem; }
+.ecb-table th, .ecb-table td { padding: 0.4rem 1.25rem 0.4rem 0.75rem; text-align: right; color: #1F2937; }
+.ecb-table th:first-child, .ecb-table td:first-child { padding-left: 1.25rem; text-align: left; color: #4B5563; }
+.ecb-table thead tr { background: #F9FAFB; border-bottom: 1px solid #E5E7EB; }
+.ecb-table th { font-size: 0.75rem; font-weight: 500; color: #4B5563; }
+.ecb-table th:first-child { font-weight: 600; color: #1F2937; }
+.ecb-table tbody tr + tr { border-top: 1px solid #F3F4F6; }
+.ecb-table tfoot tr { border-top: 2px solid #D1D5DB; }
+.ecb-table tfoot td, .ecb-table tfoot td:first-child { font-weight: 700; color: #111827; }
+.ecb-table-follow { border-top: 2px solid #D1D5DB; }
+.ecb-table .ecb-pending { background: #FFFBEB; border-left: 1px solid #FDE68A; line-height: 1.1; }
+.ecb-table th.ecb-pending { color: #B45309; font-weight: 600; }
+.ecb-pending-total { display: block; font-weight: 700; color: #B45309; }
+.ecb-pending-split { display: block; font-size: 0.6875rem; color: #D97706; }
+.ecb-table td.ecb-pending-none { color: #FCD34D; }
+.ecb-notes { border-top: 1px solid #E5E7EB; padding: 0.75rem 1.25rem; font-size: 0.75rem; color: #6B7280; display: flex; flex-direction: column; gap: 0.25rem; }
+.ecb-pending-key { font-weight: 600; color: #B45309; background: #FFFBEB; border-radius: 4px; padding: 0 0.3rem; }
+.ecb-asof { padding: 0 1.25rem 0.625rem; font-size: 0.8125rem; font-weight: 600; color: #374151; }
+.ecb-asof time { font-weight: 500; color: #1F2937; }
+.ecb-asof .local-time-age { font-weight: 400; color: #6B7280; }

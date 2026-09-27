@@ -100,8 +100,8 @@ class OwnBarangayPinnedFirstTest extends TestCase
         $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
         $a = Barangay::create(['remote_id' => 1, 'name' => 'Abella']);
         $own = Barangay::create(['remote_id' => 2, 'name' => 'Zamora']);
-        Family::create(['barangay_id' => $a->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center']);
-        Family::create(['barangay_id' => $own->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center']);
+        Family::create(['barangay_id' => $a->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center', 'remote_id' => 101, 'synced_at' => now()]);
+        Family::create(['barangay_id' => $own->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center', 'remote_id' => 102, 'synced_at' => now()]);
 
         $page = $this->get(route('families.index'));
 
@@ -130,12 +130,12 @@ class OwnBarangayPinnedFirstTest extends TestCase
         $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
         Barangay::create(['remote_id' => 9, 'name' => 'Nothing Registered Yet']);
         $other = Barangay::create(['remote_id' => 1, 'name' => 'Has Families']);
-        Family::create(['barangay_id' => $other->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center']);
+        Family::create(['barangay_id' => $other->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center', 'remote_id' => 103, 'synced_at' => now()]);
 
         $page = $this->get(route('families.index'));
 
         $page->assertOk();
         $page->assertSee('Nothing Registered Yet');
-        $page->assertSee('0 families');
+        $page->assertSee('0 synced families');
     }
 }

@@ -80,8 +80,8 @@ class EcBoardEntryManagementTest extends TestCase
         // keep this test fast or deterministic.
         $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
-        $page->assertSee('As of last sync');
-        $page->assertSee('Added on this device (pending sync)');
+        $page->assertSee('No. of Persons (Cum/Now)');
+        $page->assertSee('Added on this device, not yet synced');
         $page->assertSee('Juan Dela Cruz');
     }
 
@@ -114,47 +114,27 @@ class EcBoardEntryManagementTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $page->assertOk();
 
-        // Scoped, section-by-section checks rather than a bare global
-        // substring search: "42" is not actually unique on the page --
-        // the shared layout's header renders a box-shadow with
-        // "rgba(15, 23, 42, ...)" on every single page, before
-        // @yield('content') even starts (see layouts/app.blade.php), so a
-        // plain strpos($content, '42') finds THAT "42" first, not
-        // anything in either breakdown table. Slicing the response into
-        // the two card sections (bounded by their own headings, and by
-        // the next heading -- "Add evacuee" -- after the second card)
-        // avoids that collision entirely. Matching '>42<' (not a bare
-        // '42') also correctly allows for 42 legitimately appearing MORE
-        // than once inside a correctly-rendering last-known table (once
-        // in the 'adult' bracket row, again in the grand-total row) --
-        // this test's earlier "must appear exactly once" assumption was
-        // its own bug, not a real constraint on the view.
-        $content = $page->getContent();
-        $lastSyncPos = strpos($content, 'As of last sync');
-        $pendingSectionPos = strpos($content, 'Added on this device (pending sync)');
-        $addEvacueeHeadingPos = strpos($content, 'Add evacuee', $pendingSectionPos);
-
-        $this->assertNotFalse($lastSyncPos);
-        $this->assertNotFalse($pendingSectionPos);
-        $this->assertNotFalse($addEvacueeHeadingPos);
-        $this->assertTrue($lastSyncPos < $pendingSectionPos, 'the "As of last sync" section must render before the "pending" section');
-
-        $lastSyncSectionHtml = substr($content, $lastSyncPos, $pendingSectionPos - $lastSyncPos);
-        $pendingSectionHtml = substr($content, $pendingSectionPos, $addEvacueeHeadingPos - $pendingSectionPos);
-
-        $this->assertStringContainsString('>42<', $lastSyncSectionHtml, 'the untouched last-known count (42) must render inside the "As of last sync" section');
-        $this->assertStringNotContainsString('>42<', $pendingSectionHtml, 'the pending section must show only this device\'s own 1 pending entry -- never merged with, or bumped by, the last-known 42');
+        // The Adult row carries both sources side by side: the server's 42
+        // in Male/Total, and this device's 1 in its own "On this device"
+        // cell -- never summed into 43.
+        $label = EcBoardEntry::AGE_BRACKETS['adult'];
+        preg_match('#<tr>\s*<td>'.preg_quote($label, '#').'</td>(.*?)</tr>#s', $page->getContent(), $row);
+        $this->assertNotEmpty($row, 'the Adult row must render on the board');
+        $cells = array_map(fn ($cell) => trim(strip_tags($cell)), preg_split('#</td>#', $row[1], -1, PREG_SPLIT_NO_EMPTY));
+        $this->assertSame(['42', '0', '42'], array_slice($cells, 0, 3), 'Male/Female/Total are the untouched last-known figures');
+        $this->assertStringContainsString('+1', $cells[3], 'the pending cell shows this device\'s one entry');
+        $this->assertStringNotContainsString('43', $row[1], 'the two sources are never merged');
     }
 
     /**
-     * The breakdown fetch moved OFF the EC Board page's own synchronous
+     * The board fetch moved OFF the EC Board page's own synchronous
      * render (see ecBoard()'s docblock) and into a client-side fetch()
      * that hits this dedicated endpoint after the page has already
      * loaded. This test calls that endpoint directly -- exactly what the
      * page's own JS does -- rather than expecting the page load itself to
      * trigger it (it deliberately no longer does; that was the bug).
      */
-    public function test_the_breakdown_refresh_endpoint_fetches_and_caches_the_live_breakdown(): void
+    public function test_the_board_refresh_endpoint_fetches_and_caches_the_live_breakdown(): void
     {
         [$barangay, $event, $center] = $this->seedBase();
 
@@ -173,7 +153,7 @@ class EcBoardEntryManagementTest extends TestCase
             ]]),
         ]);
 
-        $response = $this->get(route('evacuation-centers.breakdown-refresh', $center).'?event='.$event->id);
+        $response = $this->get(route('evacuation-centers.board-refresh', $center).'?event='.$event->id);
         $response->assertOk();
         $response->assertSee('Adult');
 
@@ -501,8 +481,8 @@ class EcBoardEntryManagementTest extends TestCase
         $page->assertSee('EC Information Board');
         $page->assertSee(route('evacuation-centers.ec-board', $center), false);
         // Content that now lives ONLY on the dedicated EC Board page.
-        $page->assertDontSee('As of last sync');
-        $page->assertDontSee('Added on this device (pending sync)');
+        $page->assertDontSee('No. of Persons (Cum/Now)');
+        $page->assertDontSee('Added on this device, not yet synced');
         $page->assertDontSee('Add evacuee (offline)');
     }
 
@@ -564,7 +544,7 @@ class EcBoardEntryManagementTest extends TestCase
         $afterAdd->assertSee('Rosa Santos');
     }
 
-    public function test_sidebar_nav_shows_dashboard_ec_board_registered_families_all_evacuees_in_that_exact_order(): void
+    public function test_sidebar_nav_shows_dashboard_ec_board_registered_families_in_that_exact_order(): void
     {
         LocalAuth::create([
             'remote_user_id' => 1, 'name' => 'Tester', 'email' => 't@example.com', 'role' => 'barangay_official',
@@ -583,18 +563,14 @@ class EcBoardEntryManagementTest extends TestCase
         $dashboardPos = strpos($content, '> Dashboard');
         $ecBoardPos = strpos($content, '> EC Board');
         $familiesPos = strpos($content, '> Registered families');
-        $evacueesPos = strpos($content, '> All Evacuees');
 
         $this->assertNotFalse($dashboardPos);
         $this->assertNotFalse($ecBoardPos);
         $this->assertNotFalse($familiesPos);
-        $this->assertNotFalse($evacueesPos);
 
         // EC Board is now the elevated primary workflow, immediately after
-        // Dashboard; Registered families and All Evacuees keep their
-        // existing relative order after it.
+        // Dashboard; Registered families follows it.
         $this->assertTrue($dashboardPos < $ecBoardPos, 'Dashboard must come before EC Board');
         $this->assertTrue($ecBoardPos < $familiesPos, 'EC Board must come before Registered families');
-        $this->assertTrue($familiesPos < $evacueesPos, 'Registered families must still come before All Evacuees');
     }
 }

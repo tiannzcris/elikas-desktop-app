@@ -119,8 +119,7 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        $page->assertSee('Sectoral group &amp; 4Ps -- last known', false);
-        $page->assertSee('Sectoral -- added on this device (pending sync)', false);
+        $page->assertSeeInOrder(['Sectoral group', 'Male', 'Female', 'Total', 'On this device']);
         $page->assertDontSee('Edit family counts');
         $page->assertDontSee('family counts');
     }
@@ -131,8 +130,10 @@ class EcBoardStandaloneSectionTest extends TestCase
      * Sectoral Group card instead of the top header block, grouped with
      * barangay/center/event. assertSeeInOrder over the raw rendered HTML
      * is the only reliable way to prove DOM *position*, not just presence.
+     * The board reads header -> Age & Sex -> Sectoral, then Add evacuee,
+     * the pending list, and Quick departure last.
      */
-    public function test_the_4ps_field_appears_in_the_header_row_not_the_sectoral_card(): void
+    public function test_the_board_reads_in_the_official_template_order_with_the_panels_after_it(): void
     {
         $this->login();
         Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
@@ -142,7 +143,7 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        $page->assertSeeInOrder(['4Ps beneficiary families', 'Add evacuee', 'Quick departure', 'Sectoral group']);
+        $page->assertSeeInOrder(['4Ps beneficiary families', 'Age group', 'Sectoral group', 'Add evacuee', 'Pending entries for this event', 'Quick departure']);
     }
 
     /**

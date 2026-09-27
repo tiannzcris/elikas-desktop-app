@@ -116,8 +116,8 @@
 
 <script type="application/json" id="register-family-data">{!! json_encode([
     'centers' => $centers ?? [],
-    'cachedEvacuees' => $cachedEvacuees ?? [],
-    'evacueesIndexUrl' => route('evacuees.index'),
+    'knownHouseholds' => $knownHouseholds ?? [],
+    'familiesSearchUrl' => route('families.index'),
     // The center <select>'s options are only ever populated by JS, on the
     // barangay <select>'s change event -- which never fires on page load,
     // so a pre-selected barangay alone wouldn't produce a pre-selected

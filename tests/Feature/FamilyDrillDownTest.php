@@ -24,13 +24,22 @@ class FamilyDrillDownTest extends TestCase
         ]);
     }
 
-    private function seedFamily(Barangay $barangay, EvacuationEvent $event, ?EvacuationCenter $center, string $headFirstName = 'Juan', string $headLastName = 'Dela Cruz'): Family
+    /**
+     * Synced by default -- the barangay -> center -> family drill-down is
+     * the page's "Synced" section; pending families live in "Not yet
+     * synced" on the landing view instead.
+     */
+    private function seedFamily(Barangay $barangay, EvacuationEvent $event, ?EvacuationCenter $center, string $headFirstName = 'Juan', string $headLastName = 'Dela Cruz', bool $synced = true): Family
     {
+        static $remoteId = 1000;
+
         $family = Family::create([
             'barangay_id' => $barangay->id,
             'evacuation_event_id' => $event->id,
             'evacuation_center_id' => $center?->id,
             'displacement_type' => $center ? 'inside_center' : 'outside_center',
+            'remote_id' => $synced ? ++$remoteId : null,
+            'synced_at' => $synced ? now() : null,
         ]);
 
         Evacuee::create([
@@ -56,11 +65,11 @@ class FamilyDrillDownTest extends TestCase
         $page = $this->get(route('families.index'));
 
         $page->assertOk();
-        $page->assertSee('All barangays');
+        $page->assertSee('Synced');
         $page->assertSee('Barangay A');
-        $page->assertSee('2 families');
+        $page->assertSee('2 synced families');
         $page->assertSee('Barangay B');
-        $page->assertSee('1 family');
+        $page->assertSee('1 synced family');
         // Level 3 content (individual family cards) must not leak into the
         // landing view.
         $page->assertDontSee('Waiting to sync');
@@ -79,7 +88,7 @@ class FamilyDrillDownTest extends TestCase
         $page = $this->get(route('families.index', ['barangay' => $barangay->id]));
 
         $page->assertOk();
-        $page->assertSeeInOrder(['All barangays', 'Barangay A']);
+        $page->assertSeeInOrder(['Synced', 'Barangay A']);
         $page->assertSee('Barangay Hall');
         $page->assertSee('Outside center / unassigned');
     }
@@ -144,8 +153,8 @@ class FamilyDrillDownTest extends TestCase
         $page = $this->get(route('families.index', ['barangay' => $barangay->id, 'center' => $center->id]));
 
         $page->assertOk();
-        $page->assertSeeInOrder(['All barangays', 'Barangay A', 'Barangay Hall']);
-        $page->assertSee('Waiting to sync');
+        $page->assertSeeInOrder(['Synced', 'Barangay A', 'Barangay Hall']);
+        $page->assertSee('Juan Dela Cruz');
         // Scoped correctly: this family (at Covered Court) must not appear
         // under Barangay Hall's list.
         $page->assertDontSee('Covered Court');
@@ -276,83 +285,9 @@ class FamilyDrillDownTest extends TestCase
     }
 
     // -----------------------------------------------------------------
-    // Part 1: pending EC Board entries visible in Registered Families
-    // -----------------------------------------------------------------
-
-    public function test_barangay_level_shows_a_pending_ec_board_count_badge(): void
-    {
-        $this->login();
-        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
-
-        // No Family record at all for this evacuee -- it lives only in
-        // ec_board_entries, which is exactly the visibility gap Part 1
-        // fixes. A real family in the same barangay is also seeded so the
-        // badge renders alongside a normal family count, not instead of it.
-        $this->seedFamily($barangay, $event, null, 'Existing', 'Family');
-        \App\Models\EcBoardEntry::create([
-            'evacuation_center_id' => $center->id,
-            'evacuation_event_id' => $event->id,
-            'sex' => 'male', 'age_bracket' => 'adult',
-            'new_household_head_name' => 'EC Board Only Evacuee',
-        ]);
-
-        $page = $this->get(route('families.index'));
-
-        $page->assertOk();
-        $page->assertSee('1 EC Board pending');
-    }
-
-    public function test_center_level_pending_ec_board_badge_links_directly_to_that_centers_ec_board_page(): void
-    {
-        $this->login();
-        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
-
-        $this->seedFamily($barangay, $event, $center);
-        \App\Models\EcBoardEntry::create([
-            'evacuation_center_id' => $center->id,
-            'evacuation_event_id' => $event->id,
-            'sex' => 'female', 'age_bracket' => 'teenage',
-            'new_household_head_name' => 'EC Board Only Evacuee',
-        ]);
-
-        $page = $this->get(route('families.index', ['barangay' => $barangay->id]));
-
-        $page->assertOk();
-        $page->assertSee('1 EC Board pending');
-        $page->assertSee(route('evacuation-centers.ec-board', $center), false);
-    }
-
-    public function test_a_synced_ec_board_entry_does_not_count_toward_the_pending_badge(): void
-    {
-        $this->login();
-        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Barangay Hall', 'status' => 'active']);
-
-        $this->seedFamily($barangay, $event, null);
-        \App\Models\EcBoardEntry::create([
-            'evacuation_center_id' => $center->id,
-            'evacuation_event_id' => $event->id,
-            'sex' => 'male', 'age_bracket' => 'adult',
-            'new_household_head_name' => 'Already Synced',
-            'synced_at' => now(), 'remote_id' => 5,
-        ]);
-
-        $page = $this->get(route('families.index'));
-
-        $page->assertOk();
-        $page->assertDontSee('EC Board pending');
-    }
-
-    // -----------------------------------------------------------------
     // Part 4: Dashboard cleanup -- EC Board is now the sidebar's primary
     // entry point, not a Dashboard button; Register-a-family duplication
-    // removed from the Dashboard entirely (still reachable from the
-    // Registered Families page).
+    // removed from the Dashboard entirely (still reachable by its URL).
     // -----------------------------------------------------------------
 
     public function test_dashboard_no_longer_shows_go_to_ec_board_or_register_a_family(): void
@@ -377,7 +312,7 @@ class FamilyDrillDownTest extends TestCase
         $page->assertSee('View registered families');
     }
 
-    public function test_register_a_family_remains_fully_functional_from_the_families_page(): void
+    public function test_register_a_family_remains_fully_functional_by_its_url(): void
     {
         $this->login();
         $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);

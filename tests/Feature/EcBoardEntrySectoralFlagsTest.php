@@ -139,7 +139,7 @@ class EcBoardEntrySectoralFlagsTest extends TestCase
 
         $response = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $response->assertOk();
-        $response->assertSee('Sectoral -- added on this device (pending sync)');
+        $response->assertSeeInOrder(['Sectoral group', 'On this device']);
 
         $rows = collect($response->viewData('pendingSectoral'))->keyBy('label');
         $this->assertSame(['label' => 'Persons with disability (PWD)', 'male' => 1, 'female' => 1], $rows['Persons with disability (PWD)']);

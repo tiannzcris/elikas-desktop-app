@@ -7,22 +7,11 @@
     <div class="flex items-start justify-between mb-6">
         <div>
             <h1 class="text-xl font-bold text-brand mb-1">Registered families</h1>
-            <p class="text-sm text-gray-500">Everything registered on this device, synced or not.</p>
+            <p class="text-sm text-gray-500">Every household recorded on this device, from every barangay.</p>
         </div>
-        <div class="flex items-start gap-3">
-            @include('partials._sync_button')
-            <div>
-                {{-- De-emphasized on purpose -- EC Board's "Add evacuee" is
-                     now the primary, fast-entry path for someone physically
-                     at a center (see the sidebar's "EC Board" nav item).
-                     This stays fully functional for the cases it's still
-                     the right tool for -- see the helper text below. --}}
-                <a href="{{ route('families.create') }}" data-modal-trigger="register-family" class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
-                    <i class="ti ti-user-plus" style="font-size: 15px;" aria-hidden="true"></i> Register a family
-                </a>
-                <p class="text-xs text-gray-400 mt-1 max-w-[220px]">For households outside a center, or full detailed registration directly</p>
-            </div>
-        </div>
+        {{-- No "Register a family" button: EC Board's Add Evacuee is the
+             entry path. families.create is still reachable by URL. --}}
+        @include('partials._sync_button')
     </div>
 
     {{-- Stays visible on every drill-down level (and search results) --
@@ -38,7 +27,7 @@
             </p>
             <div class="flex flex-col gap-1.5">
                 @foreach ($syncErrors as $errored)
-                    <a href="{{ route('families.index', ['barangay' => $errored->barangay_id, 'center' => $errored->evacuation_center_id ?? 'none']) }}" class="text-xs text-red-600 hover:underline">
+                    <a href="{{ route('families.index') }}#not-yet-synced" class="text-xs text-red-600 hover:underline">
                         {{ $errored->barangay->name ?? 'Unknown barangay' }} &middot; {{ $errored->evacuationCenter->name ?? 'Outside center / unassigned' }}: {{ $errored->sync_error }}
                     </a>
                 @endforeach
@@ -64,37 +53,80 @@
             <a href="{{ route('families.index') }}" class="text-xs text-brand hover:underline">Clear search</a>
         </div>
 
-        @include('families._family_cards', ['families' => $families, 'emptyMessage' => 'No family matches that name.'])
-    @else
-        {{-- Breadcrumb: "All barangays" is always clickable to jump back to
-             the landing view; the current level's own label is plain text. --}}
-        <nav class="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
-            @if (($view ?? null) === 'barangay')
-                <span class="font-medium text-gray-700">All barangays</span>
+        @if ($families->isEmpty())
+            @include('families._family_cards', ['families' => $families, 'emptyMessage' => 'No family matches that name.'])
+        @else
+            @php([$searchSynced, $searchPending] = $families->partition(fn ($family) => $family->isSynced()))
+            <div class="flex flex-col gap-8">
+                @foreach ([['Not yet synced', $searchPending, 'No match waiting to sync.'], ['Synced', $searchSynced, 'No synced match.']] as [$label, $matches, $empty])
+                    <section>
+                        <h2 class="section-heading">{{ $label }} <span class="section-count">{{ $matches->count() }}</span></h2>
+                        @if ($matches->isEmpty())
+                            <p class="text-xs text-gray-400">{{ $empty }}</p>
+                        @else
+                            @include('families._family_cards', ['families' => $matches, 'emptyMessage' => ''])
+                        @endif
+                    </section>
+                @endforeach
+            </div>
+        @endif
+    @elseif (($view ?? null) === 'barangay')
+        @php($pendingCount = $pendingByBarangay->sum(fn ($group) => $group->count()))
+        @php($syncedCount = $barangaySummary->sum('family_count'))
+
+        <section id="not-yet-synced" class="mb-10">
+            <h2 class="section-heading">
+                <i class="ti ti-clock text-amber-600" aria-hidden="true"></i>
+                Not yet synced <span class="section-count section-count-pending">{{ $pendingCount }}</span>
+            </h2>
+            <p class="text-xs text-gray-500 mb-4">Saved on this device only. They reach the central server on the next sync.</p>
+
+            @if ($ecBoardPendingByCenter->isNotEmpty())
+                {{-- People added on an EC Board -- entries, not families, so
+                     a count per center that links to where they're managed. --}}
+                <div class="flex flex-col gap-2 mb-4">
+                    @foreach ($ecBoardPendingByCenter as $row)
+                        <a href="{{ route('evacuation-centers.ec-board', $row->center) }}" class="flex items-center justify-between gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-2.5 text-sm text-amber-800 hover:bg-amber-100">
+                            <span class="flex items-center gap-2">
+                                <i class="ti ti-clipboard-list" style="font-size: 15px;" aria-hidden="true"></i>
+                                <span><span class="font-semibold">{{ $row->count }} {{ Str::plural('person', $row->count) }}</span> added on the EC Board at {{ $row->center->name }}</span>
+                            </span>
+                            <span class="flex items-center gap-1 text-xs font-semibold shrink-0">Open EC Board <i class="ti ti-chevron-right" style="font-size: 13px;" aria-hidden="true"></i></span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+
+            @if ($pendingByBarangay->isEmpty())
+                <p class="flex items-center gap-2 text-sm text-gray-500 card-modern p-4">
+                    <i class="ti ti-cloud-check text-green-600" style="font-size: 16px;" aria-hidden="true"></i>
+                    No family is waiting -- every family on this device has synced.
+                </p>
             @else
-                <a href="{{ route('families.index') }}" class="hover:text-brand hover:underline">All barangays</a>
+                <div class="flex flex-col gap-5">
+                    @foreach ($pendingByBarangay as $barangayName => $pendingFamilies)
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                                {{ $barangayName }} <span class="text-gray-400 font-normal normal-case">({{ $pendingFamilies->count() }})</span>
+                            </p>
+                            @include('families._family_cards', ['families' => $pendingFamilies, 'emptyMessage' => ''])
+                        </div>
+                    @endforeach
+                </div>
             @endif
+        </section>
 
-            @isset($barangay)
-                <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
-                @if (($view ?? null) === 'center')
-                    <span class="font-medium text-gray-700">{{ $barangay->name }}</span>
-                @else
-                    <a href="{{ route('families.index', ['barangay' => $barangay->id]) }}" class="hover:text-brand hover:underline">{{ $barangay->name }}</a>
-                @endif
-            @endisset
+        <section id="synced">
+            <h2 class="section-heading">
+                <i class="ti ti-cloud-check text-green-600" aria-hidden="true"></i>
+                Synced <span class="section-count">{{ $syncedCount }}</span>
+            </h2>
+            <p class="text-xs text-gray-500 mb-4">Already on the central server, kept here for offline lookup.</p>
 
-            @if (($view ?? null) === 'family')
-                <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
-                <span class="font-medium text-gray-700">{{ $center->name ?? 'Outside center / unassigned' }}</span>
-            @endif
-        </nav>
-
-        @if (($view ?? null) === 'barangay')
             @if ($barangaySummary->isEmpty())
-                <div class="flex flex-col items-center text-center py-16">
+                <div class="flex flex-col items-center text-center py-12">
                     <i class="ti ti-users text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
-                    <p class="text-sm text-gray-400">No families registered on this device yet.</p>
+                    <p class="text-sm text-gray-400">No synced families on this device yet.</p>
                 </div>
             @else
                 <p class="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
@@ -102,7 +134,6 @@
                 </p>
                 <div class="flex flex-col gap-3">
                     @foreach ($barangaySummary as $row)
-                        @php($ecBoardPending = $ecBoardPendingByBarangay[$row->barangay->remote_id ?? null] ?? 0)
                         @php($isOwnBarangay = $currentUser->barangay_id !== null && ($row->barangay->remote_id ?? null) === $currentUser->barangay_id)
                         <a href="{{ route('families.index', ['barangay' => $row->barangay_id]) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow {{ $isOwnBarangay ? 'ring-1 ring-brand/40' : '' }}">
                             <div>
@@ -112,75 +143,62 @@
                                         <span class="text-[10px] font-semibold uppercase tracking-wide text-brand bg-blue-50 rounded-full px-2 py-0.5">Your barangay</span>
                                     @endif
                                 </p>
-                                <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} synced {{ Str::plural('family', $row->family_count) }}</p>
                             </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                @if ($ecBoardPending > 0)
-                                    {{-- Aggregate only at this level (spans possibly
-                                         several centers within the barangay) -- not a
-                                         link itself, since there's no single EC Board
-                                         page to jump to yet; drilling into the barangay
-                                         below shows exactly which center(s). --}}
-                                    <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
-                                        <i class="ti ti-clipboard-list" style="font-size: 12px;" aria-hidden="true"></i>
-                                        {{ $ecBoardPending }} EC Board pending
-                                    </span>
-                                @endif
-                                <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
-                            </div>
+                            <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
                         </a>
                     @endforeach
                 </div>
             @endif
-        @elseif (($view ?? null) === 'center')
+        </section>
+    @else
+        {{-- Below the landing view is the Synced drill-down only -- pending
+             families all live in the landing view's own section. --}}
+        <nav class="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
+            <a href="{{ route('families.index') }}#synced" class="hover:text-brand hover:underline">Synced</a>
+            <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
+            @if (($view ?? null) === 'center')
+                <span class="font-medium text-gray-700">{{ $barangay->name }}</span>
+            @else
+                <a href="{{ route('families.index', ['barangay' => $barangay->id]) }}" class="hover:text-brand hover:underline">{{ $barangay->name }}</a>
+                <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
+                <span class="font-medium text-gray-700">{{ $center->name ?? 'Outside center / unassigned' }}</span>
+            @endif
+        </nav>
+
+        @if (($view ?? null) === 'center')
             @if ($centerSummary->isEmpty())
                 <div class="flex flex-col items-center text-center py-16">
                     <i class="ti ti-building-community text-gray-300 mb-3" style="font-size: 40px;" aria-hidden="true"></i>
-                    <p class="text-sm text-gray-400">No families registered in {{ $barangay->name }} yet.</p>
+                    <p class="text-sm text-gray-400">No synced families from {{ $barangay->name }} yet.</p>
                 </div>
             @else
                 <div class="flex flex-col gap-3">
                     @foreach ($centerSummary as $row)
-                        @php($ecBoardPending = $row->evacuation_center_id ? ($ecBoardPendingByCenter[$row->evacuation_center_id] ?? 0) : 0)
-                        <div class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
-                            <a href="{{ route('families.index', ['barangay' => $barangay->id, 'center' => $row->evacuation_center_id ?? 'none']) }}" class="flex-1 flex items-center justify-between min-w-0">
-                                <div>
-                                    <p class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
-                                        {{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}
-                                        {{-- This row means "{{ $barangay->name }}'s families staying
-                                             here", not "belongs to {{ $barangay->name }}" -- flagged
-                                             whenever the center's OWN barangay differs, so it's never
-                                             mistaken for a center physically located in this barangay
-                                             (see FamilyController::centerSummary()'s own docblock). --}}
-                                        @if ($row->locatedInDifferentBarangay)
-                                            <span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
-                                                Located in {{ $row->locatedInDifferentBarangay }}
-                                            </span>
-                                        @endif
-                                    </p>
-                                    <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} {{ Str::plural('family', $row->family_count) }}</p>
-                                </div>
-                            </a>
-                            <div class="flex items-center gap-2 shrink-0 ml-3">
-                                {{-- A separate link, not nested inside the card's own
-                                     link above -- this one goes straight to the EC
-                                     Board page where these pending entries actually
-                                     live and can be managed, not to this drill-down's
-                                     own family list (which will never show them). --}}
-                                @if ($ecBoardPending > 0)
-                                    <a href="{{ route('evacuation-centers.ec-board', $row->evacuation_center_id) }}" class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100">
-                                        <i class="ti ti-clipboard-list" style="font-size: 12px;" aria-hidden="true"></i>
-                                        {{ $ecBoardPending }} EC Board pending
-                                    </a>
-                                @endif
-                                <i class="ti ti-chevron-right text-gray-400" style="font-size: 18px;" aria-hidden="true"></i>
+                        <a href="{{ route('families.index', ['barangay' => $barangay->id, 'center' => $row->evacuation_center_id ?? 'none']) }}" class="card-modern p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+                            <div>
+                                <p class="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                                    {{ $row->evacuationCenter->name ?? 'Outside center / unassigned' }}
+                                    {{-- This row means "{{ $barangay->name }}'s families staying
+                                         here", not "belongs to {{ $barangay->name }}" -- flagged
+                                         whenever the center's OWN barangay differs, so it's never
+                                         mistaken for a center physically located in this barangay
+                                         (see FamilyController::centerSummary()'s own docblock). --}}
+                                    @if ($row->locatedInDifferentBarangay)
+                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 rounded-full px-2 py-0.5">
+                                            Located in {{ $row->locatedInDifferentBarangay }}
+                                        </span>
+                                    @endif
+                                </p>
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $row->family_count }} synced {{ Str::plural('family', $row->family_count) }}</p>
                             </div>
-                        </div>
+                            <i class="ti ti-chevron-right text-gray-400 shrink-0 ml-3" style="font-size: 18px;" aria-hidden="true"></i>
+                        </a>
                     @endforeach
                 </div>
             @endif
         @else
-            @include('families._family_cards', ['families' => $families, 'emptyMessage' => 'No families here yet.'])
+            @include('families._family_cards', ['families' => $families, 'emptyMessage' => 'No synced families here yet.'])
         @endif
     @endif
 @endsection

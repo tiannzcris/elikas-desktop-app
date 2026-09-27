@@ -73,43 +73,6 @@ class CentralApiService
     }
 
     /**
-     * Pulls the full evacuee/family roster from the central server, for the
-     * "All Evacuees" page's local cache. Unlike fetchReferenceData() (only
-     * called at login + manual refresh), this is called on every visit to
-     * that page while online, since that page is meant to reflect what's
-     * currently on the server, not just what was true at last login.
-     *
-     * GET /families is paginated (confirmed against the real production
-     * API: {success, message, data: {data: [...], links, meta}} -- the
-     * actual family records are at data.data, NOT data). Rather than
-     * walking pages one at a time -- confirmed by direct testing to be
-     * slow and unreliable here (17 sequential requests at the default
-     * page size of 20 took 70+ seconds and ultimately failed with a
-     * connection error) -- this asks for a single page large enough to
-     * cover the whole roster in one request; the API honors per_page and
-     * returned all 339 real records in ~4s that way. per_page is set well
-     * above current volume with room to grow; if the roster ever exceeds
-     * it, this naturally falls back to just the first page instead of
-     * failing, so growth degrades gracefully rather than breaking.
-     */
-    public function fetchEvacuees(string $token): array
-    {
-        $headers = ['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'];
-
-        try {
-            $response = Http::withHeaders($headers)->timeout(20)->get("{$this->baseUrl()}/families", ['per_page' => 1000]);
-        } catch (ConnectionException $e) {
-            throw new \RuntimeException('Could not reach the central server to refresh the evacuee list. Check your internet connection.');
-        }
-
-        if (! $response->successful()) {
-            throw new \RuntimeException('The central server rejected the request -- your login may have expired. Try logging in again while online.');
-        }
-
-        return $response->json('data.data') ?? [];
-    }
-
-    /**
      * Pulls ONE evacuation center's own live age/sex breakdown for ONE
      * event, from the EC Board's real existing "quick-count" endpoint
      * (confirmed against elikas-backend's

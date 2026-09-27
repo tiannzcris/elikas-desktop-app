@@ -14,6 +14,7 @@ use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class EvacuationCenterController extends Controller
 {
@@ -235,36 +236,10 @@ class EvacuationCenterController extends Controller
             $selectedEventId = optional($events->first())->id;
         }
 
-        $breakdownBrackets = array_merge(array_keys(EcBoardEntry::AGE_BRACKETS), [self::UNCLASSIFIED_BRACKET]);
-
-        $lastKnownBreakdown = $selectedEventId
-            ? $this->breakdownMatrix(
-                EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
-                    ->where('evacuation_event_id', $selectedEventId)
-                    ->get()
-                    ->map(fn (EvacuationCenterBreakdown $row) => ['age_bracket' => $row->age_bracket, 'sex' => $row->sex, 'count' => $row->count]),
-                $breakdownBrackets
-            )
-            : $this->breakdownMatrix(collect(), $breakdownBrackets);
-
-        $pendingEntriesQuery = EcBoardEntry::where('evacuation_center_id', $center->id)
-            ->whereNull('synced_at')
-            ->when($selectedEventId, fn ($q) => $q->where('evacuation_event_id', $selectedEventId));
-
-        // Pending entries are always one of the 7 real, selectable
-        // brackets -- never 'unclassified', that bracket only ever comes
-        // from the server's own live computation -- but seeded with the
-        // same $breakdownBrackets list as the last-known matrix above so
-        // both tables render an identical set of rows for a clean visual
-        // comparison.
-        $pendingBreakdown = $this->breakdownMatrix(
-            (clone $pendingEntriesQuery)->get()->map(fn (EcBoardEntry $e) => ['age_bracket' => $e->age_bracket, 'sex' => $e->sex, 'count' => 1]),
-            $breakdownBrackets
-        );
-
-        $pendingSectoral = $this->pendingSectoralBreakdown((clone $pendingEntriesQuery)->get());
-
-        $pendingEntries = $pendingEntriesQuery->with(['evacuationEvent', 'household.evacuees'])->latest()->get();
+        $pendingEntries = $this->pendingEntriesQuery($center, $selectedEventId)
+            ->with(['evacuationEvent', 'household.evacuees'])
+            ->latest()
+            ->get();
 
         // Existing-household picker: households already associated with
         // THIS center in this device's OWN local cache, synced or not --
@@ -288,37 +263,76 @@ class EvacuationCenterController extends Controller
         // Null only if that barangay somehow isn't cached locally.
         $backBarangay = Barangay::where('remote_id', $center->barangay_remote_id)->first();
 
-        // The "Last known" half of the sectoral/4Ps dual view -- see
-        // EvacuationCenterSectoralSnapshot's own docblock. Whatever was
-        // last fetched from the server (or nothing yet, if this
-        // center+event has never been refreshed while online), same
-        // "show whatever we have, refresh client-side after render"
-        // pattern as $lastKnownBreakdown above.
-        $sectoralSnapshot = $selectedEventId
-            ? EvacuationCenterSectoralSnapshot::where('evacuation_center_id', $center->id)
-                ->where('evacuation_event_id', $selectedEventId)
-                ->first()
-            : null;
-
-        return view('evacuation-centers.ec-board', [
+        return view('evacuation-centers.ec-board', $this->boardData($center, $selectedEventId) + [
             'currentUser' => $auth,
             'center' => $center,
             'barangayName' => Barangay::where('remote_id', $center->barangay_remote_id)->value('name') ?? 'Unknown barangay',
             'backBarangay' => $backBarangay,
             'events' => $events,
             'selectedEventId' => $selectedEventId,
-            'lastKnownBreakdown' => $lastKnownBreakdown,
-            'pendingBreakdown' => $pendingBreakdown,
-            'pendingSectoral' => $pendingSectoral,
             'pendingEntries' => $pendingEntries,
             'households' => $households,
             // The Add Evacuee form's own picker -- the 7 real brackets
-            // only, distinct from $breakdownAgeBrackets below.
+            // only, distinct from the board's breakdownAgeBrackets.
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
-            'breakdownAgeBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
-            'sectoralSnapshot' => $sectoralSnapshot,
-            'sectoralGroups' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS,
         ]);
+    }
+
+    private function pendingEntriesQuery(EvacuationCenter $center, ?int $eventId)
+    {
+        return EcBoardEntry::where('evacuation_center_id', $center->id)
+            ->whereNull('synced_at')
+            ->when($eventId, fn ($q) => $q->where('evacuation_event_id', $eventId));
+    }
+
+    /**
+     * Everything the board sheet shows (evacuation-centers._board_figures),
+     * for one center+event: the central server's figures as last fetched
+     * (or nothing yet, if never refreshed while online) beside this
+     * device's own not-yet-synced contribution. The two are shown side by
+     * side on each row and never summed -- reconciling them only means
+     * something once everything has reached the central server. Shared by
+     * the page and both refresh endpoints, so a refresh re-renders the
+     * whole sheet from whatever is cached by then.
+     */
+    private function boardData(EvacuationCenter $center, ?int $eventId): array
+    {
+        $breakdownBrackets = array_merge(array_keys(EcBoardEntry::AGE_BRACKETS), [self::UNCLASSIFIED_BRACKET]);
+
+        $lastKnownBreakdown = $this->breakdownMatrix(
+            $eventId
+                ? EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
+                    ->where('evacuation_event_id', $eventId)
+                    ->get()
+                    ->map(fn (EvacuationCenterBreakdown $row) => ['age_bracket' => $row->age_bracket, 'sex' => $row->sex, 'count' => $row->count])
+                : collect(),
+            $breakdownBrackets
+        );
+
+        $pendingEntries = $this->pendingEntriesQuery($center, $eventId)->get();
+
+        // Pending entries are always one of the 7 real, selectable
+        // brackets -- never 'unclassified', that bracket only ever comes
+        // from the server's own live computation -- but seeded with the
+        // same bracket list so both sides fill the same rows.
+        $pendingBreakdown = $this->breakdownMatrix(
+            $pendingEntries->map(fn (EcBoardEntry $e) => ['age_bracket' => $e->age_bracket, 'sex' => $e->sex, 'count' => 1]),
+            $breakdownBrackets
+        );
+
+        return [
+            'lastKnownBreakdown' => $lastKnownBreakdown,
+            'pendingBreakdown' => $pendingBreakdown,
+            'breakdownAgeBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
+            'sectoralSnapshot' => $eventId
+                ? EvacuationCenterSectoralSnapshot::where('evacuation_center_id', $center->id)
+                    ->where('evacuation_event_id', $eventId)
+                    ->first()
+                : null,
+            'sectoralGroups' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS,
+            'pendingSectoral' => $this->pendingSectoralBreakdown($pendingEntries),
+            'pendingCount' => $pendingEntries->count(),
+        ];
     }
 
     /**
@@ -329,7 +343,7 @@ class EvacuationCenterController extends Controller
      * Child-/Single-Headed Family once per household this device created,
      * by the head's sex. null answers and unknown sexes count nowhere.
      *
-     * @return \Illuminate\Support\Collection<int, array{label: string, male: int, female: int}>
+     * @return \Illuminate\Support\Collection<string, array{label: string, male: int, female: int}> keyed by sectoral group
      */
     private function pendingSectoralBreakdown(Collection $pendingEntries): Collection
     {
@@ -354,94 +368,23 @@ class EvacuationCenterController extends Controller
                 'male' => $counted->filter(fn ($x) => $sexOf($x) === 'male')->count(),
                 'female' => $counted->filter(fn ($x) => $sexOf($x) === 'female')->count(),
             ];
-        })->values();
+        });
     }
 
     /**
      * Called client-side (fetch(), after the page itself has rendered) to
-     * refresh the "As of last sync" breakdown for one center+event -- see
-     * ecBoard()'s own docblock for why this is no longer part of that
-     * synchronous page render. Silently returns nothing useful on any
-     * failure (offline, session expired, endpoint down); the calling JS
-     * just leaves whatever was already on screen untouched in that case.
-     * Returns the same breakdown-table partial the page itself renders,
-     * so there is only one implementation of that table's markup.
+     * refresh the whole board for one center+event from the central
+     * server's quick-count -- see ecBoard()'s own docblock for why this is
+     * not part of that synchronous page render. One response carries the
+     * header figures, age/sex rows, 4Ps and sectoral groups, so all of it
+     * is cached together, stamped with the same fetched_at -- the board's
+     * "As of", which offline keeps showing when this last succeeded.
+     * Silently returns nothing useful on any failure (offline, session
+     * expired, endpoint down); the calling JS leaves the board as it is.
+     * Returns the board figures partial the page itself renders, so there
+     * is only one implementation of that markup.
      */
-    public function refreshBreakdown(EvacuationCenter $center, Request $request, CentralApiService $api)
-    {
-        $auth = LocalAuth::current();
-        if (! $auth) {
-            return response()->noContent(401);
-        }
-
-        $eventId = (int) $request->query('event', 0);
-        $event = $eventId ? EvacuationEvent::find($eventId) : null;
-
-        if (! $event || ! $center->remote_id) {
-            return response()->noContent(422);
-        }
-
-        try {
-            // fetchCenterQuickCount() returns the full quick-count payload
-            // (age_groups, sectoral_groups, beneficiaries_4ps) -- only
-            // age_groups is relevant here, since this endpoint refreshes
-            // just the age/sex breakdown table.
-            $rows = $api->fetchCenterQuickCount($auth->api_token, $center->remote_id, $event->remote_id)['age_groups'] ?? [];
-        } catch (\RuntimeException $e) {
-            return response()->noContent(503);
-        }
-
-        EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
-            ->where('evacuation_event_id', $event->id)
-            ->delete();
-
-        // Each row carries both male_count and female_count (even the
-        // trailing 'unclassified' row -- see fetchCenterQuickCount()'s
-        // docblock) -- stored here as two rows, matching this table's own
-        // one-row-per-(bracket,sex) shape. The 'unclassified' row's own
-        // extra total_count (covering anyone missing BOTH sex and
-        // bracket) has nowhere to go in that shape and is deliberately not
-        // stored -- a rare edge case, not worth widening this schema for.
-        foreach ($rows as $row) {
-            foreach (['male' => 'male_count', 'female' => 'female_count'] as $sex => $countKey) {
-                EvacuationCenterBreakdown::create([
-                    'evacuation_center_id' => $center->id,
-                    'evacuation_event_id' => $event->id,
-                    'sex' => $sex,
-                    'age_bracket' => $row['age_bracket'],
-                    'count' => $row[$countKey] ?? 0,
-                ]);
-            }
-        }
-
-        $breakdownBrackets = array_merge(array_keys(EcBoardEntry::AGE_BRACKETS), [self::UNCLASSIFIED_BRACKET]);
-
-        $matrix = $this->breakdownMatrix(
-            EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
-                ->where('evacuation_event_id', $event->id)
-                ->get()
-                ->map(fn (EvacuationCenterBreakdown $row) => ['age_bracket' => $row->age_bracket, 'sex' => $row->sex, 'count' => $row->count]),
-            $breakdownBrackets
-        );
-
-        return view('evacuation-centers._breakdown_table', [
-            'matrix' => $matrix,
-            'ageBrackets' => EcBoardEntry::AGE_BRACKETS + [self::UNCLASSIFIED_BRACKET => 'Unclassified (missing details)'],
-        ]);
-    }
-
-    /**
-     * The sectoral/4Ps equivalent of refreshBreakdown() above -- same
-     * "called client-side after the page has rendered, cache into a
-     * local snapshot, return a fragment" shape, but its own separate
-     * endpoint/call rather than folded into refreshBreakdown() itself:
-     * matches this app's own existing precedent of one single-purpose
-     * fetch per data need (refreshBreakdown() and refreshHouseholds()
-     * are two separate calls too, despite both being callable from the
-     * same fetchCenterQuickCount()/fetchFamiliesAtCenter() shape) rather
-     * than one endpoint serving multiple unrelated display sections.
-     */
-    public function refreshSectoralLastKnown(EvacuationCenter $center, Request $request, CentralApiService $api)
+    public function refreshBoard(EvacuationCenter $center, Request $request, CentralApiService $api)
     {
         $auth = LocalAuth::current();
         if (! $auth) {
@@ -461,20 +404,48 @@ class EvacuationCenterController extends Controller
             return response()->noContent(503);
         }
 
-        $snapshot = EvacuationCenterSectoralSnapshot::updateOrCreate(
-            ['evacuation_center_id' => $center->id, 'evacuation_event_id' => $event->id],
-            [
-                'beneficiaries_4ps' => $data['beneficiaries_4ps'] ?? 0,
-                'sectoral_groups' => $data['sectoral_groups'] ?? [],
-                'updated_by_name' => $data['updated_by_name'] ?? null,
-                'server_updated_at' => $data['updated_at'] ?? null,
-            ]
-        );
+        DB::transaction(function () use ($center, $event, $data) {
+            EvacuationCenterBreakdown::where('evacuation_center_id', $center->id)
+                ->where('evacuation_event_id', $event->id)
+                ->delete();
 
-        return view('evacuation-centers._sectoral_last_known', [
-            'snapshot' => $snapshot,
-            'sectoralGroups' => EvacuationCenterSectoralSnapshot::SECTORAL_GROUPS,
-        ]);
+            // Each row carries both male_count and female_count (even the
+            // trailing 'unclassified' row -- see fetchCenterQuickCount()'s
+            // docblock) -- stored here as two rows, matching this table's
+            // own one-row-per-(bracket,sex) shape. The 'unclassified' row's
+            // own extra total_count (covering anyone missing BOTH sex and
+            // bracket) has nowhere to go in that shape and is deliberately
+            // not stored -- a rare edge case, not worth widening this
+            // schema for.
+            foreach ($data['age_groups'] ?? [] as $row) {
+                foreach (['male' => 'male_count', 'female' => 'female_count'] as $sex => $countKey) {
+                    EvacuationCenterBreakdown::create([
+                        'evacuation_center_id' => $center->id,
+                        'evacuation_event_id' => $event->id,
+                        'sex' => $sex,
+                        'age_bracket' => $row['age_bracket'],
+                        'count' => $row[$countKey] ?? 0,
+                    ]);
+                }
+            }
+
+            EvacuationCenterSectoralSnapshot::updateOrCreate(
+                ['evacuation_center_id' => $center->id, 'evacuation_event_id' => $event->id],
+                [
+                    'families_cumulative' => $data['families_cumulative'] ?? null,
+                    'families_now' => $data['families_now'] ?? null,
+                    'persons_cumulative' => $data['persons_cumulative'] ?? null,
+                    'persons_now' => $data['persons_now'] ?? null,
+                    'beneficiaries_4ps' => $data['beneficiaries_4ps'] ?? 0,
+                    'sectoral_groups' => $data['sectoral_groups'] ?? [],
+                    'updated_by_name' => $data['updated_by_name'] ?? null,
+                    'server_updated_at' => $data['updated_at'] ?? null,
+                    'fetched_at' => now(),
+                ]
+            );
+        });
+
+        return view('evacuation-centers._board_figures', $this->boardData($center, $event->id));
     }
 
     /**

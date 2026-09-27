@@ -3,6 +3,43 @@ import './bootstrap';
 window.ELIKAS = window.ELIKAS || {};
 
 // ---------------------------------------------------------------------
+// <time datetime="..." data-local-time> -- server timestamps shown in the
+// device's own local time (the server renders UTC), with how long ago it
+// was, e.g. the EC Board's "As of". Called on load and again by anything
+// that swaps in fresh markup.
+// ---------------------------------------------------------------------
+function describeAge(ms) {
+    const minutes = Math.round(ms / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    const days = Math.round(hours / 24);
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+}
+
+window.ELIKAS.localizeTimes = function localizeTimes(root = document) {
+    root.querySelectorAll('time[data-local-time]').forEach((el) => {
+        const when = new Date(el.getAttribute('datetime'));
+        if (Number.isNaN(when.getTime())) return;
+        el.textContent = when.toLocaleString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+        });
+        let age = el.nextElementSibling;
+        if (!age || !age.classList.contains('local-time-age')) {
+            age = document.createElement('span');
+            age.className = 'local-time-age';
+            el.after(age);
+        }
+        age.textContent = ` (${describeAge(Date.now() - when.getTime())})`;
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => window.ELIKAS.localizeTimes());
+// A board left open offline keeps aging -- "(5 min ago)" must not freeze.
+setInterval(() => window.ELIKAS.localizeTimes(), 60000);
+
+// ---------------------------------------------------------------------
 // Connection badge + live clock -- present in the shared layout header
 // on every logged-in page.
 // ---------------------------------------------------------------------
@@ -201,10 +238,10 @@ window.ELIKAS.openRegisterFamilyModal = openRegisterFamilyModal;
 
 window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot) {
     const dataEl = document.getElementById('register-family-data');
-    const data = dataEl ? JSON.parse(dataEl.textContent) : { centers: [], cachedEvacuees: [], evacueesIndexUrl: '#' };
+    const data = dataEl ? JSON.parse(dataEl.textContent) : { centers: [], knownHouseholds: [], familiesSearchUrl: '#' };
     const allCenters = data.centers;
-    const cachedEvacuees = data.cachedEvacuees;
-    const evacueesIndexUrl = data.evacueesIndexUrl;
+    const knownHouseholds = data.knownHouseholds;
+    const familiesSearchUrl = data.familiesSearchUrl;
     // Both null/absent on a plain create() form -- only edit() passes them.
     const existingMembers = data.existingMembers || null;
     const currentCenterId = data.currentCenterId ?? null;
@@ -325,8 +362,8 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
     }
 
     // Inline duplicate-name warning -- purely client-side against the
-    // already-loaded cachedEvacuees array, so it works identically whether
-    // the device is online or not. Never blocks submission; it's a nudge
+    // already-loaded knownHouseholds array (this device's own households),
+    // so it works whether or not the device is online. Never blocks; it's a nudge
     // for staff to double-check, since two different people can share a
     // name and registration still needs to be able to proceed.
     function levenshteinDistance(a, b) {
@@ -357,11 +394,11 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
     function findPossibleMatch(fullName) {
         if (fullName.trim().length < 4) return null;
         let best = null;
-        for (const evac of cachedEvacuees) {
-            if (!evac.head_name) continue;
-            const score = nameSimilarity(fullName, evac.head_name);
+        for (const household of knownHouseholds) {
+            if (!household.head_name) continue;
+            const score = nameSimilarity(fullName, household.head_name);
             if (score >= 0.72 && (!best || score > best.score)) {
-                best = Object.assign({ score }, evac);
+                best = Object.assign({ score }, household);
             }
         }
         return best;
@@ -383,10 +420,10 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
 
         if (match) {
             const barangay = match.barangay_name || 'an unknown barangay';
-            const link = `${evacueesIndexUrl}?q=${encodeURIComponent(match.head_name)}`;
+            const link = `${familiesSearchUrl}?search=${encodeURIComponent(match.head_name)}`;
             warning.querySelector('.dup-warning-text').innerHTML =
-                `Possible existing match: <strong>${escapeHtml(match.head_name)}</strong>, registered in ${escapeHtml(barangay)} -- `
-                + `<a href="${link}" target="_blank" class="underline font-medium">check All Evacuees</a> before continuing.`;
+                `Possible existing match: <strong>${escapeHtml(match.head_name)}</strong>, already recorded on this device (${escapeHtml(barangay)}) -- `
+                + `<a href="${link}" target="_blank" class="underline font-medium">check Registered families</a> before continuing.`;
             warning.style.display = 'flex';
         } else {
             warning.style.display = 'none';

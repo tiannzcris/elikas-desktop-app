@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * The central server's last-known sectoral/4Ps board for one center+event
+ * The central server's last-known EC Information Board for one
+ * center+event, apart from the age/sex rows (evacuation_center_breakdowns):
+ * the header's family/person counts, 4Ps families and the sectoral groups
  * -- a read-only display cache, refreshed on demand (see
- * EvacuationCenterController::refreshSectoralLastKnown()). Nothing on this
- * device writes sectoral figures: every group is counted live by the server.
+ * EvacuationCenterController::refreshBoard()). fetched_at is when that
+ * data last arrived from the server: the board's "As of". Nothing on this
+ * device writes these figures: every one is counted live by the server.
  */
 class EvacuationCenterSectoralSnapshot extends Model
 {
@@ -43,12 +46,14 @@ class EvacuationCenterSectoralSnapshot extends Model
 
     protected $fillable = [
         'evacuation_center_id', 'evacuation_event_id', 'beneficiaries_4ps',
-        'sectoral_groups', 'updated_by_name', 'server_updated_at',
+        'families_cumulative', 'families_now', 'persons_cumulative', 'persons_now',
+        'sectoral_groups', 'updated_by_name', 'server_updated_at', 'fetched_at',
     ];
 
     protected $casts = [
         'sectoral_groups' => 'array',
         'server_updated_at' => 'datetime',
+        'fetched_at' => 'datetime',
     ];
 
     public function evacuationCenter(): BelongsTo

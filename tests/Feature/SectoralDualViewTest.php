@@ -36,7 +36,7 @@ class SectoralDualViewTest extends TestCase
         return [$barangay, $event, $center];
     }
 
-    public function test_the_sectoral_refresh_endpoint_fetches_and_caches_the_last_known_snapshot(): void
+    public function test_the_board_refresh_endpoint_fetches_and_caches_the_last_known_snapshot(): void
     {
         [, $event, $center] = $this->seedBase();
 
@@ -51,11 +51,10 @@ class SectoralDualViewTest extends TestCase
             ]]),
         ]);
 
-        $response = $this->get(route('evacuation-centers.sectoral-refresh', $center).'?event='.$event->id);
+        $response = $this->get(route('evacuation-centers.board-refresh', $center).'?event='.$event->id);
 
         $response->assertOk();
         $response->assertSee('7');
-        $response->assertSee('Central Staff');
 
         $this->assertDatabaseHas('evacuation_center_sectoral_snapshots', [
             'evacuation_center_id' => $center->id,

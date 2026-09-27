@@ -9,24 +9,22 @@ use App\Models\EcBoardEntry;
 use App\Models\Evacuee;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
-use App\Models\EvacueeRecord;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class FamilyController extends Controller
 {
     /**
-     * Serves two audiences with one route: a direct browser visit (e.g. a
-     * refresh while on this page) gets the full styled page, while the
-     * "Register a family" buttons on the Dashboard and Registered Families
-     * pages fetch this same route via JS and inject just the form as a
-     * true in-page modal over whatever page they were on -- see
-     * resources/js/app.js's openRegisterFamilyModal(). Both paths render
-     * the exact same families._form partial with the exact same data, so
-     * there is only one implementation to keep in sync, not two.
+     * No page links here any more -- EC Board's Add Evacuee is the entry
+     * path -- but the route stays reachable by direct URL for full,
+     * detailed registrations. Serves two audiences with one route: a
+     * direct visit gets the full styled page, while a data-modal-trigger
+     * link (a pending card's Edit button) fetches this same form via JS
+     * as an in-page modal -- see resources/js/app.js's
+     * openRegisterFamilyModal(). Both render the same families._form
+     * partial with the same data.
      */
     public function create(Request $request)
     {
@@ -48,18 +46,19 @@ class FamilyController extends Controller
      */
     private function renderForm(Request $request, LocalAuth $auth, ?Family $family = null)
     {
-        try {
-            // Same local cache the "All Evacuees" page reads from --
-            // reused here (not re-fetched) so the in-form duplicate warning
-            // works fully offline, matching against whatever was cached as
-            // of the last successful sync. The duplicate warning is a nice-
-            // to-have, not core to registration -- if this cache table isn't
-            // ready yet on this device (e.g. right after an app update),
-            // registration must still work, just without that warning.
-            $cachedEvacuees = EvacueeRecord::all(['head_name', 'barangay_name']);
-        } catch (QueryException $e) {
-            $cachedEvacuees = collect();
-        }
+        // The in-form duplicate warning matches against this device's own
+        // households -- the same records Registered families lists -- so it
+        // works fully offline. The family being edited is left out so it
+        // never warns about itself.
+        $knownHouseholds = Family::with(['evacuees', 'barangay'])
+            ->when($family, fn ($q) => $q->whereKeyNot($family->id))
+            ->get()
+            ->map(fn (Family $f) => [
+                'head_name' => $f->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? $f->name,
+                'barangay_name' => $f->barangay->name ?? null,
+            ])
+            ->filter(fn (array $h) => $h['head_name'] !== null)
+            ->values();
 
         $data = [
             'currentUser' => $auth,
@@ -78,7 +77,7 @@ class FamilyController extends Controller
             // for a new registration even if a stale local copy briefly
             // lingers before the next reference-data refresh prunes it.
             'centers' => EvacuationCenter::where('status', '!=', 'closed')->get(['id', 'name', 'barangay_remote_id']),
-            'cachedEvacuees' => $cachedEvacuees,
+            'knownHouseholds' => $knownHouseholds,
         ];
 
         if ($request->header('X-Modal-Request')) {
@@ -158,6 +157,13 @@ class FamilyController extends Controller
      * sits outside this drill-down entirely, exactly like the web
      * version's own "independent of the drill-down" search.
      *
+     * The landing view is split in two: "Not yet synced" lists every
+     * pending family on this device outright (it's the part staff act on,
+     * and failed syncs belong in plain sight), and "Synced" is the
+     * drill-down, which counts and lists synced families only. Both span
+     * every barangay -- this is the device's own record, not a roster
+     * scoped to the staff's barangay (that's the Evacuees page).
+     *
      * One route, driven by query params (?search=, or ?barangay=&center=)
      * rather than separate named routes per level -- matches this
      * codebase's existing ?event= convention on the evacuation centers
@@ -195,8 +201,9 @@ class FamilyController extends Controller
         if ($barangayId === null) {
             return view('families.index', $sharedData + [
                 'view' => 'barangay',
+                'pendingByBarangay' => $this->pendingFamiliesByBarangay($auth),
+                'ecBoardPendingByCenter' => $this->ecBoardPendingByCenter(),
                 'barangaySummary' => $this->barangaySummary($auth),
-                'ecBoardPendingByBarangay' => $this->ecBoardPendingCountsByBarangay(),
             ]);
         }
 
@@ -214,7 +221,6 @@ class FamilyController extends Controller
                 'view' => 'center',
                 'barangay' => $barangay,
                 'centerSummary' => $this->centerSummary($barangay),
-                'ecBoardPendingByCenter' => $this->ecBoardPendingCountsByCenter($barangay),
             ]);
         }
 
@@ -233,8 +239,8 @@ class FamilyController extends Controller
     }
 
     /**
-     * One row per barangay this device has ANY registration for, family
-     * counts included -- the landing view. Sorted by name via the
+     * One row per barangay this device has a SYNCED family for, family
+     * counts included -- the landing view's "Synced" section. Sorted by name via the
      * Collection (not the DB query) since the count comes from a raw
      * groupBy on the FOREIGN key, with no join to sort by the related
      * barangay's name at the SQL level.
@@ -247,7 +253,8 @@ class FamilyController extends Controller
      */
     private function barangaySummary(LocalAuth $auth)
     {
-        $rows = Family::selectRaw('barangay_id, count(*) as family_count')
+        $rows = Family::whereNotNull('synced_at')
+            ->selectRaw('barangay_id, count(*) as family_count')
             ->groupBy('barangay_id')
             ->with('barangay')
             ->get();
@@ -292,6 +299,7 @@ class FamilyController extends Controller
     private function centerSummary(Barangay $barangay)
     {
         $rows = Family::where('barangay_id', $barangay->id)
+            ->whereNotNull('synced_at')
             ->selectRaw('evacuation_center_id, count(*) as family_count')
             ->groupBy('evacuation_center_id')
             ->with('evacuationCenter.barangay')
@@ -314,48 +322,52 @@ class FamilyController extends Controller
     }
 
     /**
-     * EC Board entries live in a completely separate table from Family
-     * (a lighter-weight fast-tally headcount, not a full household
-     * registration -- see EcBoardEntry's own migration comment), which
-     * made a real pending entry architecturally invisible on this page: a
-     * user could add one offline and never see it again here, only on the
-     * EC Board page itself. Rather than folding EcBoardEntry rows INTO
-     * this drill-down as fake "family" cards (they don't have most of a
-     * family's own fields -- home_address, displacement_type, full member
-     * details -- so faking that shape would be misleading), this surfaces
-     * them as a clearly-labeled, clickable count alongside the real
-     * family counts at each level -- visible without extra navigation,
-     * with a direct path to where they're actually managed.
-     *
-     * Keyed by barangay remote_id (not local id) -- EcBoardEntry only
-     * reaches a barangay indirectly, via its center's own
-     * barangay_remote_id, which is a remote id throughout this cache
-     * table (see evacuation_centers' own migration).
+     * The "Not yet synced" section's families, every barangay included,
+     * grouped by barangay with the staff's own barangay first and the
+     * rest alphabetical -- the same ordering as the Synced list below it.
+     * Families created by EC Board's Add Evacuee are included: they sit
+     * here until their originating entry syncs and stamps them.
      */
-    private function ecBoardPendingCountsByBarangay(): array
+    private function pendingFamiliesByBarangay(LocalAuth $auth)
+    {
+        $grouped = Family::whereNull('synced_at')
+            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter', 'headEntry'])
+            ->latest()
+            ->get()
+            ->toBase()
+            ->groupBy(fn (Family $family) => $family->barangay->name ?? 'Unknown barangay')
+            ->sortKeys();
+
+        $ownName = $auth->barangay_id ? Barangay::where('remote_id', $auth->barangay_id)->value('name') : null;
+
+        if ($ownName !== null && $grouped->has($ownName)) {
+            $grouped = collect([$ownName => $grouped->get($ownName)])->merge($grouped->except($ownName));
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * People added on an EC Board that haven't synced yet, counted per
+     * center. They're EcBoardEntry rows, not families -- someone added to
+     * an existing household never becomes a Family card of their own --
+     * so the "Not yet synced" section shows them as a count linking to
+     * the center's EC Board, where they're managed, rather than faking
+     * family cards for them.
+     */
+    private function ecBoardPendingByCenter()
     {
         return EcBoardEntry::whereNull('synced_at')
             ->with('evacuationCenter')
             ->get()
-            ->groupBy(fn (EcBoardEntry $e) => optional($e->evacuationCenter)->barangay_remote_id)
-            ->map->count()
-            ->all();
-    }
-
-    /**
-     * Same as above, but keyed by this center's own LOCAL id (matching
-     * $row->evacuation_center_id in centerSummary()'s own rows), since at
-     * this level the badge links straight to one specific center's EC
-     * Board page, not just an aggregate count.
-     */
-    private function ecBoardPendingCountsByCenter(Barangay $barangay): array
-    {
-        return EcBoardEntry::whereNull('synced_at')
-            ->whereHas('evacuationCenter', fn ($q) => $q->where('barangay_remote_id', $barangay->remote_id))
-            ->get()
             ->groupBy('evacuation_center_id')
-            ->map->count()
-            ->all();
+            ->map(fn ($entries) => (object) [
+                'center' => $entries->first()->evacuationCenter,
+                'count' => $entries->count(),
+            ])
+            ->filter(fn ($row) => $row->center !== null)
+            ->sortBy(fn ($row) => $row->center->name)
+            ->values();
     }
 
     /**
@@ -367,6 +379,7 @@ class FamilyController extends Controller
     private function familiesForCenter(Barangay $barangay, string $centerParam)
     {
         return Family::where('barangay_id', $barangay->id)
+            ->whereNotNull('synced_at')
             ->when($centerParam === 'none', fn ($q) => $q->whereNull('evacuation_center_id'))
             ->when($centerParam !== 'none', fn ($q) => $q->where('evacuation_center_id', $centerParam))
             ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter', 'headEntry'])
@@ -602,6 +615,10 @@ class FamilyController extends Controller
                 ->with('status', 'This family has already synced -- it can no longer be edited from this device.');
         }
 
+        if ($family->created_via_ec_board) {
+            return $this->managedOnEcBoard();
+        }
+
         $family->load('evacuees');
 
         return $this->renderForm($request, $auth, $family);
@@ -612,6 +629,10 @@ class FamilyController extends Controller
         if ($family->isSynced()) {
             return redirect()->route('families.index')
                 ->with('status', 'This family has already synced -- it can no longer be edited from this device.');
+        }
+
+        if ($family->created_via_ec_board) {
+            return $this->managedOnEcBoard();
         }
 
         $validated = $request->validated();
@@ -654,9 +675,26 @@ class FamilyController extends Controller
                 ->with('status', 'This family has already synced -- it can no longer be deleted from this device.');
         }
 
+        if ($family->created_via_ec_board) {
+            return $this->managedOnEcBoard();
+        }
+
         $family->delete();
 
         return redirect()->route('families.index')
             ->with('status', 'Pending registration removed.');
+    }
+
+    /**
+     * A household created by EC Board's Add Evacuee has no full
+     * registration behind it (no birth dates, contact numbers or home
+     * address), so the registration form can't edit it, and its entries
+     * still point at it. It's changed or removed through its EC Board
+     * entries instead, which clean it up themselves.
+     */
+    private function managedOnEcBoard()
+    {
+        return redirect()->route('families.index')
+            ->with('status', 'This household was added on the EC Board -- edit or remove it from its EC Board entries.');
     }
 }
