@@ -5,11 +5,11 @@
     // passes null explicitly, so this stays a plain isset-free check.
     $isEditing = ! empty($family);
 @endphp
-<div class="modal-pop w-full max-w-3xl bg-white rounded-3xl shadow-2xl" data-register-family-modal>
-    <div class="flex items-start justify-between px-6 pt-6">
+<div class="modal modal-pop max-w-3xl" data-register-family-modal>
+    <div class="modal-header">
         <div>
-            <h1 class="text-xl font-bold text-brand mb-1">{{ $isEditing ? 'Edit pending registration' : 'Register a family' }}</h1>
-            <p class="text-sm text-gray-500">
+            <h1 class="modal-title">{{ $isEditing ? 'Edit pending registration' : 'Register a family' }}</h1>
+            <p class="text-sm text-gray-600 mt-0.5">
                 @if ($isEditing)
                     Still saved only on this device -- fix what's needed, then sync when you're back online.
                 @else
@@ -17,12 +17,12 @@
                 @endif
             </p>
         </div>
-        <a href="{{ route('dashboard') }}" class="modal-close-btn w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0" aria-label="Close">
+        <a href="{{ route('dashboard') }}" class="modal-close-btn btn-icon" aria-label="Close">
             <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>
         </a>
     </div>
 
-    <div class="form-errors mx-6 mt-4 bg-red-50 text-red-700 text-sm rounded-xl p-3" @if (! $errors->any()) style="display: none;" @endif>
+    <div class="form-errors callout callout-danger mx-6 mt-4" role="alert" @if (! $errors->any()) style="display: none;" @endif>
         {{ $errors->first() }}
     </div>
 
@@ -31,11 +31,11 @@
         @if ($isEditing)
             @method('PUT')
         @endif
-        <p class="text-xs text-gray-500 -mb-1">Fields marked with <span class="text-red-500 font-semibold">*</span> are required.</p>
-        <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 grid grid-cols-2 gap-4">
+        <p class="text-xs text-gray-600 -mb-1">Fields marked with <span class="text-red-700 font-semibold">*</span> are required.</p>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 grid grid-cols-2 gap-4">
             <div>
-                <label class="text-sm text-gray-600 block mb-1">Barangay <span class="text-red-500">*</span></label>
-                <select name="barangay_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <label class="label">Barangay <span class="text-red-700">*</span></label>
+                <select name="barangay_id" required class="input">
                     <option value="">Select barangay</option>
                     @foreach ($barangays as $b)
                         {{-- New registration (not editing): defaults to THIS
@@ -57,13 +57,13 @@
                     @endforeach
                 </select>
                 <div class="mt-3">
-                    <label class="text-sm text-gray-600 block mb-1">Street/Sitio Address <span class="text-gray-400">(optional)</span></label>
-                    <input type="text" name="home_address" value="{{ old('home_address', $isEditing ? $family->home_address : '') }}" placeholder="e.g. Purok 3, Sitio Malinao" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="label">Street/Sitio Address <span class="text-gray-600 font-normal">(optional)</span></label>
+                    <input type="text" name="home_address" value="{{ old('home_address', $isEditing ? $family->home_address : '') }}" placeholder="e.g. Purok 3, Sitio Malinao" class="input">
                 </div>
             </div>
             <div>
-                <label class="text-sm text-gray-600 block mb-1">Disaster event <span class="text-red-500">*</span></label>
-                <select name="evacuation_event_id" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <label class="label">Disaster event <span class="text-red-700">*</span></label>
+                <select name="evacuation_event_id" required class="input">
                     <option value="">Select event</option>
                     @foreach ($events as $e)
                         <option value="{{ $e->id }}" @selected($isEditing && $family->evacuation_event_id === $e->id)>{{ $e->name }}</option>
@@ -78,37 +78,37 @@
                     @endif
                 </select>
                 @if ($events->isEmpty())
-                    <p class="text-xs text-amber-600 mt-1">No events cached -- refresh reference data from the dashboard while online.</p>
+                    <p class="text-xs text-amber-800 mt-1">No events cached -- refresh reference data from the dashboard while online.</p>
                 @endif
             </div>
             <div>
-                <label class="text-sm text-gray-600 block mb-1">Displacement type</label>
-                <select name="displacement_type" id="displacement_type" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <label class="label">Displacement type</label>
+                <select name="displacement_type" id="displacement_type" required class="input">
                     <option value="inside_center" @selected(! $isEditing || $family->displacement_type === 'inside_center')>Inside an evacuation center</option>
                     <option value="outside_center" @selected($isEditing && $family->displacement_type === 'outside_center')>Outside (evacuated to relatives/other location)</option>
                 </select>
             </div>
             <div id="center-field" @if ($isEditing && $family->displacement_type !== 'inside_center') style="display: none;" @endif>
-                <label class="text-sm text-gray-600 block mb-1">Evacuation center <span class="text-red-500">*</span></label>
-                <select name="evacuation_center_id" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <label class="label">Evacuation center <span class="text-red-700">*</span></label>
+                <select name="evacuation_center_id" class="input">
                     <option value="">Select center</option>
                 </select>
-                <p class="text-xs text-gray-400 mt-1">Populated once you pick a barangay above.</p>
+                <p class="help">Populated once you pick a barangay above.</p>
             </div>
-            <label class="flex items-center gap-2 text-sm text-gray-600 col-span-2">
+            <label class="flex items-center gap-2 text-sm text-gray-700 col-span-2">
                 <input type="checkbox" name="is_4ps_beneficiary" value="1" @checked($isEditing && $family->is_4ps_beneficiary)> Household is a 4Ps beneficiary
             </label>
         </div>
 
         <div>
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-bold text-gray-700">Household members</h2>
-                <button type="button" id="add-member-btn" class="text-sm text-brand font-semibold hover:underline">+ Add another member</button>
+                <h2 class="card-title">Household members</h2>
+                <button type="button" id="add-member-btn" class="btn btn-sm btn-secondary">+ Add another member</button>
             </div>
             <div id="members-container" class="flex flex-col gap-4"></div>
         </div>
 
-        <button type="submit" class="btn-modern btn-primary-modern bg-brand hover:bg-brand-dark text-white text-sm px-4 py-2.5 w-fit">
+        <button type="submit" class="btn btn-primary w-fit">
             {{ $isEditing ? 'Save changes (offline)' : 'Save family (offline)' }}
         </button>
     </form>

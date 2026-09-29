@@ -24,11 +24,11 @@
             <input type="hidden" name="return_to_center_id" value="{{ $returnToCenterId }}">
             <input type="hidden" name="return_to_event_id" value="{{ $returnToEventId }}">
         @endif
-        <button type="submit" data-sync-button class="btn-modern flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-700 px-4 py-2.5">
+        <button type="submit" data-sync-button class="btn btn-secondary">
             <i class="ti ti-cloud-upload" style="font-size: 15px;" aria-hidden="true"></i> Sync now
         </button>
     </form>
-    <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-600 mt-1" style="display: none;">
+    <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-800 mt-1" style="display: none;">
         <i class="ti ti-alert-triangle" style="font-size: 12px;" aria-hidden="true"></i> Sync requires an internet connection.
     </p>
 </div>

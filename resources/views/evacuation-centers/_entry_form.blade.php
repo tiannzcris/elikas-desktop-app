@@ -4,18 +4,18 @@
      entry reuses the exact same field partial (_entry_fields.blade.php)
      inside this modal wrapper, mirroring families/_form.blade.php's own
      create/edit reuse. --}}
-<div class="modal-pop w-full max-w-xl bg-white rounded-3xl shadow-2xl" data-ec-board-entry-modal>
-    <div class="flex items-start justify-between px-6 pt-6">
+<div class="modal modal-pop max-w-xl" data-ec-board-entry-modal>
+    <div class="modal-header">
         <div>
-            <h1 class="text-xl font-bold text-brand mb-1">Edit pending evacuee entry</h1>
-            <p class="text-sm text-gray-500">Still saved only on this device -- fix what's needed, then sync when you're back online.</p>
+            <h1 class="modal-title">Edit pending evacuee entry</h1>
+            <p class="text-sm text-gray-600 mt-0.5">Still saved only on this device -- fix what's needed, then sync when you're back online.</p>
         </div>
-        <a href="{{ route('evacuation-centers.ec-board', $center) }}" class="modal-close-btn w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0" aria-label="Close">
+        <a href="{{ route('evacuation-centers.ec-board', $center) }}" class="modal-close-btn btn-icon" aria-label="Close">
             <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>
         </a>
     </div>
 
-    <div class="form-errors mx-6 mt-4 bg-red-50 text-red-700 text-sm rounded-xl p-3" @if (! $errors->any()) style="display: none;" @endif>
+    <div class="form-errors callout callout-danger mx-6 mt-4" role="alert" @if (! $errors->any()) style="display: none;" @endif>
         {{ $errors->first() }}
     </div>
 

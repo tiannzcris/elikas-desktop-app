@@ -11,7 +11,7 @@
              ecBoard()), not a query param, so it's correct regardless
              of how this page was reached. Falls back to the barangay
              list if that barangay somehow isn't cached locally. --}}
-        <a href="{{ $backBarangay ? route('ec-board.centers', $backBarangay) : route('ec-board.index') }}" class="btn-modern inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-600 px-3 py-2">
+        <a href="{{ $backBarangay ? route('ec-board.centers', $backBarangay) : route('ec-board.index') }}" class="btn btn-secondary">
             <i class="ti ti-arrow-left" style="font-size: 15px;" aria-hidden="true"></i> Back to {{ $barangayName }}
         </a>
         {{-- Lets staff sync directly from this page without navigating
@@ -23,11 +23,11 @@
     </div>
 
     @if ($events->isEmpty())
-        <div class="card-modern p-5 mb-6">
-            <p class="text-xs font-medium text-gray-500">EC Information Board</p>
-            <h1 class="text-lg font-bold text-brand">{{ $center->name }}</h1>
-            <p class="text-sm text-gray-500 mb-4">Barangay {{ $barangayName }}</p>
-            <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-amber-800">
+        <div class="card p-5 mb-6">
+            <p class="text-xs font-medium text-gray-600">EC Information Board</p>
+            <h1 class="text-lg font-semibold text-gray-900">{{ $center->name }}</h1>
+            <p class="text-sm text-gray-600 mb-4">Barangay {{ $barangayName }}</p>
+            <div class="callout callout-warning">
                 No disaster events cached on this device -- refresh reference data while online before adding evacuees here.
             </div>
         </div>
@@ -38,19 +38,19 @@
              comes first -- it names the center and event being added to --
              and the panel follows it. --}}
         <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-5 items-start mb-5">
-            <section class="card-modern ecb-sheet" aria-label="EC Information Board">
+            <section class="card ecb-sheet" aria-label="EC Information Board">
                 <div class="px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-xs font-medium text-gray-500">EC Information Board</p>
-                        <h1 class="text-lg font-bold text-brand leading-snug">{{ $center->name }}</h1>
-                        <p class="text-sm text-gray-500">
-                            Barangay <span class="font-medium text-gray-700">{{ $barangayName }}</span>
-                            &middot; <a href="{{ route('evacuation-centers.show', $center) }}" class="text-gray-400 hover:text-brand underline">center details</a>
+                        <p class="text-xs font-medium text-gray-600">EC Information Board</p>
+                        <h1 class="text-lg font-semibold text-gray-900 leading-snug">{{ $center->name }}</h1>
+                        <p class="text-sm text-gray-600">
+                            Barangay <span class="font-medium text-gray-900">{{ $barangayName }}</span>
+                            &middot; <a href="{{ route('evacuation-centers.show', $center) }}" class="link">center details</a>
                         </p>
                     </div>
-                    <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}" class="flex flex-col gap-1 text-xs text-gray-500">
-                        <label for="ecb-event">Event</label>
-                        <select id="ecb-event" name="event" onchange="this.form.submit()" class="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-800 min-w-[13rem]">
+                    <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}" class="flex flex-col">
+                        <label for="ecb-event" class="label-sm">Event</label>
+                        <select id="ecb-event" name="event" onchange="this.form.submit()" class="input w-auto min-w-[13rem]">
                             @foreach ($events as $e)
                                 <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->name }}</option>
                             @endforeach
@@ -63,10 +63,10 @@
                 </div>
             </section>
 
-            <section class="card-modern px-4 pt-4 xl:sticky xl:top-0 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto" data-ec-board-entry-form aria-label="Add evacuee">
-                <h2 class="text-sm font-bold text-gray-800">Add evacuee</h2>
-                <p class="text-xs text-gray-500 mt-0.5 mb-3">Saved on this device first -- name and birthdate can be added later.</p>
-                <div class="form-errors bg-red-50 text-red-700 text-sm rounded-xl p-3 mb-3" @if (! $errors->any()) style="display: none;" @endif>
+            <section class="card px-4 pt-4 xl:sticky xl:top-0 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto" data-ec-board-entry-form aria-label="Add evacuee">
+                <h2 class="card-title">Add evacuee</h2>
+                <p class="text-xs text-gray-600 mt-0.5 mb-3">Saved on this device first -- name and birthdate can be added later.</p>
+                <div class="form-errors callout callout-danger mb-3" role="alert" @if (! $errors->any()) style="display: none;" @endif>
                     {{ $errors->first() }}
                 </div>
                 <form method="POST" action="{{ route('ec-board-entries.store', $center) }}" class="flex flex-col">
@@ -76,46 +76,46 @@
             </section>
         </div>
 
-        <section class="card-modern mb-5" aria-label="Pending entries">
+        <section class="card mb-5" aria-label="Pending entries">
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <h2 class="text-sm font-bold text-gray-800">Pending entries for this event</h2>
+                <h2 class="card-title">Pending entries for this event</h2>
                 @if ($pendingEntries->isNotEmpty())
                     <span class="section-count section-count-pending">{{ $pendingEntries->count() }}</span>
                 @endif
             </div>
             @if ($pendingEntries->isEmpty())
-                <p class="px-5 py-4 text-sm text-gray-400">Nothing waiting to sync for this event.</p>
+                <p class="px-5 py-4 text-sm text-gray-600">Nothing waiting to sync for this event.</p>
             @else
                 <ul class="divide-y divide-gray-100">
                     @foreach ($pendingEntries as $entry)
                         <li class="px-5 py-2.5">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="font-semibold text-sm text-gray-800 truncate">{{ $entry->householdLabel() }}</p>
-                                    <p class="text-xs text-gray-500">
+                                    <p class="font-semibold text-sm text-gray-900 truncate">{{ $entry->householdLabel() }}</p>
+                                    <p class="text-xs text-gray-600">
                                         {{ \Illuminate\Support\Str::headline($entry->sex) }} &middot;
                                         {{ $ageBrackets[$entry->age_bracket] ?? $entry->age_bracket }} &middot;
                                         added {{ $entry->created_at->format('M j, g:i A') }}
                                     </p>
                                 </div>
                                 <div class="flex items-center gap-1 shrink-0">
-                                    <span class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 mr-1">
+                                    <span class="badge badge-warning mr-1">
                                         <i class="ti ti-clock" style="font-size: 12px;" aria-hidden="true"></i> Waiting to sync
                                     </span>
-                                    <a href="{{ route('ec-board-entries.edit', $entry) }}" data-modal-trigger="ec-board-entry" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-brand hover:bg-gray-100" aria-label="Edit" title="Edit">
+                                    <a href="{{ route('ec-board-entries.edit', $entry) }}" data-modal-trigger="ec-board-entry" class="btn-icon" aria-label="Edit" title="Edit">
                                         <i class="ti ti-pencil" style="font-size: 14px;" aria-hidden="true"></i>
                                     </a>
                                     <form method="POST" action="{{ route('ec-board-entries.destroy', $entry) }}" onsubmit="if (!confirm('Remove this pending entry from this device? This cannot be undone.')) { event.stopPropagation(); return false; }">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50" aria-label="Delete" title="Delete">
+                                        <button type="submit" class="btn-icon btn-icon-danger" aria-label="Delete" title="Delete">
                                             <i class="ti ti-trash" style="font-size: 14px;" aria-hidden="true"></i>
                                         </button>
                                     </form>
                                 </div>
                             </div>
                             @if ($entry->sync_error)
-                                <p class="text-xs text-red-500 mt-1.5">{{ $entry->sync_error }}</p>
+                                <p class="text-xs text-red-700 mt-1.5">{{ $entry->sync_error }}</p>
                             @endif
                         </li>
                     @endforeach
@@ -132,52 +132,52 @@
              guarantee reflects). Reuses the same data-sync-control/
              data-sync-button/data-sync-offline-warning wiring as Sync Now
              in app.js's updateSyncButtons(). --}}
-        <section class="card-modern p-4" data-quick-departure-form data-sync-control aria-label="Quick departure">
+        <section class="card p-4" data-quick-departure-form data-sync-control aria-label="Quick departure">
             <div class="flex flex-wrap items-baseline justify-between gap-x-3 mb-3">
-                <h2 class="text-sm font-bold text-gray-800">Quick departure</h2>
-                <p class="text-xs text-gray-400">Marks that many people as departed, oldest arrivals in the bracket first. Needs an internet connection.</p>
+                <h2 class="card-title">Quick departure</h2>
+                <p class="text-xs text-gray-600">Marks that many people as departed, oldest arrivals in the bracket first. Needs an internet connection.</p>
             </div>
 
-            <div data-quick-departure-errors class="bg-red-50 text-red-700 text-sm rounded-xl p-3 mb-3" style="display: none;"></div>
+            <div data-quick-departure-errors class="callout callout-danger mb-3" role="alert" style="display: none;"></div>
 
             <div class="grid grid-cols-2 lg:grid-cols-[7rem_minmax(0,1fr)_5.5rem_minmax(0,1fr)_auto] gap-3 items-end">
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1" for="qd-sex">Sex</label>
-                    <select id="qd-sex" data-quick-departure-sex class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="label-sm" for="qd-sex">Sex</label>
+                    <select id="qd-sex" data-quick-departure-sex class="input">
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1" for="qd-age">Age group</label>
-                    <select id="qd-age" data-quick-departure-age-bracket class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="label-sm" for="qd-age">Age group</label>
+                    <select id="qd-age" data-quick-departure-age-bracket class="input">
                         @foreach ($ageBrackets as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1" for="qd-quantity">Quantity</label>
-                    <input id="qd-quantity" type="number" min="1" value="1" data-quick-departure-quantity class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="label-sm" for="qd-quantity">Quantity</label>
+                    <input id="qd-quantity" type="number" min="1" value="1" data-quick-departure-quantity class="input">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-1" for="qd-reason">Reason</label>
-                    <select id="qd-reason" data-quick-departure-status class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                    <label class="label-sm" for="qd-reason">Reason</label>
+                    <select id="qd-reason" data-quick-departure-status class="input">
                         <option value="returned_home">Returned home</option>
                         <option value="transferred">Transferred elsewhere</option>
                     </select>
                 </div>
                 <div class="col-span-2 lg:col-span-1">
                     <button type="button" data-sync-button data-quick-departure-submit
-                        class="btn-modern flex items-center gap-1.5 bg-gray-800 hover:bg-gray-900 text-white text-sm px-4 py-2 whitespace-nowrap">
+                        class="btn btn-neutral">
                         Mark as departed
                     </button>
                 </div>
             </div>
-            <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-600 mt-2" style="display: none;">
+            <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-800 mt-2" style="display: none;">
                 <i class="ti ti-alert-triangle" style="font-size: 12px;" aria-hidden="true"></i> Quick departure requires an internet connection.
             </p>
-            <p data-quick-departure-success class="text-xs text-green-600 font-medium mt-2" style="display: none;">&check; Marked as departed.</p>
+            <p data-quick-departure-success class="text-xs text-green-800 font-medium mt-2" role="status" style="display: none;">&check; Marked as departed.</p>
         </section>
     @endif
 @endsection

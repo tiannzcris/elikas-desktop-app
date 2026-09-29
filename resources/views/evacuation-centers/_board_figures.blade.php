@@ -22,7 +22,7 @@
     @if ($fetchedAt)
         <time datetime="{{ $fetchedAt->toIso8601String() }}" data-local-time>{{ $fetchedAt->format('M j, Y g:i A') }} UTC</time>
     @else
-        <span class="text-gray-400">not yet fetched from the central server -- connect to the internet to load this board.</span>
+        <span class="text-gray-600">not yet fetched from the central server -- connect to the internet to load this board.</span>
     @endif
 </p>
 
@@ -103,9 +103,9 @@
                     <td>{{ $female }}</td>
                     <td class="font-semibold">{{ $male + $female }}</td>
                 @else
-                    <td class="text-gray-300">—</td>
-                    <td class="text-gray-300">—</td>
-                    <td class="text-gray-300">—</td>
+                    <td class="text-gray-500">—</td>
+                    <td class="text-gray-500">—</td>
+                    <td class="text-gray-500">—</td>
                 @endif
                 @include('evacuation-centers._board_pending_cell', ['male' => $pendingSectoral[$group]['male'], 'female' => $pendingSectoral[$group]['female']])
             </tr>

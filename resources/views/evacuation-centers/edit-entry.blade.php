@@ -3,7 +3,7 @@
 @section('title', 'Edit pending evacuee entry')
 
 @section('content')
-    <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4" style="background: rgba(15, 36, 71, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
+    <div class="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4" style="background: rgba(17, 24, 39, 0.5);">
         @include('evacuation-centers._entry_form')
     </div>
 @endsection

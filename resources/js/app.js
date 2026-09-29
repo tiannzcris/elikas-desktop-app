@@ -48,10 +48,10 @@ function updateConnectionBadge() {
     if (!badge) return;
     if (navigator.onLine) {
         badge.textContent = 'Online';
-        badge.className = 'text-xs px-2.5 py-1 rounded-full font-semibold bg-green-500 text-white';
+        badge.className = 'badge badge-success';
     } else {
         badge.textContent = 'Offline';
-        badge.className = 'text-xs px-2.5 py-1 rounded-full font-semibold bg-gray-500 text-white';
+        badge.className = 'badge badge-neutral';
     }
 }
 
@@ -136,11 +136,9 @@ function closeDynamicModal(backdrop) {
 function openRegisterFamilyModal(url) {
     const backdrop = document.createElement('div');
     backdrop.className = 'fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4';
-    backdrop.style.background = 'rgba(15, 36, 71, 0.55)';
-    backdrop.style.backdropFilter = 'blur(4px)';
-    backdrop.style.webkitBackdropFilter = 'blur(4px)';
+    backdrop.style.background = 'rgba(17, 24, 39, 0.5)';
     backdrop.setAttribute('data-dynamic-modal-backdrop', '');
-    backdrop.innerHTML = '<div class="bg-white rounded-2xl px-6 py-5 text-sm text-gray-500 mt-10">Loading...</div>';
+    backdrop.innerHTML = '<div class="bg-white rounded-xl px-6 py-5 text-sm text-gray-600 mt-10">Loading...</div>';
     document.body.appendChild(backdrop);
 
     backdrop.addEventListener('click', (e) => {
@@ -155,7 +153,7 @@ function openRegisterFamilyModal(url) {
             if (modalRoot) window.ELIKAS.initRegisterFamilyForm(modalRoot);
         })
         .catch(() => {
-            backdrop.innerHTML = '<div class="bg-white rounded-2xl p-6 text-sm text-red-600 mt-10">Could not load the form. Please try again.</div>';
+            backdrop.innerHTML = '<div class="bg-white rounded-xl p-6 text-sm text-red-700 mt-10">Could not load the form. Please try again.</div>';
         });
 }
 
@@ -265,35 +263,35 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
         const isPwd = member ? !!member.is_pwd : false;
 
         return `
-        <div class="member-row card-modern p-4" data-index="${index}">
+        <div class="member-row card p-4" data-index="${index}">
             <div class="flex items-center justify-between mb-3">
-                <p class="text-sm font-semibold text-gray-600">Member ${index + 1}</p>
-                ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-500 font-medium hover:underline">Remove</button>` : ''}
+                <p class="text-sm font-semibold text-gray-900">Member ${index + 1}</p>
+                ${index > 0 ? `<button type="button" class="remove-member text-xs text-red-700 font-medium hover:underline">Remove</button>` : ''}
             </div>
-            <div class="grid grid-cols-3 gap-3">
-                <input type="text" name="members[${index}][first_name]" value="${escAttr(v('first_name'))}" placeholder="First name *" class="m-first_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                <input type="text" name="members[${index}][middle_name]" value="${escAttr(v('middle_name'))}" placeholder="Middle name (optional)" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
-                <input type="text" name="members[${index}][last_name]" value="${escAttr(v('last_name'))}" placeholder="Last name *" class="m-last_name border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
-                <select name="members[${index}][sex]" class="border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+            <div class="grid grid-cols-3 gap-3 items-end">
+                <input type="text" name="members[${index}][first_name]" value="${escAttr(v('first_name'))}" placeholder="First name *" class="m-first_name input" required>
+                <input type="text" name="members[${index}][middle_name]" value="${escAttr(v('middle_name'))}" placeholder="Middle name (optional)" class="input">
+                <input type="text" name="members[${index}][last_name]" value="${escAttr(v('last_name'))}" placeholder="Last name *" class="m-last_name input" required>
+                <select name="members[${index}][sex]" class="input" required>
                     <option value="">Sex *</option>
                     <option value="male" ${selected('sex', 'male')}>Male</option>
                     <option value="female" ${selected('sex', 'female')}>Female</option>
                 </select>
                 <div>
-                    <label class="text-xs text-gray-500 block mb-0.5">Date of birth *</label>
-                    <input type="date" name="members[${index}][date_of_birth]" value="${escAttr(v('date_of_birth'))}" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm" required>
+                    <label class="label-sm">Date of birth *</label>
+                    <input type="date" name="members[${index}][date_of_birth]" value="${escAttr(v('date_of_birth'))}" class="input" required>
                 </div>
-                <input type="text" name="members[${index}][contact_number]" value="${escAttr(v('contact_number'))}" placeholder="Contact number (optional)" class="border border-gray-300 rounded-xl px-3 py-2 text-sm">
+                <input type="text" name="members[${index}][contact_number]" value="${escAttr(v('contact_number'))}" placeholder="Contact number (optional)" class="input">
             </div>
-            <div class="dup-warning mt-3 bg-amber-50 text-amber-700 text-xs rounded-xl p-2.5 items-start gap-2" style="display: none;">
+            <div class="dup-warning callout callout-warning mt-3 text-xs items-start gap-2" style="display: none;">
                 <i class="ti ti-alert-triangle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>
                 <span class="dup-warning-text"></span>
             </div>
-            <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-600 items-center">
+            <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-700 items-center">
                 <input type="hidden" name="members[${index}][is_head_of_family]" value="0">
                 <label class="flex items-center gap-1.5"><input type="radio" name="members[${index}][is_head_of_family]" value="1" ${isHead ? 'checked' : ''}> Head of family</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="m-is_pwd" name="members[${index}][is_pwd]" value="1" ${checked('is_pwd')}> PWD</label>
-                <input type="text" placeholder="PWD type" value="${escAttr(v('pwd_type'))}" class="m-pwd_type ${isPwd ? '' : 'hidden'} border border-gray-300 rounded-lg px-2 py-1 text-xs" name="members[${index}][pwd_type]">
+                <input type="text" placeholder="PWD type" value="${escAttr(v('pwd_type'))}" class="m-pwd_type ${isPwd ? '' : 'hidden'} input input-sm w-40 text-xs" name="members[${index}][pwd_type]">
                 <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_pregnant]" value="1" ${checked('is_pregnant')}> Pregnant</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_lactating]" value="1" ${checked('is_lactating')}> Lactating</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" name="members[${index}][is_solo_parent]" value="1" ${checked('is_solo_parent')}> Solo parent</label>
@@ -450,11 +448,9 @@ window.ELIKAS.initRegisterFamilyForm = function initRegisterFamilyForm(modalRoot
 function openEcBoardEntryModal(url) {
     const backdrop = document.createElement('div');
     backdrop.className = 'fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4';
-    backdrop.style.background = 'rgba(15, 36, 71, 0.55)';
-    backdrop.style.backdropFilter = 'blur(4px)';
-    backdrop.style.webkitBackdropFilter = 'blur(4px)';
+    backdrop.style.background = 'rgba(17, 24, 39, 0.5)';
     backdrop.setAttribute('data-dynamic-modal-backdrop', '');
-    backdrop.innerHTML = '<div class="bg-white rounded-2xl px-6 py-5 text-sm text-gray-500 mt-10">Loading...</div>';
+    backdrop.innerHTML = '<div class="bg-white rounded-xl px-6 py-5 text-sm text-gray-600 mt-10">Loading...</div>';
     document.body.appendChild(backdrop);
 
     backdrop.addEventListener('click', (e) => {
@@ -469,7 +465,7 @@ function openEcBoardEntryModal(url) {
             if (modalRoot) window.ELIKAS.initEcBoardEntryForm(modalRoot);
         })
         .catch(() => {
-            backdrop.innerHTML = '<div class="bg-white rounded-2xl p-6 text-sm text-red-600 mt-10">Could not load the form. Please try again.</div>';
+            backdrop.innerHTML = '<div class="bg-white rounded-xl p-6 text-sm text-red-700 mt-10">Could not load the form. Please try again.</div>';
         });
 }
 

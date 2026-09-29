@@ -85,9 +85,8 @@ class OwnBarangayPinnedFirstTest extends TestCase
         // The explanatory paragraph always mentions "Your barangay is
         // shown first" -- checking for that exact phrase alone would be
         // a false positive here, so this targets the per-row BADGE
-        // markup specifically (text-[10px], a size used nowhere else on
-        // this page), confirming no row is actually flagged/pinned.
-        $page->assertDontSee('text-[10px]', false);
+        // markup specifically, confirming no row is actually flagged/pinned.
+        $page->assertDontSee('badge badge-info">Your barangay', false);
     }
 
     // -----------------------------------------------------------------

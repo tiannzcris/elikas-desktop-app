@@ -199,9 +199,9 @@ class PendingRegistrationManagementTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Fields marked with', false);
-        $response->assertSee('Barangay <span class="text-red-500">*</span>', false);
-        $response->assertSee('Disaster event <span class="text-red-500">*</span>', false);
-        $response->assertSee('Evacuation center <span class="text-red-500">*</span>', false);
+        $response->assertSee('Barangay <span class="text-red-700">*</span>', false);
+        $response->assertSee('Disaster event <span class="text-red-700">*</span>', false);
+        $response->assertSee('Evacuation center <span class="text-red-700">*</span>', false);
     }
 
     /**
