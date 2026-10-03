@@ -210,6 +210,10 @@ function wireModalSubmit(modalRoot) {
             });
 
             if (response.redirected) {
+                // Lets the page react to a save that's about to reload it
+                // (the EC Board reopens Add evacuee). The redirect's own
+                // flash messages were already used up by this fetch.
+                modalRoot.dispatchEvent(new CustomEvent('elikas:saved', { bubbles: true }));
                 navigateFreshTo(response.url);
                 return;
             }

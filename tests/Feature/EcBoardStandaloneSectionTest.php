@@ -143,7 +143,9 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        $page->assertSeeInOrder(['4Ps beneficiary families', 'Age group', 'Sectoral group', 'Add evacuee', 'Pending entries for this event', 'Quick departure']);
+        // The two forms' buttons sit at the top; the board, then its
+        // pending entries, then the forms themselves as pop-ups.
+        $page->assertSeeInOrder(['Quick departure', 'Add evacuee', '4Ps beneficiary families', 'Age group', 'Sectoral group', 'Pending entries for this event', 'id="add-evacuee-modal"', 'id="quick-departure-modal"'], false);
     }
 
     /**

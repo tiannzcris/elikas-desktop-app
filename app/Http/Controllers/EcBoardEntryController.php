@@ -49,7 +49,10 @@ class EcBoardEntryController extends Controller
         });
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $validated['evacuation_event_id']])
-            ->with('status', 'Evacuee added on this device. Sync when you have internet.');
+            ->with('status', 'Evacuee added on this device. Sync when you have internet.')
+            // Reopens the Add evacuee pop-up after the reload, ready for
+            // the next person (see evacuation-centers/ec-board.blade.php).
+            ->with('ecBoardEntryAdded', true);
     }
 
     /**

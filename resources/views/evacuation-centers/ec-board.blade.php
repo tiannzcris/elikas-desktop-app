@@ -19,7 +19,19 @@
              center+event afterward (see FamilyController::sync()'s own
              resolveSyncRedirect()), so the board reflects the sync
              immediately. --}}
-        @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
+            {{-- The board's two forms open in pop-ups over it, the same as
+                 the web dashboard's EC Board. --}}
+            @if ($events->isNotEmpty())
+                <button type="button" class="btn btn-secondary" data-open-board-modal="quick-departure-modal" aria-haspopup="dialog">
+                    <i class="ti ti-door-exit" style="font-size: 16px;" aria-hidden="true"></i> Quick departure
+                </button>
+                <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
+                    <i class="ti ti-user-plus" style="font-size: 16px;" aria-hidden="true"></i> Add evacuee
+                </button>
+            @endif
+        </div>
     </div>
 
     @if ($events->isEmpty())
@@ -32,13 +44,7 @@
             </div>
         </div>
     @else
-        {{-- The board on the left and the Add evacuee panel beside it,
-             sticky and scrolling on its own on wide windows so it stays in
-             reach while the board scrolls. On narrower windows the board
-             comes first -- it names the center and event being added to --
-             and the panel follows it. --}}
-        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem] gap-5 items-start mb-5">
-            <section class="card ecb-sheet" aria-label="EC Information Board">
+            <section class="card ecb-sheet mb-5" aria-label="EC Information Board">
                 <div class="px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-xs font-medium text-gray-600">EC Information Board</p>
@@ -63,18 +69,6 @@
                 </div>
             </section>
 
-            <section class="card px-4 pt-4 xl:sticky xl:top-0 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto" data-ec-board-entry-form aria-label="Add evacuee">
-                <h2 class="card-title">Add evacuee</h2>
-                <p class="text-xs text-gray-600 mt-0.5 mb-3">Saved on this device first -- name and birthdate can be added later.</p>
-                <div class="form-errors callout callout-danger mb-3" role="alert" @if (! $errors->any()) style="display: none;" @endif>
-                    {{ $errors->first() }}
-                </div>
-                <form method="POST" action="{{ route('ec-board-entries.store', $center) }}" class="flex flex-col">
-                    @csrf
-                    @include('evacuation-centers._entry_fields', ['entry' => null, 'fixedEventId' => $selectedEventId, 'submitLabel' => 'Add evacuee (offline)'])
-                </form>
-            </section>
-        </div>
 
         <section class="card mb-5" aria-label="Pending entries">
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
@@ -123,62 +117,106 @@
             @endif
         </section>
 
-        {{-- "Quick Departure": the reverse of Add Evacuee, kept to one row at
-             the bottom -- mirrors the web dashboard's own Quick Departure,
-             but UNLIKE Add Evacuee this has NO offline path at all (see
-             EvacuationCenterController::quickDeparture()'s own docblock
-             for why: it needs the central server's own true current
-             "who's here" set, which this device's local cache can't
-             guarantee reflects). Reuses the same data-sync-control/
-             data-sync-button/data-sync-offline-warning wiring as Sync Now
-             in app.js's updateSyncButtons(). --}}
-        <section class="card p-4" data-quick-departure-form data-sync-control aria-label="Quick departure">
-            <div class="flex flex-wrap items-baseline justify-between gap-x-3 mb-3">
-                <h2 class="card-title">Quick departure</h2>
-                <p class="text-xs text-gray-600">Marks that many people as departed, oldest arrivals in the bracket first. Needs an internet connection.</p>
-            </div>
 
-            <div data-quick-departure-errors class="callout callout-danger mb-3" role="alert" style="display: none;"></div>
-
-            <div class="grid grid-cols-2 lg:grid-cols-[7rem_minmax(0,1fr)_5.5rem_minmax(0,1fr)_auto] gap-3 items-end">
-                <div>
-                    <label class="label-sm" for="qd-sex">Sex</label>
-                    <select id="qd-sex" data-quick-departure-sex class="input">
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="label-sm" for="qd-age">Age group</label>
-                    <select id="qd-age" data-quick-departure-age-bracket class="input">
-                        @foreach ($ageBrackets as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="label-sm" for="qd-quantity">Quantity</label>
-                    <input id="qd-quantity" type="number" min="1" value="1" data-quick-departure-quantity class="input">
-                </div>
-                <div>
-                    <label class="label-sm" for="qd-reason">Reason</label>
-                    <select id="qd-reason" data-quick-departure-status class="input">
-                        <option value="returned_home">Returned home</option>
-                        <option value="transferred">Transferred elsewhere</option>
-                    </select>
-                </div>
-                <div class="col-span-2 lg:col-span-1">
-                    <button type="button" data-sync-button data-quick-departure-submit
-                        class="btn btn-neutral">
-                        Mark as departed
+        {{-- Add evacuee, in a pop-up: its header and the read-back + save
+             button stay put while the questions scroll. Still saved on this
+             device first, exactly as before; after a save the page reloads
+             and the pop-up opens again, ready for the next person (see
+             EcBoardEntryController::store()'s ecBoardEntryAdded flash). --}}
+        <div id="add-evacuee-modal" class="board-modal-backdrop" style="display: none;">
+            <div class="modal modal-pop max-w-lg max-h-[90vh] flex flex-col overflow-hidden" data-ec-board-entry-form
+                role="dialog" aria-modal="true" aria-labelledby="add-evacuee-title">
+                <div class="modal-header shrink-0">
+                    <div class="min-w-0">
+                        <h2 id="add-evacuee-title" class="modal-title">Add evacuee</h2>
+                        <p class="text-xs font-medium text-gray-700 mt-0.5">{{ $center->name }} &middot; {{ $events->firstWhere('id', $selectedEventId)?->name }}</p>
+                        <p class="text-xs text-gray-600">Saved on this device first -- name and birthdate can be added later.</p>
+                    </div>
+                    <button type="button" class="btn-icon -mr-1.5" data-close-board-modal aria-label="Close">
+                        <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>
                     </button>
                 </div>
+                <div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4">
+                    <p data-entry-added class="callout callout-success mb-3" role="status" @if (! session('ecBoardEntryAdded')) style="display: none;" @endif>&check; Added on this device -- the form is ready for the next one.</p>
+                    <div class="form-errors callout callout-danger mb-3" role="alert" @if (! ($errors->any() && old('_board_form') === 'add-evacuee')) style="display: none;" @endif>
+                        {{ $errors->first() }}
+                    </div>
+                    <form method="POST" action="{{ route('ec-board-entries.store', $center) }}" class="flex flex-col">
+                        @csrf
+                        <input type="hidden" name="_board_form" value="add-evacuee">
+                        @include('evacuation-centers._entry_fields', ['entry' => null, 'fixedEventId' => $selectedEventId, 'submitLabel' => 'Add evacuee (offline)'])
+                    </form>
+                </div>
             </div>
-            <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-800 mt-2" style="display: none;">
-                <i class="ti ti-alert-triangle" style="font-size: 12px;" aria-hidden="true"></i> Quick departure requires an internet connection.
-            </p>
-            <p data-quick-departure-success class="text-xs text-green-800 font-medium mt-2" role="status" style="display: none;">&check; Marked as departed.</p>
-        </section>
+        </div>
+
+        {{-- Quick departure, in a pop-up -- the reverse of Add evacuee, by
+             age group + sex + quantity. Unlike Add evacuee it has no
+             offline path at all (see EvacuationCenterController::
+             quickDeparture() for why: it needs the central server's own
+             current "who's here" set). Reuses the same data-sync-control/
+             data-sync-button/data-sync-offline-warning wiring as Sync Now
+             in app.js's updateSyncButtons(). Stays open after each batch. --}}
+        <div id="quick-departure-modal" class="board-modal-backdrop" style="display: none;">
+            <div class="modal modal-pop max-w-md" data-quick-departure-form data-sync-control
+                role="dialog" aria-modal="true" aria-labelledby="quick-departure-title">
+                <div class="modal-header">
+                    <div class="min-w-0">
+                        <h2 id="quick-departure-title" class="modal-title">Quick departure</h2>
+                        <p class="text-xs font-medium text-gray-700 mt-0.5">{{ $center->name }} &middot; {{ $events->firstWhere('id', $selectedEventId)?->name }}</p>
+                        <p class="text-xs text-gray-600">Marks that many people as departed, oldest arrivals in the bracket first. Needs an internet connection.</p>
+                    </div>
+                    <button type="button" class="btn-icon -mr-1.5" data-close-board-modal aria-label="Close">
+                        <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5">
+                    <div data-quick-departure-errors class="callout callout-danger mb-4" role="alert" style="display: none;"></div>
+
+                    <div class="grid grid-cols-2 gap-x-3 gap-y-4">
+                        <div class="col-span-2">
+                            <label class="label" for="qd-age">Age group</label>
+                            <select id="qd-age" data-quick-departure-age-bracket class="input">
+                                @foreach ($ageBrackets as $key => $label)
+                                    <option value="{{ $key }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label" for="qd-sex">Sex</label>
+                            <select id="qd-sex" data-quick-departure-sex class="input">
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label" for="qd-quantity">Quantity</label>
+                            <input id="qd-quantity" type="number" min="1" value="1" data-quick-departure-quantity class="input">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="label" for="qd-reason">Reason</label>
+                            <select id="qd-reason" data-quick-departure-status class="input">
+                                <option value="returned_home">Returned home</option>
+                                <option value="transferred">Transferred elsewhere</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <p data-sync-offline-warning class="items-center gap-1 text-xs text-amber-800 mt-3" style="display: none;">
+                        <i class="ti ti-alert-triangle" style="font-size: 12px;" aria-hidden="true"></i> Quick departure requires an internet connection.
+                    </p>
+
+                    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-4 mt-5">
+                        <p data-quick-departure-success class="mr-auto text-xs text-green-800 font-medium" role="status" style="display: none;">&check; Marked as departed.</p>
+                        <button type="button" class="btn btn-secondary" data-close-board-modal>Close</button>
+                        <button type="button" data-sync-button data-quick-departure-submit class="btn btn-neutral">
+                            Mark as departed
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endif
 @endsection
 
@@ -186,6 +224,68 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         window.ELIKAS.initEcBoardEntryForm(document.querySelector('[data-ec-board-entry-form]'));
+
+        // --- Pop-ups -----------------------------------------------------
+        // Add evacuee and Quick departure open over the board, the same as
+        // the web dashboard: the X, Close, Escape and a click on the dimmed
+        // backdrop close them; focus goes to the first field on open, stays
+        // inside while open, and returns to the button that opened it.
+        let openModal = null;
+        let opener = null;
+        const focusables = (el) => [...el.querySelectorAll('button, input, select, textarea, summary, a[href]')]
+            .filter((f) => ! f.disabled && f.getClientRects().length);
+
+        const openBoardModal = (id, from = null) => {
+            openModal = document.getElementById(id);
+            if (! openModal) return;
+            opener = from;
+            openModal.style.display = 'flex';
+            focusables(openModal).find((f) => f.matches('select, input:not([type=hidden])'))?.focus();
+        };
+        const closeBoardModal = () => {
+            if (! openModal) return;
+            openModal.style.display = 'none';
+            openModal = null;
+            opener?.focus();
+        };
+
+        document.querySelectorAll('[data-open-board-modal]').forEach((button) => {
+            button.addEventListener('click', () => openBoardModal(button.dataset.openBoardModal, button));
+        });
+        document.querySelectorAll('.board-modal-backdrop').forEach((backdrop) => {
+            backdrop.addEventListener('click', (e) => {
+                if (e.target === backdrop || e.target.closest('[data-close-board-modal]')) closeBoardModal();
+            });
+        });
+        document.addEventListener('keydown', (e) => {
+            if (! openModal) return;
+            if (e.key === 'Escape') { closeBoardModal(); return; }
+            if (e.key !== 'Tab') return;
+            const items = focusables(openModal);
+            if (! items.length) return;
+            if (e.shiftKey && document.activeElement === items[0]) { e.preventDefault(); items[items.length - 1].focus(); }
+            else if (! e.shiftKey && document.activeElement === items[items.length - 1]) { e.preventDefault(); items[0].focus(); }
+        });
+
+        // Just saved an entry (the page reloads after each save), or the
+        // save came back with errors: open Add evacuee again, ready for
+        // the next person or showing what to fix. The save is normally
+        // sent by fetch (app.js's wireModalSubmit()), which uses up the
+        // redirect's flash, so it's remembered in sessionStorage across
+        // the reload; the flash covers a save without JavaScript.
+        const addEvacueeModal = document.getElementById('add-evacuee-modal');
+        addEvacueeModal?.addEventListener('elikas:saved', () => {
+            try { sessionStorage.setItem('elikas-reopen-add-evacuee', '1'); } catch (e) { /* storage blocked: just don't reopen */ }
+        });
+        let justSaved = false;
+        try {
+            justSaved = sessionStorage.getItem('elikas-reopen-add-evacuee') === '1';
+            sessionStorage.removeItem('elikas-reopen-add-evacuee');
+        } catch (e) { /* storage blocked */ }
+        if (justSaved) addEvacueeModal.querySelector('[data-entry-added]').style.display = 'block';
+        if (justSaved || @json(session('ecBoardEntryAdded') || ($errors->any() && old('_board_form') === 'add-evacuee'))) {
+            openBoardModal('add-evacuee-modal', document.querySelector('[data-open-board-modal="add-evacuee-modal"]'));
+        }
 
         // Re-renders the board's figures from the central server (see
         // EvacuationCenterController::refreshBoard()). cache: 'no-store' +
