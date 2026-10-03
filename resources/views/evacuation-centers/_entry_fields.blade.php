@@ -69,32 +69,32 @@
              head, right under the two answers that then describe the head. --}}
         <p class="entry-head-note mt-2 items-start gap-1.5 text-xs text-brand-800" style="display: none;">
             <i class="ti ti-user-check shrink-0 mt-px" style="font-size: 14px;" aria-hidden="true"></i>
-            <span>This person's age group and sex will be used for the household head.</span>
+            <span>This person's age group and sex will be used for the family head.</span>
         </p>
     </fieldset>
 
     {{-- 2. Their household. --}}
     <fieldset class="entry-section">
-        <legend class="entry-section-title">Household</legend>
+        <legend class="entry-section-title">Family</legend>
 
         @if ($isOriginated)
             {{-- This entry created the household, so it can't be moved to
                  another one -- only the household's own answers change. --}}
             <input type="hidden" name="household_type" value="new">
-            <p class="text-xs text-gray-600 mb-2">This person was added with a new household -- you can correct its details below.</p>
+            <p class="text-xs text-gray-600 mb-2">This person was added with a new family -- you can correct its details below.</p>
         @else
-            <div class="bg-gray-100 border border-gray-200 rounded-lg p-0.5 grid grid-cols-2 text-sm mb-3" role="radiogroup" aria-label="Household">
+            <div class="bg-gray-100 border border-gray-200 rounded-lg p-0.5 grid grid-cols-2 text-sm mb-3" role="radiogroup" aria-label="Family">
                 <label class="entry-mode-option cursor-pointer text-center rounded-md px-2 py-1.5 font-medium text-gray-700 hover:text-gray-900 has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-700">
                     <input type="radio" name="household_type" value="existing" class="household-type-radio sr-only" @checked($mode === 'existing')> Already here
                 </label>
                 <label class="entry-mode-option cursor-pointer text-center rounded-md px-2 py-1.5 font-medium text-gray-700 hover:text-gray-900 has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-700">
-                    <input type="radio" name="household_type" value="new" class="household-type-radio sr-only" @checked($mode === 'new')> New household
+                    <input type="radio" name="household_type" value="new" class="household-type-radio sr-only" @checked($mode === 'new')> New family
                 </label>
             </div>
 
             <div class="household-existing-field flex flex-col gap-2" @if ($mode !== 'existing') style="display: none;" @endif>
-                <select name="household_family_local_id" aria-label="Household already at this center" class="household-select input">
-                    <option value="">Select household</option>
+                <select name="household_family_local_id" aria-label="Family already at this center" class="household-select input">
+                    <option value="">Select family</option>
                     @foreach ($households as $h)
                         {{-- data-head-open: whether this household can still take a
                              head -- none linked yet, or it's this very entry. --}}
@@ -112,13 +112,13 @@
                         <option value="remote-{{ $entry->existing_household_remote_id }}" data-head-open="{{ $entry->head_is_self ? '1' : '0' }}" selected>{{ $entry->new_household_head_name }}</option>
                     @endif
                 </select>
-                <p class="household-empty-hint text-xs text-gray-600" @if ($households->isNotEmpty()) style="display: none;" @endif>No households registered at this center yet.</p>
-                <p class="household-loading-hint text-xs text-gray-600" style="display: none;">Checking the central server for more households...</p>
+                <p class="household-empty-hint text-xs text-gray-600" @if ($households->isNotEmpty()) style="display: none;" @endif>No families registered at this center yet.</p>
+                <p class="household-loading-hint text-xs text-gray-600" style="display: none;">Checking the central server for more families...</p>
                 {{-- Only for a household with no head linked yet -- the real
                      head arriving later. An existing head is never replaced. --}}
                 <label class="entry-existing-head items-start gap-2 text-sm text-gray-700" style="display: none;">
                     <input type="checkbox" name="head_is_self" value="1" data-head-self="existing" class="mt-0.5" @checked($headIsSelfExisting) @disabled($mode !== 'existing')>
-                    <span>This person is the household head <span class="block text-xs text-gray-600">This household has no head linked yet.</span></span>
+                    <span>This person is the family head <span class="block text-xs text-gray-600">This family has no head linked yet.</span></span>
                 </label>
             </div>
             <input type="hidden" name="household_label" class="household-label-input" value="{{ $isEditing && $entry->existing_household_remote_id ? $entry->new_household_head_name : '' }}">
@@ -130,14 +130,14 @@
              is always allowed and is stored as null, never guessed as "no". --}}
         <div class="household-new-field flex flex-col gap-3" @if ($mode !== 'new') style="display: none;" @endif>
             <div>
-                <label class="label-sm">Household head's name</label>
+                <label class="label-sm">Family name</label>
                 <input type="text" name="new_household_head_name" value="{{ $householdName }}" placeholder="e.g. Juan Dela Cruz" class="input">
             </div>
             <label class="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" name="head_is_self" value="1" data-head-self="new" @checked($headIsSelfNew) @disabled($mode !== 'new')> This person is the household head
+                <input type="checkbox" name="head_is_self" value="1" data-head-self="new" @checked($headIsSelfNew) @disabled($mode !== 'new')> This person is the family head
             </label>
             <div>
-                <label class="label-sm">Only one household head? (single-headed)</label>
+                <label class="label-sm">Only one family head? (single-headed)</label>
                 <select name="is_single_headed" class="input">
                     <option value="" @selected($triState($ownHousehold?->is_single_headed) === '')>Not yet known</option>
                     <option value="1" @selected($triState($ownHousehold?->is_single_headed) === '1')>Yes</option>
@@ -150,9 +150,9 @@
     {{-- 3. Only when the head is someone OTHER than this person: set apart
          (dashed inset) so these answers can't be mistaken for this
          person's own. --}}
-    <div class="entry-head-section entry-section" role="group" aria-label="About the actual household head" style="display: none;">
+    <div class="entry-head-section entry-section" role="group" aria-label="About the actual family head" style="display: none;">
         <div class="border border-dashed border-gray-400 bg-gray-50 rounded-lg p-3">
-            <p class="text-xs font-semibold text-gray-800">About the actual household head</p>
+            <p class="text-xs font-semibold text-gray-800">About the actual family head</p>
             <p class="text-xs text-gray-600 mt-0.5 mb-2">Someone other than the person you're adding. Used until they're added and linked.</p>
             <div class="grid grid-cols-2 gap-3">
                 <div>

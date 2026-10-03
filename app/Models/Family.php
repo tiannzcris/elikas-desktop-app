@@ -79,7 +79,7 @@ class Family extends Model
     {
         return $this->name
             ?? $this->evacuees->firstWhere('is_head_of_family', true)?->full_name
-            ?? 'Household #'.$this->id;
+            ?? 'Family #'.$this->id;
     }
 
     public function barangay(): BelongsTo
@@ -119,7 +119,7 @@ class Family extends Model
      */
     public function headOfFamilyName(): string
     {
-        return $this->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? $this->name ?? 'Unknown household';
+        return $this->evacuees->firstWhere('is_head_of_family', true)?->full_name ?? $this->name ?? 'Unknown family';
     }
 
     /**

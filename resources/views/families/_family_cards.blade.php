@@ -76,7 +76,7 @@
                         $headSex = $family->headSex();
                     @endphp
                     <p class="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2">
-                        Household: single-headed {{ $yesNo($family->isSingleHeaded()) }}, child-headed {{ $yesNo($family->isChildHeaded()) }}{{ $headSex ? " ({$headSex})" : '' }}
+                        Family details: single-headed {{ $yesNo($family->isSingleHeaded()) }}, child-headed {{ $yesNo($family->isChildHeaded()) }}{{ $headSex ? " ({$headSex})" : '' }}
                     </p>
                     @unless ($family->hasLinkedHead())
                         @php
@@ -92,7 +92,7 @@
                                 @else
                                     this center's EC Board
                                 @endif
-                                and tick "This person is the household head".
+                                and tick "This person is the family head".
                             </span>
                         </p>
                     @endunless

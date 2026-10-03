@@ -345,7 +345,7 @@ class EcBoardHouseholdHeadTest extends TestCase
 
         $page->assertSee('value="'.$headless->id.'"'."\n".'                            data-head-open="1"', false);
         $page->assertSee('value="'.$headed->id.'"'."\n".'                            data-head-open="0"', false);
-        $page->assertSeeInOrder(['Who is this person?', 'Household', 'About the actual household head', 'Sectoral details', 'Will be recorded', 'Add evacuee (offline)']);
+        $page->assertSeeInOrder(['Who is this person?', 'Family', 'About the actual family head', 'Sectoral details', 'Will be recorded', 'Add evacuee (offline)']);
     }
 
     public function test_the_family_card_shows_head_not_yet_linked_until_a_head_is_linked(): void
@@ -356,13 +356,13 @@ class EcBoardHouseholdHeadTest extends TestCase
 
         $page = $this->get(route('families.index'));
         $page->assertSee('Head not yet linked. Counts use the answers given for the head (male, not a minor) until a member is linked.');
-        $page->assertSee('Household: single-headed yes, child-headed no (male)');
+        $page->assertSee('Family details: single-headed yes, child-headed no (male)');
 
         $this->addToExisting($event, $center, (string) $family->id, ['sex' => 'female', 'head_is_self' => '1']);
 
         $page = $this->get(route('families.index'));
         $page->assertDontSee('Head not yet linked');
-        $page->assertSee('Household: single-headed yes, child-headed no (female)');
+        $page->assertSee('Family details: single-headed yes, child-headed no (female)');
     }
 
     // -----------------------------------------------------------------

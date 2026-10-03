@@ -96,13 +96,13 @@
                 <p class="help">Populated once you pick a barangay above.</p>
             </div>
             <label class="flex items-center gap-2 text-sm text-gray-700 col-span-2">
-                <input type="checkbox" name="is_4ps_beneficiary" value="1" @checked($isEditing && $family->is_4ps_beneficiary)> Household is a 4Ps beneficiary
+                <input type="checkbox" name="is_4ps_beneficiary" value="1" @checked($isEditing && $family->is_4ps_beneficiary)> Family is a 4Ps beneficiary
             </label>
         </div>
 
         <div>
             <div class="flex items-center justify-between mb-3">
-                <h2 class="card-title">Household members</h2>
+                <h2 class="card-title">Family members</h2>
                 <button type="button" id="add-member-btn" class="btn btn-sm btn-secondary">+ Add another member</button>
             </div>
             <div id="members-container" class="flex flex-col gap-4"></div>

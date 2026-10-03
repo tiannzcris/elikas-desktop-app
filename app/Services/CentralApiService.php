@@ -148,7 +148,7 @@ class CentralApiService
                 ['evacuation_event_id' => $eventRemoteId]
             );
         } catch (ConnectionException $e) {
-            throw new \RuntimeException('Could not reach the central server to refresh this center\'s households.');
+            throw new \RuntimeException('Could not reach the central server to refresh this center\'s families.');
         }
 
         if (! $response->successful()) {

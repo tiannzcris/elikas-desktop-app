@@ -548,11 +548,11 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
 
         if (mode() === 'existing') {
             const label = optionText(householdSelect);
-            lines.push(label ? `Joins the household already here: ${label}.` : 'Choose the household this person belongs to.');
-            if (personIsHead()) lines.push(`Becomes that household's head (${minorText(headIsMinor)}).`);
+            lines.push(label ? `Joins the family already here: ${label}.` : 'Choose the family this person belongs to.');
+            if (personIsHead()) lines.push(`Becomes that family's head (${minorText(headIsMinor)}).`);
         } else {
             const name = q('input[name="new_household_head_name"]')?.value.trim();
-            lines.push(`New household: ${name || '(head\'s name not entered yet)'}.`);
+            lines.push(`New family: ${name || '(family name not entered yet)'}.`);
             if (personIsHead()) {
                 lines.push(`Head: this person (${minorText(headIsMinor)}).`);
             } else {

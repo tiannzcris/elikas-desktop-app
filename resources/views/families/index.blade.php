@@ -7,7 +7,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Registered families</h1>
-            <p class="page-subtitle">Every household recorded on this device, from every barangay.</p>
+            <p class="page-subtitle">Every family recorded on this device, from every barangay.</p>
         </div>
         {{-- No "Register a family" button: EC Board's Add Evacuee is the
              entry path. families.create is still reachable by URL. --}}

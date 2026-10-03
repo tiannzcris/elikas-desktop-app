@@ -118,5 +118,5 @@
         The counts and Male, Female and Total are the central server's figures as of the time above -- they refresh a moment after this page opens while online.
         <span class="ecb-pending-key">On this device</span> is what was added here and hasn't synced -- it joins the totals once it does.
     </p>
-    <p>Sectoral groups are counted from each evacuee's ticked details. Child- and single-headed families are counted once per household, by the head's sex.</p>
+    <p>Sectoral groups are counted from each evacuee's ticked details. Child- and single-headed families are counted once per family, by the head's sex.</p>
 </div>

@@ -214,7 +214,7 @@ class RegisteredFamiliesTest extends TestCase
         ]);
         $family = Family::sole();
 
-        $message = 'This household was added on the EC Board -- edit or remove it from its EC Board entries.';
+        $message = 'This family was added on the EC Board -- edit or remove it from its EC Board entries.';
         $this->get(route('families.edit', $family))->assertRedirect(route('families.index'))->assertSessionHas('status', $message);
         $this->delete(route('families.destroy', $family))->assertRedirect(route('families.index'))->assertSessionHas('status', $message);
         $this->assertModelExists($family);

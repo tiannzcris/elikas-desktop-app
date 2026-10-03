@@ -695,6 +695,6 @@ class FamilyController extends Controller
     private function managedOnEcBoard()
     {
         return redirect()->route('families.index')
-            ->with('status', 'This household was added on the EC Board -- edit or remove it from its EC Board entries.');
+            ->with('status', 'This family was added on the EC Board -- edit or remove it from its EC Board entries.');
     }
 }

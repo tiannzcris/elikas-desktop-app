@@ -490,7 +490,7 @@ class EvacuationCenterController extends Controller
             ->reject(fn ($f) => in_array($f['id'], $knownRemoteIds, true))
             ->map(fn ($f) => [
                 'value' => 'remote-'.$f['id'],
-                'label' => $f['name'] ?? ($f['head_of_family']['full_name'] ?? null) ?? 'Household #'.$f['id'],
+                'label' => $f['name'] ?? ($f['head_of_family']['full_name'] ?? null) ?? 'Family #'.$f['id'],
                 // Drives whether Add Evacuee offers "This person is the
                 // household head" for it -- the server's head_of_family is
                 // null until a head is linked (verified live).

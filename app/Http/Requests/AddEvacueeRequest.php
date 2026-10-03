@@ -55,6 +55,28 @@ class AddEvacueeRequest extends FormRequest
         ];
     }
 
+    /**
+     * In the form's own words. The defaults are built from the field
+     * names ("The new household head name field is required when
+     * household type is new").
+     */
+    public function messages(): array
+    {
+        return [
+            'household_family_local_id.required_if' => 'Select a family already at this center.',
+            'new_household_head_name.required_if' => 'Enter the family name.',
+        ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'household_family_local_id' => 'family',
+            'new_household_head_name' => 'family name',
+            'household_type' => 'family',
+        ];
+    }
+
     public function headIsSelf(): bool
     {
         return $this->boolean('head_is_self');
@@ -102,18 +124,18 @@ class AddEvacueeRequest extends FormRequest
                 $value = (string) $this->input('household_family_local_id');
 
                 if (! $this->filled('household_family_local_id')) {
-                    $validator->errors()->add('household_family_local_id', 'Select an existing household.');
+                    $validator->errors()->add('household_family_local_id', 'Select a family already at this center.');
                 } elseif (str_starts_with($value, 'remote-')) {
                     if (! preg_match('/^remote-\d+$/', $value)) {
-                        $validator->errors()->add('household_family_local_id', 'Invalid household selection.');
+                        $validator->errors()->add('household_family_local_id', 'Invalid family selection.');
                     }
                 } elseif (! ctype_digit($value) || ! Family::whereKey($value)->exists()) {
-                    $validator->errors()->add('household_family_local_id', 'The selected household is invalid.');
+                    $validator->errors()->add('household_family_local_id', 'The selected family is invalid.');
                 }
             }
 
             if ($this->input('household_type') === 'new' && ! $this->filled('new_household_head_name')) {
-                $validator->errors()->add('new_household_head_name', 'Enter the new household\'s head name.');
+                $validator->errors()->add('new_household_head_name', 'Enter the family name.');
             }
 
             // Same guard as the central server's addEvacuee(), checked here

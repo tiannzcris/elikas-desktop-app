@@ -119,7 +119,7 @@ class EcBoardEntry extends Model
             return $this->new_household_head_name;
         }
 
-        return $this->household?->displayName() ?? 'Unknown household';
+        return $this->household?->displayName() ?? 'Unknown family';
     }
 
     /**
@@ -227,7 +227,7 @@ class EcBoardEntry extends Model
 
         if ($this->household_family_local_id && ! $this->household?->isSynced()) {
             throw new \RuntimeException(
-                'The selected household has not synced yet -- sync it first, then sync this entry again.'
+                'The selected family has not synced yet -- sync it first, then sync this entry again.'
             );
         }
 
