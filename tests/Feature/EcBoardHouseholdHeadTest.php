@@ -248,7 +248,7 @@ class EcBoardHouseholdHeadTest extends TestCase
             ['id' => 6, 'name' => 'Headed', 'head_of_family' => ['id' => 60, 'full_name' => 'Ana Reyes']],
         ]])]);
 
-        $rows = collect($this->get(route('evacuation-centers.households-refresh', $center).'?event='.$event->id)->json())->keyBy('value');
+        $rows = collect($this->get(route('evacuation-centers.households-refresh', $center).'?event='.$event->id)->json('households'))->keyBy('value');
 
         $this->assertFalse($rows['remote-5']['head_linked']);
         $this->assertTrue($rows['remote-6']['head_linked']);

@@ -227,12 +227,14 @@ class EcBoardEntryManagementTest extends TestCase
         $response = $this->get(route('evacuation-centers.households-refresh', $center).'?event='.$event->id);
 
         $response->assertOk();
-        $response->assertJson([
+        $response->assertJson(['households' => [
             ['value' => 'remote-11', 'label' => 'Reyes Household'],
-        ]);
+        ]]);
         // The already-local household (remote id 10) must not appear --
-        // it's already in the form's server-rendered options.
+        // it's already in the form's server-rendered options -- but it is
+        // among those the server says are here, so the form keeps it.
         $response->assertJsonMissing(['value' => 'remote-10']);
+        $response->assertJsonPath('here_remote_ids', [10, 11]);
     }
 
     public function test_a_household_picked_from_the_live_remote_list_syncs_using_its_remote_family_id_directly(): void

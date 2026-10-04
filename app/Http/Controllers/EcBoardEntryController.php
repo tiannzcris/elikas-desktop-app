@@ -175,7 +175,11 @@ class EcBoardEntryController extends Controller
             'center' => $center,
             'entry' => $entry,
             'events' => EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('id')->get(),
-            'households' => Family::where('evacuation_center_id', $center->id)->with('evacuees')->get(),
+            // Families of the entry's own event, as on the board.
+            'households' => Family::where('evacuation_center_id', $center->id)
+                ->when($entry, fn ($q) => $q->where('evacuation_event_id', $entry->evacuation_event_id))
+                ->with('evacuees')
+                ->get(),
             'barangays' => Barangay::orderBy('name')->get(),
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
         ];

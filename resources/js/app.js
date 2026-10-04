@@ -654,8 +654,20 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
         // data was already correct, but a cached fetch() response kept
         // showing an outdated household list even after a page reload).
         fetch(`${refreshUrlInput.value}?event=${encodeURIComponent(eventSelect.value)}&_=${Date.now()}`, { cache: 'no-store' })
-            .then((r) => (r.ok ? r.json() : []))
-            .then((remoteHouseholds) => {
+            .then((r) => (r.ok ? r.json() : null))
+            .then((result) => {
+                if (!result) return;
+                const remoteHouseholds = result.households;
+
+                // This device's SYNCED households the server no longer has
+                // here (everyone checked out) leave the list -- the server
+                // would refuse them. Not-yet-synced ones, and the one an
+                // entry being edited already points at, stay.
+                const here = new Set(result.here_remote_ids.map(String));
+                [...householdSelect.options]
+                    .filter((o) => o.dataset.remoteId && !here.has(o.dataset.remoteId) && !o.selected)
+                    .forEach((o) => o.remove());
+
                 // Households this device already has locally (by remote
                 // id), or already in the list (an entry being edited),
                 // are skipped -- listing one twice is confusing, not more
@@ -671,7 +683,7 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
                         householdSelect.appendChild(option);
                     });
 
-                if (emptyHint && householdSelect.options.length > 1) emptyHint.style.display = 'none';
+                if (emptyHint) emptyHint.style.display = householdSelect.options.length > 1 ? 'none' : 'block';
                 applyHousehold();
             })
             .catch(() => {

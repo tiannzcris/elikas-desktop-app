@@ -97,9 +97,12 @@
                     <option value="">Select family</option>
                     @foreach ($households as $h)
                         {{-- data-head-open: whether this household can still take a
-                             head -- none linked yet, or it's this very entry. --}}
+                             head -- none linked yet, or it's this very entry.
+                             data-remote-id: set once synced, so the form can
+                             drop it when the server says it's no longer here. --}}
                         <option value="{{ $h->id }}"
                             data-head-open="{{ (! $h->hasLinkedHead() || ($isEditing && (int) $h->head_ec_board_entry_id === $entry->id)) ? '1' : '0' }}"
+                            data-remote-id="{{ $h->remote_id }}"
                             @selected($isEditing && $entry->household_family_local_id === $h->id)>
                             {{ $h->displayName() }}
                         </option>
@@ -112,7 +115,7 @@
                         <option value="remote-{{ $entry->existing_household_remote_id }}" data-head-open="{{ $entry->head_is_self ? '1' : '0' }}" selected>{{ $entry->new_household_head_name }}</option>
                     @endif
                 </select>
-                <p class="household-empty-hint text-xs text-gray-600" @if ($households->isNotEmpty()) style="display: none;" @endif>No families registered at this center yet.</p>
+                <p class="household-empty-hint text-xs text-gray-600" @if ($households->isNotEmpty()) style="display: none;" @endif>No families here right now.</p>
                 <p class="household-loading-hint text-xs text-gray-600" style="display: none;">Checking the central server for more families...</p>
                 {{-- Only for a household with no head linked yet -- the real
                      head arriving later. An existing head is never replaced. --}}

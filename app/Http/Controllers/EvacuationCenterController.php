@@ -242,7 +242,8 @@ class EvacuationCenterController extends Controller
             ->get();
 
         // Existing-household picker: households already associated with
-        // THIS center in this device's OWN local cache, synced or not --
+        // THIS center and event in this device's OWN local cache, synced
+        // or not --
         // linking a new evacuee to a household is meaningful regardless of
         // whether that household's own registration has reached the
         // central server yet (that only matters at sync time -- see
@@ -252,6 +253,7 @@ class EvacuationCenterController extends Controller
         // -- see refreshHouseholds() below -- not fetched here, for the
         // same blocking-request reason breakdown refresh moved client-side.
         $households = Family::where('evacuation_center_id', $center->id)
+            ->where('evacuation_event_id', $selectedEventId)
             ->with('evacuees')
             ->get();
 
@@ -452,16 +454,27 @@ class EvacuationCenterController extends Controller
 
     /**
      * Called client-side (fetch(), after the page itself has rendered) to
-     * pull households already registered at this center+event straight
-     * from the central server -- see CentralApiService::
-     * fetchFamiliesAtCenter()'s own docblock. Returns JSON: a list of
-     * households NOT already in this device's own local list (deduped by
-     * remote id, since a synced local household would otherwise show up
-     * twice), each as {value, label} ready for the Add Evacuee form's
-     * household <select> -- value is "remote-{id}" (see
-     * AddEvacueeRequest's own note on that format). Empty/error responses
-     * are exactly as safe as no response at all: the form already has its
-     * own local households list to fall back to, offline or not.
+     * pull the families here right now -- someone in them still checked in
+     * at this center for this event -- straight from the central server
+     * (see CentralApiService::fetchFamiliesAtCenter()'s own docblock).
+     * Returns JSON:
+     *
+     * - households: those NOT already in this device's own local list
+     *   (deduped by remote id, since a synced local household would
+     *   otherwise show up twice), each as {value, label, head_linked}
+     *   ready for the Add Evacuee form's household <select> -- value is
+     *   "remote-{id}" (see AddEvacueeRequest's own note on that format).
+     *   Another barangay's family comes from the server without a name, and
+     *   is labelled as on the web dashboard: "Family #N · <barangay> · X
+     *   here".
+     * - here_remote_ids: every family the server says is here, so the form
+     *   can drop this device's SYNCED households that have since left (the
+     *   server would refuse them). Households not yet synced stay: they
+     *   were added here on this device and the server hasn't seen them.
+     *
+     * Empty/error responses are exactly as safe as no response at all: the
+     * form already has its own local households list to fall back to,
+     * offline or not.
      */
     public function refreshHouseholds(EvacuationCenter $center, Request $request, CentralApiService $api)
     {
@@ -490,17 +503,28 @@ class EvacuationCenterController extends Controller
 
         $households = collect($remoteFamilies)
             ->reject(fn ($f) => in_array($f['id'], $knownRemoteIds, true))
-            ->map(fn ($f) => [
-                'value' => 'remote-'.$f['id'],
-                'label' => $f['name'] ?? ($f['head_of_family']['full_name'] ?? null) ?? 'Family #'.$f['id'],
-                // Drives whether Add Evacuee offers "This person is the
-                // household head" for it -- the server's head_of_family is
-                // null until a head is linked (verified live).
-                'head_linked' => ! empty($f['head_of_family']),
-            ])
+            ->map(fn ($f) => empty($f['is_generic'])
+                ? [
+                    'value' => 'remote-'.$f['id'],
+                    'label' => $f['name'] ?? ($f['head_of_family']['full_name'] ?? null) ?? 'Family #'.$f['id'],
+                    // Drives whether Add Evacuee offers "This person is the
+                    // family head" for it -- the server's head_of_family is
+                    // null until a head is linked (verified live).
+                    'head_linked' => ! empty($f['head_of_family']),
+                ]
+                : [
+                    'value' => 'remote-'.$f['id'],
+                    'label' => 'Family #'.$f['id'].' · '.($f['barangay']['name'] ?? 'Unknown barangay').' · '.($f['here_count'] ?? 0).' here',
+                    // No head_of_family for another barangay's family: the
+                    // server says whether one is linked instead.
+                    'head_linked' => ! empty($f['has_head_linked']),
+                ])
             ->values();
 
-        return response()->json($households);
+        return response()->json([
+            'households' => $households,
+            'here_remote_ids' => collect($remoteFamilies)->pluck('id')->values(),
+        ]);
     }
 
     /**
