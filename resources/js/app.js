@@ -118,7 +118,11 @@ if (userMenuBtn && userMenu) {
 document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(() => document.querySelector('main')?.classList.add('in'));
 });
-document.addEventListener('submit', () => {
+// Not for a form a pop-up sends itself (wireModalSubmit() prevents the
+// default): it may come back with a message to show, and fading the
+// page then would leave that message, and the page, invisible.
+document.addEventListener('submit', (e) => {
+    if (e.defaultPrevented) return;
     document.querySelector('main')?.classList.remove('in');
 });
 
