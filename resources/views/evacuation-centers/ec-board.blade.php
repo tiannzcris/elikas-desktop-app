@@ -136,6 +136,16 @@
                         <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>
                     </button>
                 </div>
+                {{-- Only for a barangay official on a center in ANOTHER
+                     barangay: a reminder, never a block, kept above the
+                     scrolling questions so it stays in view -- the same as
+                     the web dashboard's EC Board. --}}
+                @if ($currentUser->isBarangayOfficial() && $currentUser->barangay_id && (int) $center->barangay_remote_id !== (int) $currentUser->barangay_id)
+                    <p class="callout callout-warning shrink-0 mx-5 mt-3 flex items-start gap-2" role="note" data-other-barangay-note>
+                        <i class="ti ti-map-pin shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                        <span>This center is in <span class="font-semibold">{{ $barangayName }}</span>. Add only people who are staying at this center.</span>
+                    </p>
+                @endif
                 <div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4">
                     <p data-entry-added class="callout callout-success mb-3" role="status" @if (! session('ecBoardEntryAdded')) style="display: none;" @endif>&check; Added on this device -- the form is ready for the next one.</p>
                     <div class="form-errors callout callout-danger mb-3" role="alert" @if (! ($errors->any() && old('_board_form') === 'add-evacuee')) style="display: none;" @endif>
