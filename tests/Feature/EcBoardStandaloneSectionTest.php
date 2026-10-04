@@ -130,8 +130,8 @@ class EcBoardStandaloneSectionTest extends TestCase
      * Sectoral Group card instead of the top header block, grouped with
      * barangay/center/event. assertSeeInOrder over the raw rendered HTML
      * is the only reliable way to prove DOM *position*, not just presence.
-     * The board reads header -> Age & Sex -> Sectoral, then Add evacuee,
-     * the pending list, and Quick departure last.
+     * The board reads header -> Age & Sex -> Sectoral, then the pending
+     * list, then the Add evacuee pop-up.
      */
     public function test_the_board_reads_in_the_official_template_order_with_the_panels_after_it(): void
     {
@@ -143,9 +143,35 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', $center));
 
         $page->assertOk();
-        // The two forms' buttons sit at the top; the board, then its
-        // pending entries, then the forms themselves as pop-ups.
-        $page->assertSeeInOrder(['Quick departure', 'Add evacuee', '4Ps beneficiary families', 'Age group', 'Sectoral group', 'Pending entries for this event', 'id="add-evacuee-modal"', 'id="quick-departure-modal"'], false);
+        // Add evacuee's button sits at the top; the board, then its
+        // pending entries, then the form itself as a pop-up.
+        $page->assertSeeInOrder(['Add evacuee', '4Ps beneficiary families', 'Age group', 'Sectoral group', 'Pending entries for this event', 'id="add-evacuee-modal"'], false);
+    }
+
+    /**
+     * Quick departure is gone from the board, as on the web dashboard: it
+     * marked people as departed by age group and sex, not by who actually
+     * left. Nothing on this device calls the central endpoint any more.
+     */
+    public function test_quick_departure_is_gone_from_the_board_and_this_app(): void
+    {
+        $this->login();
+        Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
+        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
+
+        $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
+
+        $page->assertOk();
+        $page->assertSee('Add evacuee');
+        $page->assertDontSee('Quick departure');
+        $page->assertDontSee('quick-departure', false);
+        $page->assertDontSee('Mark as departed');
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('evacuation-centers.quick-departure'));
+
+        \Illuminate\Support\Facades\Http::fake();
+        $this->post('/evacuation-centers/'.$center->id.'/quick-departure', ['evacuation_event_id' => $event->id])->assertNotFound();
+        \Illuminate\Support\Facades\Http::assertNothingSent();
     }
 
     /**

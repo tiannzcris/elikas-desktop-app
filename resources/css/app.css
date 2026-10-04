@@ -88,7 +88,7 @@
 
     /* Modals (the dynamic ones are built in app.js; this is their card).
        .board-modal-backdrop is the EC Board's in-page pop-ups (Add
-       evacuee, Quick departure); the page toggles its display itself. */
+       evacuee); the page toggles its display itself. */
     .board-modal-backdrop { @apply fixed inset-0 z-50 items-center justify-center p-4; background: rgba(17, 24, 39, 0.5); }
     .modal { @apply w-full rounded-xl bg-white shadow-xl; }
     .modal-header { @apply flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4; }
