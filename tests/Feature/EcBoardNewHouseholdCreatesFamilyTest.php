@@ -47,7 +47,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
             'head_is_self' => '1',
         ]);
@@ -76,7 +76,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
         ]);
         $family = Family::firstOrFail();
@@ -115,7 +115,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
         ]);
         $family = Family::firstOrFail();
@@ -170,7 +170,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
         ]);
         $entry = EcBoardEntry::firstOrFail();
@@ -189,7 +189,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
         ]);
         $family = Family::firstOrFail();

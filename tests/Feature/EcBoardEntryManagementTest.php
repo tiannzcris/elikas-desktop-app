@@ -40,7 +40,7 @@ class EcBoardEntryManagementTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
             // The form's own default: this person is the household head.
             'head_is_self' => '1',
@@ -524,7 +524,7 @@ class EcBoardEntryManagementTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'female',
             'age_bracket' => 'toddler',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Rosa Santos',
         ]);
         $store->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));

@@ -272,6 +272,8 @@ class EvacuationCenterController extends Controller
             'selectedEventId' => $selectedEventId,
             'pendingEntries' => $pendingEntries,
             'households' => $households,
+            // New family's "Home barangay" choices.
+            'barangays' => Barangay::orderBy('name')->get(),
             // The Add Evacuee form's own picker -- the 7 real brackets
             // only, distinct from the board's breakdownAgeBrackets.
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,

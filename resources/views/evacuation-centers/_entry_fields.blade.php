@@ -129,6 +129,30 @@
         {{-- Asked once per NEW household, never per person. "Not yet known"
              is always allowed and is stored as null, never guessed as "no". --}}
         <div class="household-new-field flex flex-col gap-3" @if ($mode !== 'new') style="display: none;" @endif>
+            {{-- Where the family LIVES, which decides whose families they are
+                 on the central server (Evacuees page, DROMIC report) -- the
+                 same field as the web dashboard's Add Evacuee. No default on
+                 purpose: people from other barangays stay here too, so it is
+                 always a conscious choice. --}}
+            @php
+                $barangayFieldId = 'home-barangay-'.($isEditing ? $entry->id : 'new');
+                $centerBarangay = $barangays->firstWhere('remote_id', $center->barangay_remote_id);
+            @endphp
+            <div class="household-barangay-field">
+                <div class="flex flex-wrap items-end justify-between gap-x-2 gap-y-1 mb-1">
+                    <label for="{{ $barangayFieldId }}" class="label-sm mb-0">Home barangay</label>
+                    @if ($centerBarangay)
+                        <button type="button" class="household-barangay-same btn btn-secondary btn-sm" data-barangay-id="{{ $centerBarangay->id }}">Same as this center ({{ $centerBarangay->name }})</button>
+                    @endif
+                </div>
+                <select id="{{ $barangayFieldId }}" name="new_household_barangay_id" class="household-barangay-select input" aria-describedby="{{ $barangayFieldId }}-help">
+                    <option value="">Choose the family's home barangay...</option>
+                    @foreach ($barangays as $b)
+                        <option value="{{ $b->id }}" @selected($ownHousehold && (int) $ownHousehold->barangay_id === $b->id)>{{ $b->name }}</option>
+                    @endforeach
+                </select>
+                <p id="{{ $barangayFieldId }}-help" class="help">Where the family lives -- not necessarily where this center is.</p>
+            </div>
             <div>
                 <label class="label-sm">Family name</label>
                 <input type="text" name="new_household_head_name" value="{{ $householdName }}" placeholder="e.g. Juan Dela Cruz" class="input">

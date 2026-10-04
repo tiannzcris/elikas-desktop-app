@@ -45,7 +45,7 @@ class EcBoardHouseholdHeadTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'female',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Maria Santos',
         ], $overrides))->assertSessionHasNoErrors();
 
@@ -157,7 +157,7 @@ class EcBoardHouseholdHeadTest extends TestCase
 
         $this->post(route('ec-board-entries.store', $center), [
             'evacuation_event_id' => $event->id, 'sex' => 'male', 'age_bracket' => 'adult',
-            'household_type' => 'new', 'new_household_head_name' => 'X', 'head_sex' => 'unknown',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'), 'new_household_head_name' => 'X', 'head_sex' => 'unknown',
         ])->assertSessionHasErrors('head_sex');
 
         $this->assertSame(0, Family::count());
@@ -282,7 +282,7 @@ class EcBoardHouseholdHeadTest extends TestCase
 
         $this->put(route('ec-board-entries.update', $entry), [
             'evacuation_event_id' => $event->id, 'sex' => 'female', 'age_bracket' => 'adult',
-            'household_type' => 'new', 'new_household_head_name' => 'Maria Santos-Reyes',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'), 'new_household_head_name' => 'Maria Santos-Reyes',
             'is_single_headed' => '0', 'head_sex' => 'male', 'head_is_minor' => '0',
         ])->assertSessionHasNoErrors();
 

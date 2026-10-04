@@ -57,9 +57,10 @@ class EcBoardEntryController extends Controller
 
     /**
      * Creates a real local Family for a "new household" Add Evacuee
-     * submission, carrying the household's one-time answers (single-headed,
-     * and the head's sex/minor when the head is someone else) exactly as
-     * the central server's addEvacuee() stores them on its own Family.
+     * submission, carrying the household's one-time answers (home barangay,
+     * single-headed, and the head's sex/minor when the head is someone
+     * else) exactly as the central server's addEvacuee() stores them on its
+     * own Family.
      *
      * This Family is marked created_via_ec_board and never enters
      * FamilyController::sync()'s registerFamily() loop -- that endpoint
@@ -72,10 +73,10 @@ class EcBoardEntryController extends Controller
      */
     private function createNewHousehold(EvacuationCenter $center, AddEvacueeRequest $request): array
     {
-        $barangay = Barangay::where('remote_id', $center->barangay_remote_id)->firstOrFail();
-
+        // Its home barangay comes with the answers (the form's "Home
+        // barangay"), never from this center: people from other barangays
+        // stay here too.
         $family = Family::create(array_merge([
-            'barangay_id' => $barangay->id,
             'evacuation_event_id' => $request->input('evacuation_event_id'),
             'evacuation_center_id' => $center->id,
             'displacement_type' => 'inside_center',
@@ -175,6 +176,7 @@ class EcBoardEntryController extends Controller
             'entry' => $entry,
             'events' => EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('id')->get(),
             'households' => Family::where('evacuation_center_id', $center->id)->with('evacuees')->get(),
+            'barangays' => Barangay::orderBy('name')->get(),
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
         ];
 
@@ -234,9 +236,13 @@ class EcBoardEntryController extends Controller
                 ));
             } else {
                 // Moving this person to a different household must not leave
-                // them recorded as the OLD household's head.
+                // them recorded as the OLD household's head. Switched to New
+                // family, they get a household of their own, the same as when
+                // added that way, so its home barangay is kept.
                 $oldFamilyId = $entry->household_family_local_id;
-                $fields = array_merge($fields, $request->householdFields());
+                $fields = array_merge($fields, $validated['household_type'] === 'new'
+                    ? $this->createNewHousehold($entry->evacuationCenter, $request)
+                    : $request->householdFields());
                 if ($oldFamilyId && $oldFamilyId !== ($fields['household_family_local_id'] ?? null)) {
                     Family::whereKey($oldFamilyId)->where('head_ec_board_entry_id', $entry->id)
                         ->update(['head_ec_board_entry_id' => null]);

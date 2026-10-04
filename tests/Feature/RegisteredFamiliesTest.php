@@ -177,7 +177,7 @@ class RegisteredFamiliesTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'male',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::where('remote_id', $center->barangay_remote_id)->value('id'),
             'new_household_head_name' => 'Juan Dela Cruz',
             'head_is_self' => '1',
         ])->assertSessionHasNoErrors();
@@ -208,7 +208,7 @@ class RegisteredFamiliesTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'female',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::where('remote_id', $center->barangay_remote_id)->value('id'),
             'new_household_head_name' => 'Rosa Santos',
             'head_is_self' => '1',
         ]);

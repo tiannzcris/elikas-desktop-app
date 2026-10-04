@@ -39,7 +39,7 @@ class EcBoardEntrySectoralFlagsTest extends TestCase
             'evacuation_event_id' => $event->id,
             'sex' => 'female',
             'age_bracket' => 'adult',
-            'household_type' => 'new',
+            'household_type' => 'new', 'new_household_barangay_id' => \App\Models\Barangay::value('id'),
             'new_household_head_name' => 'Maria Santos',
         ], $overrides));
     }

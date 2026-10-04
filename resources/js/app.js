@@ -556,7 +556,8 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
             if (personIsHead()) lines.push(`Becomes that family's head (${minorText(headIsMinor)}).`);
         } else {
             const name = q('input[name="new_household_head_name"]')?.value.trim();
-            lines.push(`New family: ${name || '(family name not entered yet)'}.`);
+            const barangay = optionText(q('.household-barangay-select'));
+            lines.push(`New family: ${name || '(family name not entered yet)'}, ${barangay || '(home barangay not chosen yet)'}.`);
             if (personIsHead()) {
                 lines.push(`Head: this person (${minorText(headIsMinor)}).`);
             } else {
@@ -576,6 +577,13 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
             return li;
         }));
     }
+
+    // One click for the common case: the family lives in this center's own barangay.
+    q('.household-barangay-same')?.addEventListener('click', (e) => {
+        const select = q('.household-barangay-select');
+        select.value = e.currentTarget.dataset.barangayId;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
 
     root.querySelectorAll('.household-type-radio').forEach((radio) => radio.addEventListener('change', applyHousehold));
     headSelfNew?.addEventListener('change', applyHousehold);

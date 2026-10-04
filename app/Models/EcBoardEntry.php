@@ -159,13 +159,13 @@ class EcBoardEntry extends Model
      * new_household_head_name shape.
      *
      * A "new household" entry must also carry barangay_id -- the real
-     * endpoint requires it to create that brand-new Family record, and
-     * there's nowhere else for it to come from locally except the
-     * evacuee's own center: barangay_remote_id is already the central
-     * server's own barangay id (evacuation_centers is a read-only cache of
-     * central records, keyed by remote id throughout), so no local-to-
-     * remote resolution step is needed here the way barangay_id elsewhere
-     * in this app (e.g. Family::toSyncPayload()) requires.
+     * endpoint requires it to create that brand-new Family record. It is
+     * the family's HOME barangay, chosen on the form and kept on the local
+     * Family this entry created (resolved to its remote id here). Only a
+     * legacy entry from before local Families existed has nothing but its
+     * center to go by: barangay_remote_id is already the central server's
+     * own barangay id (evacuation_centers is a read-only cache of central
+     * records, keyed by remote id throughout).
      *
      * An "existing household" entry can only ever mean something on the
      * central server once that household's own family record has synced
@@ -218,7 +218,10 @@ class EcBoardEntry extends Model
                 'age_bracket' => $this->age_bracket,
                 'household_mode' => 'new',
                 'family_id' => null,
-                'barangay_id' => $this->evacuationCenter->barangay_remote_id,
+                // The family's home barangay as chosen on the form. Only a
+                // household saved before that field existed has none of its
+                // own beyond this center's, which it was given back then.
+                'barangay_id' => $this->household?->barangay?->remote_id ?? $this->evacuationCenter->barangay_remote_id,
                 'family_name' => $this->household?->displayName(),
                 ...$this->sectoralFlagsPayload(),
                 ...$this->headPayload(true),

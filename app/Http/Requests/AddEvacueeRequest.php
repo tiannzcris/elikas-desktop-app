@@ -37,6 +37,10 @@ class AddEvacueeRequest extends FormRequest
             'household_type' => ['required', 'in:existing,new'],
             'household_family_local_id' => ['nullable', 'required_if:household_type,existing', 'string', 'max:30'],
             'new_household_head_name' => ['nullable', 'required_if:household_type,new', 'string', 'max:150'],
+            // A local barangays row (the cached reference list), the new
+            // family's HOME barangay -- required for a new family, the same
+            // as the central server's addEvacuee() (see withValidator()).
+            'new_household_barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
             // Optional sectoral checkboxes (see EcBoardEntry::SECTORAL_FLAGS)
             // -- a ticked box submits "1", an unticked one submits nothing.
             'is_pwd' => ['nullable', 'boolean'],
@@ -83,7 +87,8 @@ class AddEvacueeRequest extends FormRequest
     }
 
     /**
-     * A NEW household's one-time answers, as stored on its local Family.
+     * A NEW household's one-time answers, as stored on its local Family --
+     * its home barangay among them.
      * When this person is the head, their own sex and age group describe
      * the head, so head_sex/head_is_minor stay null here (see
      * Family::headSex()/isChildHeaded(), which read the linked head first).
@@ -93,6 +98,8 @@ class AddEvacueeRequest extends FormRequest
         $headIsSelf = $this->headIsSelf();
 
         return [
+            // Required for a new family (withValidator()); never cleared.
+            ...($this->filled('new_household_barangay_id') ? ['barangay_id' => $this->integer('new_household_barangay_id')] : []),
             'is_single_headed' => $this->nullableBoolean('is_single_headed'),
             'head_sex' => $headIsSelf ? null : $this->input('head_sex'),
             'head_is_minor' => $headIsSelf ? null : $this->nullableBoolean('head_is_minor'),
@@ -136,6 +143,11 @@ class AddEvacueeRequest extends FormRequest
 
             if ($this->input('household_type') === 'new' && ! $this->filled('new_household_head_name')) {
                 $validator->errors()->add('new_household_head_name', 'Enter the family name.');
+            }
+
+            // Same message as the central server's addEvacuee().
+            if ($this->input('household_type') === 'new' && ! $this->filled('new_household_barangay_id')) {
+                $validator->errors()->add('new_household_barangay_id', "Choose the family's home barangay.");
             }
 
             // Same guard as the central server's addEvacuee(), checked here
