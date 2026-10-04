@@ -228,11 +228,18 @@ class EvacuationCenterController extends Controller
             return redirect()->route('login');
         }
 
-        $events = EvacuationEvent::where('status', '!=', 'closed')->orderByDesc('id')->get();
+        // A closed event stays on this board only while entries added here
+        // for it are still waiting on this device -- they can no longer
+        // sync (the server refuses new evacuees there), so they must stay
+        // reachable to be seen and removed.
+        $events = EvacuationEvent::where('status', '!=', 'closed')
+            ->orWhereIn('id', EcBoardEntry::where('evacuation_center_id', $center->id)->whereNull('synced_at')->select('evacuation_event_id'))
+            ->orderByDesc('id')
+            ->get();
 
         $selectedEventId = (int) $request->query('event', 0);
         if (! $events->contains('id', $selectedEventId)) {
-            $selectedEventId = optional($events->first())->id;
+            $selectedEventId = optional($events->first(fn (EvacuationEvent $e) => ! $e->isClosed()) ?? $events->first())->id;
         }
 
         $pendingEntries = $this->pendingEntriesQuery($center, $selectedEventId)
@@ -271,6 +278,7 @@ class EvacuationCenterController extends Controller
             'backBarangay' => $backBarangay,
             'events' => $events,
             'selectedEventId' => $selectedEventId,
+            'selectedEventClosed' => (bool) $events->firstWhere('id', $selectedEventId)?->isClosed(),
             'pendingEntries' => $pendingEntries,
             'households' => $households,
             // New family's "Home barangay" choices.

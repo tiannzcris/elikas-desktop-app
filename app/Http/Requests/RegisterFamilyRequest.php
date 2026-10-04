@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\EvacuationEvent;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -22,7 +23,8 @@ class RegisterFamilyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'evacuation_event_id' => ['required', 'integer', 'exists:evacuation_events,id'],
+            // No one is added to a closed event, the same as the central server.
+            'evacuation_event_id' => ['required', 'integer', 'exists:evacuation_events,id', EvacuationEvent::openForArrivalsRule()],
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
             'home_address' => ['nullable', 'string', 'max:255'],
             'displacement_type' => ['required', 'in:inside_center,outside_center'],

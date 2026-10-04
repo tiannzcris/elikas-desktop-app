@@ -188,12 +188,7 @@ class CentralApiService
         }
 
         if (! $response->successful()) {
-            $message = $response->json('message') ?? 'The central server rejected this record.';
-            $errors = $response->json('errors');
-            if ($errors) {
-                $message .= ' '.collect($errors)->flatten()->implode(' ');
-            }
-            throw new \RuntimeException($message);
+            throw new \RuntimeException($this->rejectionMessage($response, 'The central server rejected this record.'));
         }
 
         return (int) $response->json('data.id');
@@ -240,17 +235,29 @@ class CentralApiService
         }
 
         if (! $response->successful()) {
-            $message = $response->json('message') ?? 'The central server rejected this entry.';
-            $errors = $response->json('errors');
-            if ($errors) {
-                $message .= ' '.collect($errors)->flatten()->implode(' ');
-            }
-            throw new \RuntimeException($message);
+            throw new \RuntimeException($this->rejectionMessage($response, 'The central server rejected this entry.'));
         }
 
         return [
             'evacuee_id' => (int) $response->json('evacuee_id'),
             'family_id' => (int) $response->json('data.id'),
         ];
+    }
+
+    /**
+     * The central server's own words for a refusal: its message, then each
+     * field error it doesn't already say -- the server often repeats the
+     * message under the field it's about ("This event is closed. Evacuees
+     * can no longer be added to it." under evacuation_event_id), which
+     * shouldn't read twice in a sync error.
+     */
+    private function rejectionMessage(\Illuminate\Http\Client\Response $response, string $fallback): string
+    {
+        $message = $response->json('message') ?? $fallback;
+        $extra = collect($response->json('errors') ?? [])->flatten()
+            ->reject(fn ($error) => ! is_string($error) || $error === $message)
+            ->unique();
+
+        return $extra->isEmpty() ? $message : $message.' '.$extra->implode(' ');
     }
 }

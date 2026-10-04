@@ -23,7 +23,7 @@
             @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
             {{-- Add evacuee opens in a pop-up over the board, the same as
                  the web dashboard's EC Board. --}}
-            @if ($events->isNotEmpty())
+            @if ($events->isNotEmpty() && ! $selectedEventClosed)
                 <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
                     <i class="ti ti-user-plus" style="font-size: 16px;" aria-hidden="true"></i> Add evacuee
                 </button>
@@ -55,11 +55,21 @@
                         <label for="ecb-event" class="label-sm">Event</label>
                         <select id="ecb-event" name="event" onchange="this.form.submit()" class="input w-auto min-w-[13rem]">
                             @foreach ($events as $e)
-                                <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->name }}</option>
+                                <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->name }}{{ $e->isClosed() ? ' (closed)' : '' }}</option>
                             @endforeach
                         </select>
                     </form>
                 </div>
+
+                {{-- Shown here only because entries for it are still
+                     waiting on this device (see EvacuationCenterController::
+                     ecBoard()): they can't sync any more. --}}
+                @if ($selectedEventClosed)
+                    <p class="callout callout-warning mx-5 mb-3 flex items-start gap-2" role="note" data-closed-event-note>
+                        <i class="ti ti-lock shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                        <span>This event is closed. Evacuees can no longer be added to it, so the entries below that are still waiting on this device can't sync. Check them, then delete them from this device.</span>
+                    </p>
+                @endif
 
                 <div id="ecb-figures">
                     @include('evacuation-centers._board_figures')
@@ -120,6 +130,7 @@
              device first, exactly as before; after a save the page reloads
              and the pop-up opens again, ready for the next person (see
              EcBoardEntryController::store()'s ecBoardEntryAdded flash). --}}
+        @unless ($selectedEventClosed)
         <div id="add-evacuee-modal" class="board-modal-backdrop" style="display: none;">
             <div class="modal modal-pop max-w-lg max-h-[90vh] flex flex-col overflow-hidden" data-ec-board-entry-form
                 role="dialog" aria-modal="true" aria-labelledby="add-evacuee-title">
@@ -156,6 +167,7 @@
                 </div>
             </div>
         </div>
+        @endunless
 
     @endif
 @endsection
@@ -222,8 +234,8 @@
             justSaved = sessionStorage.getItem('elikas-reopen-add-evacuee') === '1';
             sessionStorage.removeItem('elikas-reopen-add-evacuee');
         } catch (e) { /* storage blocked */ }
-        if (justSaved) addEvacueeModal.querySelector('[data-entry-added]').style.display = 'block';
-        if (justSaved || @json(session('ecBoardEntryAdded') || ($errors->any() && old('_board_form') === 'add-evacuee'))) {
+        if (justSaved && addEvacueeModal) addEvacueeModal.querySelector('[data-entry-added]').style.display = 'block';
+        if (addEvacueeModal && (justSaved || @json(session('ecBoardEntryAdded') || ($errors->any() && old('_board_form') === 'add-evacuee')))) {
             openBoardModal('add-evacuee-modal', document.querySelector('[data-open-board-modal="add-evacuee-modal"]'));
         }
 

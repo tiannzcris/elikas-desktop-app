@@ -149,11 +149,21 @@ class ReferenceDataPruneTest extends TestCase
         $this->assertDatabaseHas('evacuation_events', ['remote_id' => 7, 'name' => 'Tropical Storm Amang', 'status' => 'active']);
         $this->assertDatabaseHas('evacuation_centers', ['remote_id' => 27, 'name' => 'Binatagan Covered Court', 'status' => 'active']);
 
-        // End-to-end: the Add Evacuee form itself must no longer offer
-        // the force-closed event as a selectable choice.
+        // End-to-end: Add Evacuee must no longer offer the force-closed
+        // event -- the board opens on the current one. The closed event is
+        // still listed, marked closed, only because the entry above is
+        // still waiting for it on this device and must stay reachable to
+        // be removed; on its board there is no Add evacuee.
+        $amangId = EvacuationEvent::where('remote_id', 7)->value('id');
         $page = $this->get(route('evacuation-centers.ec-board', $droppedCenter));
-        $page->assertDontSee('Typhoon Bagwis');
-        $page->assertSee('Tropical Storm Amang');
+        $page->assertSee('<option value="'.$amangId.'" selected>Tropical Storm Amang</option>', false);
+        $page->assertSee('<option value="'.$droppedEvent->id.'" >Typhoon Bagwis (closed)</option>', false);
+        $page->assertSee('<input type="hidden" name="evacuation_event_id" value="'.$amangId.'">', false);
+
+        $closedBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $droppedCenter, 'event' => $droppedEvent->id]));
+        $closedBoard->assertSee('This event is closed. Evacuees can no longer be added to it');
+        $closedBoard->assertSee('Juan Dela Cruz');
+        $closedBoard->assertDontSee('id="add-evacuee-modal"', false);
     }
 
     public function test_refresh_does_not_wipe_cache_on_empty_response(): void
