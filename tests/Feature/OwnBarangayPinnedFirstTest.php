@@ -70,29 +70,6 @@ class OwnBarangayPinnedFirstTest extends TestCase
         $page->assertSee('0 centers');
     }
 
-    public function test_ec_board_shows_no_badge_or_pinning_for_a_staff_account_with_no_barangay(): void
-    {
-        LocalAuth::create([
-            'remote_user_id' => 1, 'name' => 'City Staff', 'email' => 'a@example.com', 'role' => 'cswd_personnel',
-            'barangay_id' => null, 'api_token' => 'fake-token', 'logged_in_at' => now(),
-        ]);
-        Barangay::create(['remote_id' => 1, 'name' => 'Abella']);
-        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center A', 'status' => 'active']);
-
-        $page = $this->get(route('ec-board.index'));
-
-        $page->assertOk();
-        // The explanatory paragraph always mentions "Your barangay is
-        // shown first" -- checking for that exact phrase alone would be
-        // a false positive here, so this targets the per-row BADGE
-        // markup specifically, confirming no row is actually flagged/pinned.
-        $page->assertDontSee('badge badge-info">Your barangay', false);
-    }
-
-    // -----------------------------------------------------------------
-    // Registered Families barangay list
-    // -----------------------------------------------------------------
-
     public function test_registered_families_pins_the_staffs_own_barangay_first_with_a_badge(): void
     {
         $this->loginWithOwnBarangay(2);

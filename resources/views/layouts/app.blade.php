@@ -39,21 +39,19 @@
                         <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard
                     </a>
                 </div>
-                {{-- Elevated to the primary entry point, immediately after
-                     Dashboard (mirrors the web dashboard's structure). Real
-                     standalone section now: barangay -> centers -> board
-                     (see EvacuationCenterController::ecBoardBarangays()),
-                     its own route/controller separate from the old
-                     Evacuation Centers management pages below. --}}
-                <div class="flex flex-col gap-0.5">
-                    <p class="nav-group-label">Operations</p>
-                    <a href="{{ route('ec-board.index') }}" class="nav-link @yield('nav-ec-board')">
-                        <i class="ti ti-building-community" aria-hidden="true"></i> EC Board
-                    </a>
-                    <a href="{{ route('families.index') }}" class="nav-link @yield('nav-families')">
-                        <i class="ti ti-users" aria-hidden="true"></i> Registered families
-                    </a>
-                </div>
+                {{-- Groups follow permissions: a group with no link for
+                     this account is not shown (web design system, 5). --}}
+                @if ($currentUser->isBarangayOfficial())
+                    <div class="flex flex-col gap-0.5" data-nav-group="operations">
+                        <p class="nav-group-label">Operations</p>
+                        <a href="{{ route('ec-board.index') }}" class="nav-link @yield('nav-ec-board')">
+                            <i class="ti ti-building-community" aria-hidden="true"></i> EC Board
+                        </a>
+                        <a href="{{ route('families.index') }}" class="nav-link @yield('nav-families')">
+                            <i class="ti ti-users" aria-hidden="true"></i> Registered families
+                        </a>
+                    </div>
+                @endif
             </nav>
         </aside>
     @endif
