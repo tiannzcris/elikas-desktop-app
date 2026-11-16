@@ -82,17 +82,23 @@
                                                 <button type="submit" class="btn btn-secondary btn-sm">Try again</button>
                                             </form>
                                         @endif
-                                        @if ($item['kind'] === 'returning')
-                                            <form method="POST" action="{{ route('sync.forget-returning', $item['model']) }}" data-confirm="Remove this returning family from this device? It was never accepted by the server.">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
-                                            </form>
-                                        @endif
-                                        @if ($item['kind'] === 'entry')
-                                            <form method="POST" action="{{ route('ec-board-entries.destroy', $item['model']) }}" data-confirm="Remove this record from this device? It was never accepted by the server.">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
-                                            </form>
+                                        @php
+                                            $removeUrl = match ($item['kind']) {
+                                                'returning' => route('sync.forget-returning', $item['model']),
+                                                'entry' => route('ec-board-entries.destroy', $item['model']),
+                                                default => null,
+                                            };
+                                        @endphp
+                                        @if ($removeUrl)
+                                            <x-row-menu label="More actions">
+                                                <form method="POST" action="{{ $removeUrl }}" data-confirm-title="Remove from this device?"
+                                                    data-confirm="The server never accepted it. Cannot be undone." data-confirm-label="Remove" data-confirm-tone="danger">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+                                                        <i class="ti ti-trash" style="font-size: 15px;" aria-hidden="true"></i> Remove
+                                                    </button>
+                                                </form>
+                                            </x-row-menu>
                                         @endif
                                     </div>
                                 </td>

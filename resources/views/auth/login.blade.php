@@ -56,13 +56,7 @@
                 </button>
             </form>
 
-            <p class="text-xs text-gray-600 mt-6">
-                This connects using your E-LIKAS staff account -- the same one you
-                use for the web dashboard, whether you're CSWD personnel or a
-                barangay official. Once logged in, this device stays logged in
-                for offline use -- you won't need to do this again unless you
-                log out.
-            </p>
+            <p class="help mt-6">Your E-LIKAS staff account, the same as on the web.</p>
         </div>
     </main>
 

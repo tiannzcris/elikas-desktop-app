@@ -513,14 +513,77 @@ document.addEventListener('click', (e) => {
     setTimeout(() => { window.location.href = link.href; }, 150);
 });
 
-// A form with data-confirm asks first (logout with records not sent yet).
-document.addEventListener('submit', (e) => {
-    const message = e.target.dataset?.confirm;
-    if (message && !window.confirm(message)) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-    }
+// ---------------------------------------------------------------------
+// Confirm dialog (web design system 5, Ui.confirm): the title is the
+// question, the button names the action. A form with data-confirm asks
+// first; data-confirm-title / -label / -tone="danger" shape the dialog.
+// ---------------------------------------------------------------------
+window.ELIKAS.confirm = function confirmDialog({ title, message = '', confirmLabel = 'Continue', tone = 'primary' }) {
+    return new Promise((resolve) => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'board-modal-backdrop';
+        backdrop.style.display = 'flex';
+        backdrop.innerHTML = `
+            <div class="modal modal-pop max-w-md" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+                <div class="modal-header"><h2 id="confirm-title" class="modal-title"></h2></div>
+                <p class="px-6 pt-4 text-gray-700" data-confirm-message></p>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-confirm-cancel>Cancel</button>
+                    <button type="button" class="btn ${tone === 'danger' ? 'btn-danger' : 'btn-primary'}" data-confirm-ok></button>
+                </div>
+            </div>`;
+        backdrop.querySelector('#confirm-title').textContent = title;
+        backdrop.querySelector('[data-confirm-message]').textContent = message;
+        backdrop.querySelector('[data-confirm-ok]').textContent = confirmLabel;
+        const done = (answer) => {
+            backdrop.remove();
+            document.removeEventListener('keydown', onKey);
+            resolve(answer);
+        };
+        const onKey = (e) => { if (e.key === 'Escape') done(false); };
+        backdrop.addEventListener('click', (e) => {
+            if (e.target === backdrop || e.target.closest('[data-confirm-cancel]')) done(false);
+            if (e.target.closest('[data-confirm-ok]')) done(true);
+        });
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(backdrop);
+        backdrop.querySelector('[data-confirm-cancel]').focus();
+    });
+};
+
+document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (!form.dataset?.confirm || form.dataset.confirmed === '1') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const ok = await window.ELIKAS.confirm({
+        title: form.dataset.confirmTitle || form.dataset.confirm,
+        message: form.dataset.confirmTitle ? form.dataset.confirm : '',
+        confirmLabel: form.dataset.confirmLabel || 'Continue',
+        tone: form.dataset.confirmTone || 'primary',
+    });
+    if (!ok) return;
+    form.dataset.confirmed = '1';
+    form.requestSubmit();
 }, true);
+
+// ---------------------------------------------------------------------
+// "..." menus (web design system 5): row actions, destructive ones last.
+// ---------------------------------------------------------------------
+document.addEventListener('click', (e) => {
+    const toggle = e.target.closest('[data-menu-toggle]');
+    document.querySelectorAll('[data-menu-list]').forEach((list) => {
+        if (!toggle || list !== toggle.nextElementSibling) {
+            list.hidden = true;
+            list.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        }
+    });
+    if (toggle) {
+        const list = toggle.nextElementSibling;
+        list.hidden = !list.hidden;
+        toggle.setAttribute('aria-expanded', list.hidden ? 'false' : 'true');
+    }
+});
 
 // ---------------------------------------------------------------------
 // Sync now, one record at a time: the local server answers one request

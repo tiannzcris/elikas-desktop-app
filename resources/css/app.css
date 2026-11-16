@@ -16,7 +16,8 @@
    docs/design-system.md is the written source of truth for every value
    and the contrast ratio behind each pairing. */
 @layer base {
-    body { @apply font-sans text-gray-900 bg-gray-50 antialiased; }
+    /* Web design system 3: root 16px, body and inputs 15/24. */
+    body { @apply font-sans text-[15px] leading-6 text-gray-800 bg-gray-50 antialiased; }
     ::placeholder { color: #6B7280; opacity: 1; }
     input[type="checkbox"], input[type="radio"] { accent-color: #2563EB; }
     :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }
@@ -29,7 +30,8 @@
 @layer components {
     /* Page header */
     .page-header { @apply flex flex-wrap items-start justify-between gap-4 mb-6; }
-    .page-title { @apply text-[1.375rem] leading-7 font-semibold tracking-tight text-gray-900; }
+    .page-title { @apply text-2xl leading-8 font-bold tracking-tight text-gray-900; }
+    .section-title { @apply text-lg leading-7 font-semibold text-gray-900; }
     .page-subtitle { @apply mt-1 text-sm text-gray-600 max-w-2xl; }
     .back-link { @apply inline-flex items-center gap-1 mb-4 text-sm font-medium text-gray-600 hover:text-gray-900; }
 
@@ -37,7 +39,7 @@
     .card { @apply bg-white border border-gray-200 rounded-xl; }
     .card-link { @apply transition-colors hover:border-gray-300 hover:bg-gray-50; }
     .card-header { @apply flex items-center justify-between gap-3 mb-3; }
-    .card-title { @apply text-sm font-semibold text-gray-900; }
+    .card-title { @apply text-[15px] leading-6 font-semibold text-gray-900; }
     .card-body { @apply p-4 sm:p-6; }
     .page-actions { @apply flex flex-wrap items-start gap-2; }
 
@@ -60,7 +62,7 @@
        the outer edge, so it wraps cleanly at any column count. */
     .stat-strip { @apply grid bg-white border border-gray-200 rounded-xl overflow-hidden; }
     .stat { @apply relative min-w-0 px-4 py-3.5; box-shadow: 1px 0 0 0 #E5E7EB, 0 1px 0 0 #E5E7EB; }
-    .stat-label { @apply flex items-center gap-1.5 text-xs font-medium text-gray-600; }
+    .stat-label { @apply flex items-center gap-1.5 text-sm font-medium text-gray-600; }
     .stat-value { @apply mt-1 text-2xl leading-8 font-semibold text-gray-900 tabular-nums; }
     .stat-note { @apply mt-0.5 text-xs text-gray-500; }
     /* Amber = waiting on this device (the EC Board's own convention). */
@@ -76,6 +78,7 @@
     .btn-primary { @apply bg-brand text-white hover:bg-brand-dark; }
     .btn-secondary { @apply bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900; }
     .btn-neutral { @apply bg-gray-800 text-white hover:bg-gray-900; }
+    .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
     .btn-attention { @apply bg-amber-700 text-white hover:bg-amber-800; }
     .btn-ghost { @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900; }
     .btn-icon { @apply inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors; }
@@ -83,14 +86,14 @@
     .link { @apply font-medium text-brand hover:text-brand-dark hover:underline underline-offset-2; }
 
     /* Forms */
-    .label { @apply block mb-1 text-sm font-medium text-gray-700; }
+    .label { @apply block mb-2 text-sm font-medium text-gray-700; }
     .label-sm { @apply block mb-1 text-xs font-medium text-gray-600; }
-    .help { @apply mt-1 text-xs text-gray-500; }
-    .input { @apply w-full rounded-lg border border-field bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-600; }
+    .help { @apply mt-1 text-sm text-gray-600; }
+    .input { @apply w-full rounded-lg border border-field bg-white px-3 py-2 text-[15px] leading-6 text-gray-900 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-600; }
     .input-sm { @apply px-2.5 py-1.5; }
 
     /* Badges */
-    .badge { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium leading-4 whitespace-nowrap ring-1 ring-inset; }
+    .badge { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[13px] font-semibold leading-5 whitespace-nowrap ring-1 ring-inset; }
     .badge-neutral { @apply bg-gray-100 text-gray-700 ring-gray-500/20; }
     .badge-success { @apply bg-green-50 text-green-800 ring-green-600/20; }
     .badge-warning { @apply bg-amber-50 text-amber-800 ring-amber-600/30; }
@@ -110,7 +113,14 @@
     .board-modal-backdrop { @apply fixed inset-0 z-50 items-center justify-center p-4; background: rgba(17, 24, 39, 0.5); }
     .modal { @apply w-full rounded-xl bg-white shadow-xl; }
     .modal-header { @apply flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4; }
-    .modal-title { @apply text-base font-semibold text-gray-900; }
+    .modal-title { @apply text-lg leading-7 font-semibold text-gray-900; }
+    .modal-footer { @apply flex justify-end gap-2 px-6 py-4; }
+
+    /* "..." menu: row actions; destructive ones last, in red. */
+    .menu-list { @apply absolute right-0 top-full z-30 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg; }
+    .menu-item { @apply flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50; }
+    .menu-item-danger { @apply text-red-700 hover:bg-red-50; }
+    .menu-divider { @apply my-1 border-t border-gray-100; }
 
     /* Empty states */
     .empty-state { @apply flex flex-col items-center text-center py-16; }

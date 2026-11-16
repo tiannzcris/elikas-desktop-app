@@ -92,16 +92,21 @@
                                     <span class="badge badge-warning mr-1">
                                         <i class="ti ti-clock" style="font-size: 12px;" aria-hidden="true"></i> Waiting to sync
                                     </span>
-                                    <a href="{{ route('ec-board-entries.edit', $entry) }}" data-modal-trigger="ec-board-entry" class="btn-icon" aria-label="Edit" title="Edit">
-                                        <i class="ti ti-pencil" style="font-size: 14px;" aria-hidden="true"></i>
-                                    </a>
-                                    <form method="POST" action="{{ route('ec-board-entries.destroy', $entry) }}" onsubmit="if (!confirm('Remove this pending entry from this device? This cannot be undone.')) { event.stopPropagation(); return false; }">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn-icon btn-icon-danger" aria-label="Delete" title="Delete">
-                                            <i class="ti ti-trash" style="font-size: 14px;" aria-hidden="true"></i>
-                                        </button>
-                                    </form>
+                                    <x-row-menu label="Actions for this entry">
+                                        <a href="{{ route('ec-board-entries.edit', $entry) }}" data-modal-trigger="ec-board-entry" class="menu-item" role="menuitem">
+                                            <i class="ti ti-pencil" style="font-size: 15px;" aria-hidden="true"></i> Edit
+                                        </a>
+                                        <div class="menu-divider"></div>
+                                        <form method="POST" action="{{ route('ec-board-entries.destroy', $entry) }}"
+                                            data-confirm-title="Delete this entry?" data-confirm="It was never sent. Cannot be undone."
+                                            data-confirm-label="Delete entry" data-confirm-tone="danger">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="menu-item menu-item-danger" role="menuitem">
+                                                <i class="ti ti-trash" style="font-size: 15px;" aria-hidden="true"></i> Delete
+                                            </button>
+                                        </form>
+                                    </x-row-menu>
                                 </div>
                             </div>
                             @if ($entry->sync_error)
@@ -148,7 +153,7 @@
                                 <span class="badge badge-warning">Checked out, waiting to sync</span>
                             @elseif (! $selectedEventClosed)
                                 <form method="POST" action="{{ route('check-outs.store', $center) }}" class="flex items-center gap-2"
-                                    data-confirm="Check out the whole family {{ $family['label'] }}?">
+                                    data-confirm-title="Check out {{ $family['label'] }}?" data-confirm="Everyone in this family leaves this center." data-confirm-label="Check out family">
                                     @csrf
                                     <input type="hidden" name="evacuation_event_id" value="{{ $selectedEventId }}">
                                     <input type="hidden" name="family" value="{{ $family['key'] }}">
