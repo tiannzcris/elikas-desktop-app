@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\CentralApiAuthenticationException;
+use App\Exceptions\CentralApiException;
 use App\Http\Requests\RegisterFamilyRequest;
 use App\Models\Barangay;
 use App\Models\EcBoardEntry;
@@ -498,7 +499,7 @@ class FamilyController extends Controller
                 // below) will fail the exact same way -- stop here instead
                 // of repeating a doomed network call for each one and
                 // showing the same error N times.
-                if (str_contains($e->getMessage(), 'Could not reach the central server')) {
+                if ($e instanceof CentralApiException && $e->isOffline()) {
                     $centralUnreachable = true;
                     break;
                 }
@@ -551,7 +552,7 @@ class FamilyController extends Controller
                     $entry->update(['sync_error' => $e->getMessage()]);
                     $failCount++;
 
-                    if (str_contains($e->getMessage(), 'Could not reach the central server')) {
+                    if ($e instanceof CentralApiException && $e->isOffline()) {
                         break;
                     }
                 }

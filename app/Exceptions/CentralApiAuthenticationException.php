@@ -3,16 +3,14 @@
 namespace App\Exceptions;
 
 /**
- * Thrown specifically when the central server rejects a request with a 401
- * -- meaning the stored Sanctum token is dead (revoked, or the row it
- * pointed at was cleared server-side), not that anything about the request
- * itself was wrong. Kept as its own type (rather than folding this into the
- * generic \RuntimeException every other failure here uses) so callers can
- * distinguish "your session is gone, log in again" from an ordinary 422
- * validation failure or a ConnectionException -- those need very different
- * handling and messaging, and string-matching on response text to tell them
- * apart would be fragile.
+ * A 401: the stored token is dead (revoked or cleared on the server). The
+ * user must log in again; nothing about the request itself was wrong, so
+ * queued records keep their place.
  */
-class CentralApiAuthenticationException extends \RuntimeException
+class CentralApiAuthenticationException extends CentralApiException
 {
+    public function __construct(string $message = 'Your session has expired. Log in again.')
+    {
+        parent::__construct($message, self::UNAUTHENTICATED, 401);
+    }
 }
