@@ -13,7 +13,15 @@ class EvacuationEvent extends Model
      */
     public const CLOSED_TO_ARRIVALS = 'This event is closed. Evacuees can no longer be added to it.';
 
-    protected $fillable = ['remote_id', 'name', 'event_type', 'status'];
+    protected $fillable = ['remote_id', 'name', 'event_type', 'status', 'is_demo', 'start_date'];
+
+    protected $casts = ['is_demo' => 'boolean', 'start_date' => 'date'];
+
+    /** The name as shown in a select, where a badge cannot go. */
+    public function optionLabel(): string
+    {
+        return $this->is_demo && ! str_starts_with($this->name, 'DEMO') ? "DEMO - {$this->name}" : $this->name;
+    }
 
     public function isClosed(): bool
     {

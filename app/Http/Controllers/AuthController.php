@@ -167,6 +167,8 @@ class AuthController extends Controller
                 'name' => $e['name'],
                 'event_type' => $e['event_type'],
                 'status' => $e['status'],
+                'is_demo' => (bool) ($e['is_demo'] ?? false),
+                'start_date' => $e['start_date'] ?? null,
             ]);
             $eventRemoteIds[] = $e['id'];
         }

@@ -34,7 +34,7 @@
             <select name="evacuation_event_id" required class="input">
                 <option value="">Select event</option>
                 @foreach ($events as $e)
-                    <option value="{{ $e->id }}" @selected($isEditing ? $entry->evacuation_event_id === $e->id : ($selectedEventId ?? null) === $e->id)>{{ $e->name }}</option>
+                    <option value="{{ $e->id }}" @selected($isEditing ? $entry->evacuation_event_id === $e->id : ($selectedEventId ?? null) === $e->id)>{{ $e->optionLabel() }}</option>
                 @endforeach
             </select>
             @if ($events->isEmpty())

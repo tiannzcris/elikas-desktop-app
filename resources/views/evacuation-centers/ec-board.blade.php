@@ -55,9 +55,12 @@
                         <label for="ecb-event" class="label-sm">Event</label>
                         <select id="ecb-event" name="event" onchange="this.form.submit()" class="input w-auto min-w-[13rem]">
                             @foreach ($events as $e)
-                                <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->name }}{{ $e->isClosed() ? ' (closed)' : '' }}</option>
+                                <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->optionLabel() }}{{ $e->isClosed() ? ' (closed)' : '' }}</option>
                             @endforeach
                         </select>
+                        @if ($events->firstWhere('id', $selectedEventId)?->is_demo)
+                            <span class="badge badge-warning self-start mt-2" data-demo-badge>DEMO</span>
+                        @endif
                     </form>
                 </div>
 
@@ -137,7 +140,7 @@
                 <div class="modal-header shrink-0">
                     <div class="min-w-0">
                         <h2 id="add-evacuee-title" class="modal-title">Add evacuee</h2>
-                        <p class="text-xs font-medium text-gray-700 mt-0.5">{{ $center->name }} &middot; {{ $events->firstWhere('id', $selectedEventId)?->name }}</p>
+                        <p class="text-xs font-medium text-gray-700 mt-0.5">{{ $center->name }} &middot; {{ $events->firstWhere('id', $selectedEventId)?->optionLabel() }}</p>
                         <p class="text-xs text-gray-600">Saved on this device first -- name and birthdate can be added later.</p>
                     </div>
                     <button type="button" class="btn-icon -mr-1.5" data-close-board-modal aria-label="Close">
