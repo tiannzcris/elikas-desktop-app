@@ -103,6 +103,12 @@ class CentralApiService
         }
     }
 
+    /** The signed-in user with permissions (GET /auth/me). */
+    public function me(string $token): array
+    {
+        return $this->send('get', 'auth/me', $token, [], 10)['data'] ?? [];
+    }
+
     /** Barangays, events and centers for the local cache. */
     public function fetchReferenceData(string $token): array
     {

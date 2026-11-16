@@ -49,6 +49,7 @@ class ReferenceDataPruneTest extends TestCase
         // remote_id 1 and 99 are gone, remote_id 2 renamed, remote_id 3 is
         // a brand new center.
         Http::fake([
+            '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 1, 'name' => 'Old Barangay Name']]]),
             '*/evacuation-events' => Http::response(['data' => [['id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']]]),
             '*/evacuation-centers' => Http::response(['data' => [
@@ -108,6 +109,7 @@ class ReferenceDataPruneTest extends TestCase
         // upstream): the fresh fetch no longer includes remote_id 13/5 at
         // all, replacing them with entirely different real records.
         Http::fake([
+            '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 1, 'name' => 'Old Barangay Name']]]),
             '*/evacuation-events' => Http::response(['data' => [
                 ['id' => 7, 'name' => 'Tropical Storm Amang', 'event_type' => 'typhoon', 'status' => 'active'],
@@ -179,6 +181,7 @@ class ReferenceDataPruneTest extends TestCase
         // centers list. This must NOT be treated as "the server has zero
         // centers now" and wipe the local cache.
         Http::fake([
+            '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
             '*/evacuation-centers' => Http::response(['data' => []]),
@@ -205,6 +208,7 @@ class ReferenceDataPruneTest extends TestCase
         ]);
 
         Http::fake([
+            '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
             '*/evacuation-centers' => Http::response(['data' => []]),

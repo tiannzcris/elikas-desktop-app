@@ -41,15 +41,10 @@ class AuthController extends Controller
         // Only one row ever exists here -- whoever is currently logged in
         // on this device. A fresh login always replaces it.
         LocalAuth::query()->delete();
-        LocalAuth::create([
-            'remote_user_id' => $result['user']['id'],
-            'name' => $result['user']['name'],
-            'email' => $result['user']['email'],
-            'role' => $result['user']['role'],
-            'barangay_id' => $result['user']['barangay']['id'] ?? null,
-            'barangay_name' => $result['user']['barangay']['name'] ?? null,
+        LocalAuth::create(LocalAuth::attributesFromUser($result['user']) + [
             'api_token' => $result['token'],
             'logged_in_at' => now(),
+            'identity_checked_at' => now(),
         ]);
 
         // We know we have internet right now (login just succeeded), so
@@ -98,11 +93,24 @@ class AuthController extends Controller
         }
 
         try {
+            $this->refreshIdentity($api, $auth);
             $this->refreshReferenceData($api, $auth->api_token);
 
             return back()->with('status', 'Reference data refreshed successfully.');
         } catch (\RuntimeException $e) {
             return back()->withErrors(['refresh' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Brings the stored name, barangay and permissions up to date from
+     * GET /auth/me (a role or barangay may have changed on the server).
+     */
+    public static function refreshIdentity(CentralApiService $api, LocalAuth $auth): void
+    {
+        $user = $api->me($auth->api_token);
+        if (! empty($user['id'])) {
+            $auth->update(LocalAuth::attributesFromUser($user) + ['identity_checked_at' => now()]);
         }
     }
 
