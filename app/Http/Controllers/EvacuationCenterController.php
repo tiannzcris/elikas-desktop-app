@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barangay;
+use App\Models\CenterFamilySnapshot;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationCenterBreakdown;
@@ -498,11 +499,19 @@ class EvacuationCenterController extends Controller
             return response()->json([], 422);
         }
 
+        // Live when the server answers; otherwise the last list kept on
+        // this device (CenterFamilySnapshot), so "Already here" works offline.
         try {
-            $remoteFamilies = $api->fetchFamiliesAtCenter($auth->api_token, $center->remote_id, $event->remote_id);
+            $snapshot = CenterFamilySnapshot::fetch($api, $auth->api_token, $center, $event);
+            $cached = false;
         } catch (\RuntimeException $e) {
-            return response()->json([], 503);
+            $snapshot = CenterFamilySnapshot::for($center, $event);
+            $cached = true;
+            if (! $snapshot) {
+                return response()->json([], 503);
+            }
         }
+        $remoteFamilies = $snapshot->families;
 
         $knownRemoteIds = Family::where('evacuation_center_id', $center->id)
             ->whereNotNull('remote_id')
@@ -532,6 +541,8 @@ class EvacuationCenterController extends Controller
         return response()->json([
             'households' => $households,
             'here_remote_ids' => collect($remoteFamilies)->pluck('id')->values(),
+            'cached' => $cached,
+            'fetched_at' => $snapshot->fetched_at->toIso8601String(),
         ]);
     }
 

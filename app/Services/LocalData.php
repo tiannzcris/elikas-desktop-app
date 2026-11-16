@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppState;
+use App\Models\CenterFamilySnapshot;
 use App\Models\EcBoardEntry;
 use App\Models\Family;
 use App\Models\LocalAuth;
@@ -51,6 +52,7 @@ class LocalData
         }
 
         $this->forgetSentRecords();
+        CenterFamilySnapshot::query()->delete();
     }
 
     /** Sent EC Board entries and families, except households a waiting entry still points to. */

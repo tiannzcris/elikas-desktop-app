@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\CentralApiException;
 use App\Models\Barangay;
+use App\Models\CenterFamilySnapshot;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
@@ -203,6 +205,8 @@ class AuthController extends Controller
                 Purok::updateOrCreate(['remote_id' => $p['id']], ['barangay_remote_id' => $p['barangay_id'], 'name' => $p['name']]);
             }
             Purok::whereNotIn('remote_id', array_column($puroks, 'id'))->delete();
+
+            $this->prefetchFamiliesAtCenters($api, $token, (int) $auth->barangay_id);
         }
 
         // The EC Board's "as of last sync" breakdown is deliberately NOT
@@ -214,6 +218,29 @@ class AuthController extends Controller
         // center+event actually being viewed -- see
         // EvacuationCenterController::show() and
         // CentralApiService::fetchCenterQuickCount().
+    }
+
+    /**
+     * Keeps "Already here" ready offline: the families checked in at each
+     * of the official's open centers, for each open event. One center that
+     * can't be read (gone, refused) doesn't stop the rest; no connection does.
+     */
+    private function prefetchFamiliesAtCenters(CentralApiService $api, string $token, int $barangayRemoteId): void
+    {
+        $centers = EvacuationCenter::where('barangay_remote_id', $barangayRemoteId)->where('status', '!=', 'closed')->get();
+        $events = EvacuationEvent::where('status', '!=', 'closed')->get();
+
+        foreach ($centers as $center) {
+            foreach ($events as $event) {
+                try {
+                    CenterFamilySnapshot::fetch($api, $token, $center, $event);
+                } catch (CentralApiException $e) {
+                    if ($e->isOffline() || $e->kind === CentralApiException::UNAUTHENTICATED) {
+                        throw $e;
+                    }
+                }
+            }
+        }
     }
 
     /**
