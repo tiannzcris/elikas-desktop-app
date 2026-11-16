@@ -733,3 +733,12 @@ document.addEventListener('click', (e) => {
     document.querySelector('main')?.classList.remove('in');
     setTimeout(() => { window.location.href = link.href; }, 150);
 });
+
+// A form with data-confirm asks first (logout with records not sent yet).
+document.addEventListener('submit', (e) => {
+    const message = e.target.dataset?.confirm;
+    if (message && !window.confirm(message)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+    }
+}, true);

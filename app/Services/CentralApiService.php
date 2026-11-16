@@ -108,10 +108,8 @@ class CentralApiService
     {
         try {
             $this->send('post', 'auth/logout', $token, [], 5);
-        } catch (CentralApiException $e) {
+        } catch (\Throwable $e) {
             // Offline or already revoked: nothing more to do.
-        } catch (RuntimeException $e) {
-            // A test that fakes no server.
         }
     }
 

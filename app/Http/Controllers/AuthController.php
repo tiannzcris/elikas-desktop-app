@@ -9,6 +9,7 @@ use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
+use App\Services\LocalData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -25,7 +26,7 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $request, CentralApiService $api)
+    public function login(Request $request, CentralApiService $api, LocalData $local)
     {
         $validated = $request->validate([
             'email' => ['required', 'email'],
@@ -47,6 +48,13 @@ class AuthController extends Controller
             $api->logout($result['token']);
 
             return redirect()->route('use-web');
+        }
+
+        if ($owner = $local->blocksLoginOf((int) $result['user']['id'])) {
+            $api->logout($result['token']);
+
+            return back()->withErrors(['login' => "Records made by {$owner['name']} ({$owner['email']}) are still waiting to be sent from this device. Log in as {$owner['name']} and sync them first."])
+                ->withInput(['email' => $validated['email']]);
         }
 
         LocalAuth::query()->delete();
@@ -88,8 +96,17 @@ class AuthController extends Controller
         return view('auth.use-web', ['webUrl' => $api->webUrl()]);
     }
 
-    public function logout()
+    /**
+     * Revokes the token on the server (when reachable), keeps queued
+     * records for this account's next login, and removes copies of data
+     * already safe on the server.
+     */
+    public function logout(CentralApiService $api, LocalData $local)
     {
+        if ($auth = LocalAuth::current()) {
+            $api->logout($auth->api_token);
+            $local->closeSession($auth);
+        }
         LocalAuth::query()->delete();
 
         return redirect()->route('login');

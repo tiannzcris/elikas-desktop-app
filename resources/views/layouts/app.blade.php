@@ -78,7 +78,7 @@
                             <i class="ti ti-chevron-down text-gray-500" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>
                         <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-44 card shadow-lg overflow-hidden z-50">
-                            <form method="POST" action="{{ route('logout') }}">
+                            <form method="POST" action="{{ route('logout') }}" @if($pendingTotal > 0) data-confirm="{{ $pendingTotal }} {{ \Illuminate\Support\Str::plural('record', $pendingTotal) }} not sent yet. They stay on this device for your next login. Log out?" @endif>
                                 @csrf
                                 <button type="submit" class="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
                                     <i class="ti ti-logout" style="font-size: 15px;" aria-hidden="true"></i> Log out
