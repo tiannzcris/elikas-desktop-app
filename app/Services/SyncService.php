@@ -7,6 +7,7 @@ use App\Models\AppState;
 use App\Models\EcBoardEntry;
 use App\Models\Family;
 use App\Models\LocalAuth;
+use App\Models\PendingReEnrollment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -59,7 +60,10 @@ class SyncService
             ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
             ->get()->map(fn ($m) => ['key' => 'family:'.$m->id, 'model' => $m, 'kind' => 'family']);
 
-        return $entries->concat($families)
+        $returning = PendingReEnrollment::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter'])
+            ->get()->map(fn ($m) => ['key' => 'returning:'.$m->id, 'model' => $m, 'kind' => 'returning']);
+
+        return $entries->concat($families)->concat($returning)
             ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
             ->values();
     }
@@ -187,6 +191,7 @@ class SyncService
             // Full registrations were removed in 2.0; ones queued before the
             // upgrade are still sent so nothing already entered is lost.
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
+            'returning' => 'Returning family '.$model->family_name.' · '.count($model->members).' '.str('person')->plural(count($model->members)),
             default => $item['key'],
         };
     }
@@ -199,6 +204,22 @@ class SyncService
     private function send(array $item, LocalAuth $auth): void
     {
         $model = $item['model'];
+
+        if ($item['kind'] === 'returning') {
+            try {
+                $data = $this->api->reEnroll($auth->api_token, $model->evacuationCenter->remote_id, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
+            } catch (CentralApiException $e) {
+                // 409: a family already in this event may be the same one.
+                // Keep the server's candidates for the decision on the Sync page.
+                if ($e->kind === CentralApiException::CONFLICT) {
+                    $model->update(['possible_duplicates' => $e->data()['possible_duplicates'] ?? []]);
+                }
+                throw $e;
+            }
+            $model->update(['remote_family_id' => $data['family']['id'] ?? null, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+            return;
+        }
 
         if ($item['kind'] === 'family') {
             $remoteId = $this->api->registerFamily($auth->api_token, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);

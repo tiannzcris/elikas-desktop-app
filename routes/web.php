@@ -35,6 +35,8 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::get('/sync/probe', [SyncController::class, 'probe'])->name('sync.probe');
 
     Route::post('/sync/all', [SyncController::class, 'all'])->name('sync.all');
+    Route::post('/sync/returning/{returning}/decide', [SyncController::class, 'decide'])->name('sync.decide');
+    Route::delete('/sync/returning/{returning}', [SyncController::class, 'forgetReturning'])->name('sync.forget-returning');
 
     Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardIndex'])->name('ec-board.index');
 

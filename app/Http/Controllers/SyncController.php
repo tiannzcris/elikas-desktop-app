@@ -6,6 +6,7 @@ use App\Exceptions\CentralApiException;
 use App\Models\AppState;
 use App\Models\EvacuationCenter;
 use App\Models\LocalAuth;
+use App\Models\PendingReEnrollment;
 use App\Services\CentralApiService;
 use App\Services\SyncService;
 use Illuminate\Http\Request;
@@ -92,6 +93,43 @@ class SyncController extends Controller
                 'auth' => ! in_array($e->kind, [CentralApiException::UNAUTHENTICATED, CentralApiException::FORBIDDEN], true),
             ]);
         }
+    }
+
+    /**
+     * Answers the server's "possible duplicate" question for a returning
+     * family: link it to a family already in the event, or add it as new.
+     * The record goes back in line with the answer.
+     */
+    public function decide(Request $request, PendingReEnrollment $returning)
+    {
+        $offered = collect($returning->possible_duplicates ?? [])->pluck('family_id')->map(fn ($id) => (int) $id);
+        $validated = $request->validate([
+            'decision' => ['required', 'in:link,different'],
+            'family_id' => ['required_if:decision,link', 'nullable', 'integer'],
+        ]);
+        if ($validated['decision'] === 'link' && ! $offered->contains((int) $validated['family_id'])) {
+            return back()->withErrors(['family_id' => 'Choose one of the families offered.']);
+        }
+
+        $returning->update([
+            'duplicate_decision' => $validated['decision'],
+            'link_family_remote_id' => $validated['decision'] === 'link' ? (int) $validated['family_id'] : null,
+            'sync_state' => null,
+            'sync_error' => null,
+        ]);
+
+        return back()->with('status', $validated['decision'] === 'link'
+            ? 'Linked. It will be sent with the next sync.'
+            : 'Kept as a different family. It will be sent with the next sync.');
+    }
+
+    /** Removes a returning family not yet accepted by the server. */
+    public function forgetReturning(PendingReEnrollment $returning)
+    {
+        abort_if($returning->isSynced(), 409);
+        $returning->delete();
+
+        return back()->with('status', 'Removed from this device.');
     }
 
     /** Puts refused records back in line before a run the user started. */

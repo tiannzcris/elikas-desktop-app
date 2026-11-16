@@ -50,6 +50,28 @@
                                 <td>
                                     <span class="badge {{ $item['model']->sync_state === 'decision' ? 'badge-warning' : 'badge-danger' }}">{{ $item['model']->sync_state === 'decision' ? 'Decide' : 'Refused' }}</span>
                                     <span class="text-sm text-gray-700">{{ $item['model']->sync_error }}</span>
+                                    @if ($item['kind'] === 'returning' && $item['model']->sync_state === 'decision')
+                                        {{-- The server's possible duplicates: the same family, or a different one? --}}
+                                        <div class="mt-3 flex flex-col gap-2" data-duplicate-choices>
+                                            @foreach ($item['model']->possible_duplicates ?? [] as $match)
+                                                <form method="POST" action="{{ route('sync.decide', $item['model']) }}" class="flex flex-wrap items-center gap-2">
+                                                    @csrf
+                                                    <input type="hidden" name="decision" value="link">
+                                                    <input type="hidden" name="family_id" value="{{ $match['family_id'] }}">
+                                                    <span class="text-sm text-gray-900">
+                                                        {{ $match['name'] ?? $match['head_name'] ?? 'Family #'.$match['family_id'] }}
+                                                        <span class="text-gray-600">· {{ $match['member_count'] ?? 0 }} {{ str('person')->plural($match['member_count'] ?? 0) }}{{ ! empty($match['evacuation_center']) ? ' · '.$match['evacuation_center']['name'] : '' }}</span>
+                                                    </span>
+                                                    <button type="submit" class="btn btn-secondary btn-sm">Same family, link it</button>
+                                                </form>
+                                            @endforeach
+                                            <form method="POST" action="{{ route('sync.decide', $item['model']) }}">
+                                                @csrf
+                                                <input type="hidden" name="decision" value="different">
+                                                <button type="submit" class="btn btn-secondary btn-sm">Different family, add as new</button>
+                                            </form>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="cell-actions">
                                     <div class="flex justify-end gap-2">
@@ -58,6 +80,12 @@
                                                 @csrf
                                                 <input type="hidden" name="key" value="{{ $item['key'] }}">
                                                 <button type="submit" class="btn btn-secondary btn-sm">Try again</button>
+                                            </form>
+                                        @endif
+                                        @if ($item['kind'] === 'returning')
+                                            <form method="POST" action="{{ route('sync.forget-returning', $item['model']) }}" data-confirm="Remove this returning family from this device? It was never accepted by the server.">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
                                             </form>
                                         @endif
                                         @if ($item['kind'] === 'entry')
