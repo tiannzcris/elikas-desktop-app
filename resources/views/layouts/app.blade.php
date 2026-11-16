@@ -55,6 +55,14 @@
                         </a>
                     </div>
                 @endif
+                @if ($currentUser->isCityWide())
+                    <div class="flex flex-col gap-0.5" data-nav-group="city">
+                        <p class="nav-group-label">Monitoring</p>
+                        <a href="{{ route('monitoring.index') }}" class="nav-link @yield('nav-monitoring')">
+                            <i class="ti ti-activity" aria-hidden="true"></i> Monitoring
+                        </a>
+                    </div>
+                @endif
             </nav>
         </aside>
     @endif

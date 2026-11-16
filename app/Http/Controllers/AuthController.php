@@ -13,6 +13,7 @@ use App\Models\LocalAuth;
 use App\Models\Purok;
 use App\Models\ReturningFamilySnapshot;
 use App\Services\CentralApiService;
+use App\Services\CityViews;
 use App\Services\LocalData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -211,6 +212,11 @@ class AuthController extends Controller
             if ($auth->can('families.re_enroll')) {
                 $this->prefetchReturningFamilies($api, $token, (int) $auth->barangay_id);
             }
+        }
+
+        // CSWD: Monitoring and Final counts, for reading offline.
+        if ($auth?->isCityWide()) {
+            app(CityViews::class)->refresh($auth);
         }
 
         // The EC Board's "as of last sync" breakdown is deliberately NOT

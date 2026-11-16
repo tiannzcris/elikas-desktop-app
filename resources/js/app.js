@@ -624,3 +624,43 @@ document.querySelectorAll('[data-sync-form]').forEach((form) => {
     window.addEventListener('focus', attempt);
     setInterval(attempt, 60000);
 })();
+
+// ---------------------------------------------------------------------
+// Tabs (web design system 5): one panel at a time, choice kept in the URL
+// hash, arrow keys move between tabs.
+// ---------------------------------------------------------------------
+document.querySelectorAll('[data-tabs]').forEach((list) => {
+    const tabs = [...list.querySelectorAll('[data-tab]')];
+    const show = (name) => {
+        tabs.forEach((tab) => {
+            const on = tab.dataset.tab === name;
+            tab.setAttribute('aria-selected', on ? 'true' : 'false');
+            tab.tabIndex = on ? 0 : -1;
+        });
+        document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+            panel.hidden = panel.dataset.tabPanel !== name;
+        });
+    };
+    const initial = tabs.find((t) => `#${t.dataset.tab}` === window.location.hash) ?? tabs[0];
+    if (initial) show(initial.dataset.tab);
+    tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+            show(tab.dataset.tab);
+            history.replaceState(null, '', `#${tab.dataset.tab}`);
+        });
+        tab.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+            next.focus();
+            next.click();
+        });
+    });
+});
+
+// Buttons that need the central server are disabled while offline.
+function updateOnlineOnly() {
+    document.querySelectorAll('[data-online-only]').forEach((el) => { el.disabled = !navigator.onLine; });
+}
+updateOnlineOnly();
+window.addEventListener('online', updateOnlineOnly);
+window.addEventListener('offline', updateOnlineOnly);

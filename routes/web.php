@@ -5,9 +5,11 @@ use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
+use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
+use App\Http\Middleware\CityOnly;
 use App\Http\Middleware\OfficialOnly;
 use Illuminate\Support\Facades\Route;
 
@@ -55,4 +57,11 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::post('/evacuation-centers/{center}/check-outs', [CheckOutController::class, 'store'])->name('check-outs.store');
     Route::get('/evacuation-centers/{center}/returning-families', [ReturningFamilyController::class, 'index'])->name('returning-families.index');
     Route::post('/evacuation-centers/{center}/returning-families', [ReturningFamilyController::class, 'store'])->name('returning-families.store');
+});
+
+// CSWD's read-only pages: kept on this device, "As of" the last fetch;
+// validation and every other action are on the web.
+Route::middleware(CityOnly::class)->group(function () {
+    Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    Route::post('/monitoring/refresh', [MonitoringController::class, 'refresh'])->name('monitoring.refresh');
 });

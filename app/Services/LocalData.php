@@ -10,6 +10,7 @@ use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
 use App\Models\PendingReEnrollment;
 use App\Models\ReturningFamilySnapshot;
+use App\Models\ServerSnapshot;
 
 /**
  * What this device holds: records waiting to be sent, and copies of
@@ -61,6 +62,7 @@ class LocalData
         ReturningFamilySnapshot::query()->delete();
         PendingReEnrollment::whereNotNull('synced_at')->delete();
         PendingCheckOut::whereNotNull('synced_at')->delete();
+        ServerSnapshot::query()->delete();
     }
 
     /** Sent EC Board entries and families, except households a waiting entry still points to. */

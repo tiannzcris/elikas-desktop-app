@@ -48,6 +48,11 @@
     .data-table tr:last-child td { @apply border-b-0; }
     .data-table .num { @apply text-right tabular-nums; }
     .cell-actions { @apply text-right whitespace-nowrap; }
+
+    /* Tabs: brand underline marks the selected one. */
+    .tabs { @apply flex flex-wrap gap-6 border-b border-gray-200; }
+    .tab { @apply -mb-px border-b-2 border-transparent pb-3 pt-1 text-sm font-medium text-gray-600 hover:text-gray-900; }
+    .tab[aria-selected="true"] { @apply border-brand text-brand-dark; }
     .icon-chip { @apply w-9 h-9 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center shrink-0; }
 
     /* Stat strip: one ruled card of figures. Each cell draws its own
