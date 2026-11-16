@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Barangay;
 use App\Models\EcBoardEntry;
-use App\Models\Family;
 use App\Models\EvacuationEvent;
+use App\Models\Family;
+use App\Models\Purok;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -43,6 +45,7 @@ class AddEvacueeRequest extends FormRequest
             // family's HOME barangay -- required for a new family, the same
             // as the central server's addEvacuee() (see withValidator()).
             'new_household_barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
+            'new_household_purok_id' => ['nullable', 'integer', 'exists:puroks,id'],
             // Optional sectoral checkboxes (see EcBoardEntry::SECTORAL_FLAGS)
             // -- a ticked box submits "1", an unticked one submits nothing.
             'is_pwd' => ['nullable', 'boolean'],
@@ -102,6 +105,10 @@ class AddEvacueeRequest extends FormRequest
         return [
             // Required for a new family (withValidator()); never cleared.
             ...($this->filled('new_household_barangay_id') ? ['barangay_id' => $this->integer('new_household_barangay_id')] : []),
+            // Optional; only a purok of the home barangay (withValidator()).
+            'purok_remote_id' => $this->filled('new_household_purok_id')
+                ? Purok::whereKey($this->integer('new_household_purok_id'))->value('remote_id')
+                : null,
             'is_single_headed' => $this->nullableBoolean('is_single_headed'),
             'head_sex' => $headIsSelf ? null : $this->input('head_sex'),
             'head_is_minor' => $headIsSelf ? null : $this->nullableBoolean('head_is_minor'),
@@ -150,6 +157,15 @@ class AddEvacueeRequest extends FormRequest
             // Same message as the central server's addEvacuee().
             if ($this->input('household_type') === 'new' && ! $this->filled('new_household_barangay_id')) {
                 $validator->errors()->add('new_household_barangay_id', "Choose the family's home barangay.");
+            }
+
+            // Same rule as the central server: the purok must be in the home barangay.
+            if ($this->input('household_type') === 'new' && $this->filled('new_household_purok_id')) {
+                $purok = Purok::find($this->integer('new_household_purok_id'));
+                $home = Barangay::find($this->integer('new_household_barangay_id'));
+                if (! $purok || ! $home || (int) $purok->barangay_remote_id !== (int) $home->remote_id) {
+                    $validator->errors()->add('new_household_purok_id', "That purok is not in the family's barangay.");
+                }
             }
 
             // Same guard as the central server's addEvacuee(), checked here

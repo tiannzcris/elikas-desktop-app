@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+/** A purok (zone) of a barangay, cached from GET /puroks. */
+class Purok extends Model
+{
+    protected $fillable = ['remote_id', 'barangay_remote_id', 'name'];
+}

@@ -151,11 +151,24 @@
                 <select id="{{ $barangayFieldId }}" name="new_household_barangay_id" class="household-barangay-select input" aria-describedby="{{ $barangayFieldId }}-help">
                     <option value="">Choose the family's home barangay...</option>
                     @foreach ($barangays as $b)
-                        <option value="{{ $b->id }}" @selected($ownHousehold && (int) $ownHousehold->barangay_id === $b->id)>{{ $b->name }}</option>
+                        <option value="{{ $b->id }}" data-remote-id="{{ $b->remote_id }}" @selected($ownHousehold && (int) $ownHousehold->barangay_id === $b->id)>{{ $b->name }}</option>
                     @endforeach
                 </select>
-                <p id="{{ $barangayFieldId }}-help" class="help">Where the family lives -- not necessarily where this center is.</p>
+                <p id="{{ $barangayFieldId }}-help" class="help">Where the family lives, not necessarily where this center is.</p>
             </div>
+            @if (($puroks ?? collect())->isNotEmpty())
+                {{-- Only the official's own barangay's puroks are on this
+                     device; the field shows when that is the home barangay. --}}
+                <div data-purok-field>
+                    <label for="{{ $barangayFieldId }}-purok" class="label-sm">Purok</label>
+                    <select id="{{ $barangayFieldId }}-purok" name="new_household_purok_id" class="input">
+                        <option value="">Not recorded</option>
+                        @foreach ($puroks as $p)
+                            <option value="{{ $p->id }}" data-barangay-remote-id="{{ $p->barangay_remote_id }}" @selected($ownHousehold && (int) $ownHousehold->purok_remote_id === (int) $p->remote_id)>{{ $p->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div>
                 <label class="label-sm">Family name</label>
                 <input type="text" name="new_household_head_name" value="{{ $householdName }}" placeholder="e.g. Juan Dela Cruz" class="input">

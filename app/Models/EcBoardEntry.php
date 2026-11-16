@@ -223,6 +223,8 @@ class EcBoardEntry extends Model
                 // own beyond this center's, which it was given back then.
                 'barangay_id' => $this->household?->barangay?->remote_id ?? $this->evacuationCenter->barangay_remote_id,
                 'family_name' => $this->household?->displayName(),
+                // Optional: sent only when recorded.
+                ...($this->household?->purok_remote_id ? ['purok_id' => (int) $this->household->purok_remote_id] : []),
                 ...$this->sectoralFlagsPayload(),
                 ...$this->headPayload(true),
             ];

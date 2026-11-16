@@ -8,6 +8,7 @@ use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
+use App\Models\Purok;
 use App\Services\CentralApiService;
 use App\Services\LocalData;
 use Illuminate\Http\Request;
@@ -193,6 +194,16 @@ class AuthController extends Controller
             $centerRemoteIds[] = $c['id'];
         }
         $this->pruneStale(EvacuationCenter::class, $centerRemoteIds, 'evacuation_center_id', EcBoardEntry::class, 'evacuation_center_id');
+
+        // The official's own barangay's puroks, for a new household offline.
+        $auth = LocalAuth::current();
+        if ($auth?->isBarangayOfficial() && $auth->barangay_id && $auth->can('puroks.view')) {
+            $puroks = $api->fetchPuroks($token, (int) $auth->barangay_id);
+            foreach ($puroks as $p) {
+                Purok::updateOrCreate(['remote_id' => $p['id']], ['barangay_remote_id' => $p['barangay_id'], 'name' => $p['name']]);
+            }
+            Purok::whereNotIn('remote_id', array_column($puroks, 'id'))->delete();
+        }
 
         // The EC Board's "as of last sync" breakdown is deliberately NOT
         // refreshed here -- the real central endpoint (quick-count) is

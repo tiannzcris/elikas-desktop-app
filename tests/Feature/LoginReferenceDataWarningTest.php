@@ -52,6 +52,7 @@ class LoginReferenceDataWarningTest extends TestCase
         $this->fakeSuccessfulLogin();
         Http::fake([
             '*/barangays' => Http::response(['data' => []]),
+            '*/puroks*' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
             '*/evacuation-centers' => Http::response(['data' => []]),
         ]);

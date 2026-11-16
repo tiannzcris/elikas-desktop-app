@@ -283,6 +283,7 @@ class EvacuationCenterController extends Controller
             'households' => $households,
             // New family's "Home barangay" choices.
             'barangays' => Barangay::orderBy('name')->get(),
+            'puroks' => \App\Models\Purok::orderBy('name')->get(),
             // The Add Evacuee form's own picker -- the 7 real brackets
             // only, distinct from the board's breakdownAgeBrackets.
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,

@@ -135,6 +135,12 @@ class CentralApiService
         ];
     }
 
+    /** @return list<array{id: int, barangay_id: int, name: string}> one barangay's puroks */
+    public function fetchPuroks(string $token, int $barangayRemoteId): array
+    {
+        return $this->send('get', 'puroks', $token, ['barangay_id' => $barangayRemoteId], 10)['data'] ?? [];
+    }
+
     /** One center's live board figures for one event (GET .../quick-count). */
     public function fetchCenterQuickCount(string $token, int $centerRemoteId, int $eventRemoteId): array
     {

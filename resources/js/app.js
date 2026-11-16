@@ -589,6 +589,27 @@ window.ELIKAS.initEcBoardEntryForm = function initEcBoardEntryForm(root) {
         select.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
+    // Purok: only the puroks of the chosen home barangay; hidden (and
+    // cleared) when this device has none for it.
+    const purokField = q('[data-purok-field]');
+    function applyPurok() {
+        if (!purokField) return;
+        const barangaySelect = q('.household-barangay-select');
+        const remoteId = barangaySelect?.selectedOptions[0]?.dataset.remoteId ?? '';
+        const purokSelect = purokField.querySelector('select');
+        let any = false;
+        purokSelect.querySelectorAll('option[data-barangay-remote-id]').forEach((option) => {
+            const match = option.dataset.barangayRemoteId === remoteId;
+            option.hidden = !match;
+            option.disabled = !match;
+            any = any || match;
+        });
+        if (purokSelect.selectedOptions[0]?.disabled) purokSelect.value = '';
+        purokField.hidden = !any;
+    }
+    q('.household-barangay-select')?.addEventListener('change', applyPurok);
+    applyPurok();
+
     root.querySelectorAll('.household-type-radio').forEach((radio) => radio.addEventListener('change', applyHousehold));
     headSelfNew?.addEventListener('change', applyHousehold);
     headSelfExisting?.addEventListener('change', applyHousehold);

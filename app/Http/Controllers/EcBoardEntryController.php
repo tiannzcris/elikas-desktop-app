@@ -181,6 +181,7 @@ class EcBoardEntryController extends Controller
                 ->with('evacuees')
                 ->get(),
             'barangays' => Barangay::orderBy('name')->get(),
+            'puroks' => \App\Models\Purok::orderBy('name')->get(),
             'ageBrackets' => EcBoardEntry::AGE_BRACKETS,
         ];
 

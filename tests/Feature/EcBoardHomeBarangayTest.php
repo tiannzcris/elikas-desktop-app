@@ -56,7 +56,7 @@ class EcBoardHomeBarangayTest extends TestCase
         $page = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
 
         $page->assertOk();
-        $page->assertSeeInOrder(['Home barangay', 'Same as this center (Bacong)', "Choose the family's home barangay...", 'Bacong', 'Tupas', 'Where the family lives -- not necessarily where this center is.', 'Family name'], false);
+        $page->assertSeeInOrder(['Home barangay', 'Same as this center (Bacong)', "Choose the family's home barangay...", 'Bacong', 'Tupas', 'Where the family lives, not necessarily where this center is.', 'Family name'], false);
         $this->assertDoesNotMatchRegularExpression('/<option value="\d+"\s+selected[^>]*>(Bacong|Tupas)</', $page->getContent());
     }
 
@@ -94,7 +94,7 @@ class EcBoardHomeBarangayTest extends TestCase
         $entry = EcBoardEntry::sole();
 
         $edit = $this->get(route('ec-board-entries.edit', $entry));
-        $edit->assertSee('<option value="'.$bacong->id.'" selected>Bacong</option>', false);
+        $edit->assertSee('<option value="'.$bacong->id.'" data-remote-id="'.$bacong->remote_id.'" selected>Bacong</option>', false);
 
         $this->put(route('ec-board-entries.update', $entry), [
             'evacuation_event_id' => $event->id, 'sex' => 'female', 'age_bracket' => 'adult',
