@@ -103,6 +103,24 @@ class CentralApiService
         }
     }
 
+    /** Revokes this device's token on the server. Best effort: offline is fine. */
+    public function logout(string $token): void
+    {
+        try {
+            $this->send('post', 'auth/logout', $token, [], 5);
+        } catch (CentralApiException $e) {
+            // Offline or already revoked: nothing more to do.
+        } catch (RuntimeException $e) {
+            // A test that fakes no server.
+        }
+    }
+
+    /** The web address of the central server (its API URL without /api/v1). */
+    public function webUrl(): string
+    {
+        return preg_replace('#/api/v1$#', '', $this->baseUrl());
+    }
+
     /** The signed-in user with permissions (GET /auth/me). */
     public function me(string $token): array
     {

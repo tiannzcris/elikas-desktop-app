@@ -10,11 +10,10 @@ class ExampleTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * The root URL sends a signed-out user on to the dashboard, which in
-     * turn asks for a login.
+     * The root URL sends a signed-out user to the login page.
      */
     public function test_the_root_url_redirects(): void
     {
-        $this->get('/')->assertRedirect(route('dashboard'));
+        $this->get('/')->assertRedirect(route('login'));
     }
 }

@@ -73,7 +73,7 @@ class OwnBarangayPinnedFirstTest extends TestCase
     public function test_ec_board_shows_no_badge_or_pinning_for_a_staff_account_with_no_barangay(): void
     {
         LocalAuth::create([
-            'remote_user_id' => 1, 'name' => 'Admin', 'email' => 'a@example.com', 'role' => 'administrator',
+            'remote_user_id' => 1, 'name' => 'City Staff', 'email' => 'a@example.com', 'role' => 'cswd_personnel',
             'barangay_id' => null, 'api_token' => 'fake-token', 'logged_in_at' => now(),
         ]);
         Barangay::create(['remote_id' => 1, 'name' => 'Abella']);

@@ -40,6 +40,15 @@ class AuthController extends Controller
 
         // Only one row ever exists here -- whoever is currently logged in
         // on this device. A fresh login always replaces it.
+        // Accounts without operational access (the administrator) work on
+        // the web only: revoke the token just issued and keep nothing.
+        $candidate = new LocalAuth(LocalAuth::attributesFromUser($result['user']));
+        if (! $candidate->hasOperationsAccess()) {
+            $api->logout($result['token']);
+
+            return redirect()->route('use-web');
+        }
+
         LocalAuth::query()->delete();
         LocalAuth::create(LocalAuth::attributesFromUser($result['user']) + [
             'api_token' => $result['token'],
@@ -71,6 +80,12 @@ class AuthController extends Controller
         }
 
         return redirect()->route('dashboard');
+    }
+
+    /** For accounts that have no work on the desktop (the administrator). */
+    public function useWeb(CentralApiService $api)
+    {
+        return view('auth.use-web', ['webUrl' => $api->webUrl()]);
     }
 
     public function logout()

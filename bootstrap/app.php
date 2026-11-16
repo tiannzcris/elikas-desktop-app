@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureDatabaseIsUpToDate;
+use App\Http\Middleware\RequireDesktopAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // EnsureDatabaseIsUpToDate's own docblock for why this can't be
         // scoped to only authenticated/protected routes.
         $middleware->prependToGroup('web', EnsureDatabaseIsUpToDate::class);
+        // Signed in, with operational access (see RequireDesktopAccess).
+        $middleware->appendToGroup('web', RequireDesktopAccess::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
