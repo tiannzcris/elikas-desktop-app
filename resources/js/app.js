@@ -817,3 +817,52 @@ document.querySelectorAll('[data-sync-form]').forEach((form) => {
         window.location.reload();
     });
 });
+
+// ---------------------------------------------------------------------
+// Auto sync (barangay officials): whenever records wait and the central
+// server answers, send them without anyone pressing a button. Runs on
+// page load, when the connection comes back, when the window gets focus,
+// and every minute while records wait. Refused records are left for the
+// Sync page (no automatic retry of a refusal). Never reloads the page:
+// someone may be typing.
+// ---------------------------------------------------------------------
+(function autoSync() {
+    const form = document.querySelector('[data-auto-sync]');
+    const chip = document.getElementById('sync-chip');
+    if (!form || !chip) return;
+
+    const setChip = (text, tone) => {
+        chip.textContent = text;
+        chip.className = `badge badge-${tone}`;
+    };
+
+    async function attempt() {
+        if (!navigator.onLine || window.ELIKAS.syncRunning) return;
+        if (Number(chip.dataset.pending || 0) === 0) return;
+        let probe;
+        try {
+            probe = await fetch(form.dataset.probeUrl, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        } catch (e) {
+            return;
+        }
+        if (!probe.reachable) return;
+        if (!probe.auth) {
+            setChip('Log in again to send', 'danger');
+            return;
+        }
+        setChip('Sending…', 'info');
+        const result = await window.ELIKAS.runSync(form, { retryFailed: false });
+        if (!result) return;
+        const waiting = result.last?.remaining ?? 0;
+        chip.dataset.pending = String(waiting);
+        if (result.last?.stop === 'auth') setChip('Log in again to send', 'danger');
+        else if (result.refused > 0) setChip('Needs attention', 'danger');
+        else if (waiting > 0) setChip(`${waiting} waiting`, 'warning');
+        else setChip('All sent', 'success');
+    }
+
+    setTimeout(attempt, 3000);
+    window.addEventListener('online', () => setTimeout(attempt, 1500));
+    window.addEventListener('focus', attempt);
+    setInterval(attempt, 60000);
+})();

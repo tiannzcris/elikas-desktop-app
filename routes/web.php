@@ -32,6 +32,7 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::get('/sync', [SyncController::class, 'index'])->name('sync.index');
     Route::post('/sync/step', [SyncController::class, 'step'])->name('sync.step');
     Route::post('/sync/retry', [SyncController::class, 'retry'])->name('sync.retry');
+    Route::get('/sync/probe', [SyncController::class, 'probe'])->name('sync.probe');
 
     Route::get('/families', [FamilyController::class, 'index'])->name('families.index');
     Route::get('/families/create', [FamilyController::class, 'create'])->name('families.create');

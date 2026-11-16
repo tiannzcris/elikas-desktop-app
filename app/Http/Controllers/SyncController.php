@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\CentralApiException;
 use App\Models\AppState;
 use App\Models\LocalAuth;
+use App\Services\CentralApiService;
 use App\Services\SyncService;
 use Illuminate\Http\Request;
 
@@ -36,6 +38,24 @@ class SyncController extends Controller
     public function step(SyncService $sync)
     {
         return response()->json($sync->step(LocalAuth::current()));
+    }
+
+    /**
+     * Can the central server be reached, and is the login still good? Also
+     * brings the stored permissions up to date (GET /auth/me).
+     */
+    public function probe(CentralApiService $api)
+    {
+        try {
+            AuthController::refreshIdentity($api, LocalAuth::current());
+
+            return response()->json(['reachable' => true, 'auth' => true]);
+        } catch (CentralApiException $e) {
+            return response()->json([
+                'reachable' => ! $e->isOffline(),
+                'auth' => ! in_array($e->kind, [CentralApiException::UNAUTHENTICATED, CentralApiException::FORBIDDEN], true),
+            ]);
+        }
     }
 
     /** Puts refused records back in line before a run the user started. */

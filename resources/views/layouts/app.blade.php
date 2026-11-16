@@ -68,6 +68,14 @@
 
             <div class="flex items-center gap-4">
                 <span id="connection-badge" class="badge badge-neutral"></span>
+                @if (($currentUser ?? null)?->isBarangayOfficial())
+                    {{-- Sends waiting records by itself whenever the server can
+                         be reached (app.js, auto sync); the chip says how it stands. --}}
+                    <a href="{{ route('sync.index') }}" id="sync-chip" class="badge {{ $pendingTotal > 0 ? 'badge-warning' : 'badge-success' }}" data-pending="{{ $pendingTotal }}">
+                        {{ $pendingTotal > 0 ? $pendingTotal.' waiting' : 'All sent' }}
+                    </a>
+                    <form hidden data-auto-sync data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}" data-probe-url="{{ route('sync.probe') }}">@csrf</form>
+                @endif
                 @if($currentUser ?? null)
                     <div class="relative">
                         <button type="button" id="user-menu-btn" class="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-gray-100" aria-haspopup="menu">
