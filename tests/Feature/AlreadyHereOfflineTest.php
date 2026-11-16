@@ -51,6 +51,7 @@ class AlreadyHereOfflineTest extends TestCase
             '*/evacuation-centers' => Http::response(['data' => [['id' => 7, 'barangay_id' => 4, 'name' => 'Gym', 'status' => 'active']]]),
             '*/puroks*' => Http::response(['data' => []]),
             '*/evacuation-centers/7/families*' => Http::response(['data' => [['id' => 50, 'name' => 'Reyes']]]),
+            '*/returning-families*' => Http::response(['data' => ['past_events' => [], 'families' => []]]),
         ]);
 
         $this->post(route('reference-data.refresh'))->assertSessionHasNoErrors();

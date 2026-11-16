@@ -11,6 +11,7 @@ use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\Purok;
+use App\Models\ReturningFamilySnapshot;
 use App\Services\CentralApiService;
 use App\Services\LocalData;
 use Illuminate\Http\Request;
@@ -207,6 +208,9 @@ class AuthController extends Controller
             Purok::whereNotIn('remote_id', array_column($puroks, 'id'))->delete();
 
             $this->prefetchFamiliesAtCenters($api, $token, (int) $auth->barangay_id);
+            if ($auth->can('families.re_enroll')) {
+                $this->prefetchReturningFamilies($api, $token, (int) $auth->barangay_id);
+            }
         }
 
         // The EC Board's "as of last sync" breakdown is deliberately NOT
@@ -238,6 +242,38 @@ class AuthController extends Controller
                     if ($e->isOffline() || $e->kind === CentralApiException::UNAUTHENTICATED) {
                         throw $e;
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Keeps Returning families ready offline: for each open event, the past
+     * events and their re-enrollable families of the official's barangay
+     * (the same list from any of its centers). A refusal keeps the old copy.
+     */
+    private function prefetchReturningFamilies(CentralApiService $api, string $token, int $barangayRemoteId): void
+    {
+        $center = EvacuationCenter::where('barangay_remote_id', $barangayRemoteId)->where('status', '!=', 'closed')
+            ->where('approval_status', '!=', 'rejected')->orderBy('id')->first();
+        if (! $center) {
+            return;
+        }
+
+        foreach (EvacuationEvent::where('status', '!=', 'closed')->get() as $event) {
+            try {
+                $list = $api->fetchReturningFamilies($token, $center->remote_id, $event->remote_id);
+                $pastEvents = $list['past_events'] ?? [];
+                $families = [];
+                foreach ($pastEvents as $past) {
+                    $families[(string) $past['id']] = $api->fetchReturningFamilies($token, $center->remote_id, $event->remote_id, $past['id'])['families'] ?? [];
+                }
+                ReturningFamilySnapshot::updateOrCreate(['evacuation_event_id' => $event->id], [
+                    'past_events' => $pastEvents, 'families_by_event' => $families, 'fetched_at' => now(),
+                ]);
+            } catch (CentralApiException $e) {
+                if ($e->isOffline() || $e->kind === CentralApiException::UNAUTHENTICATED) {
+                    throw $e;
                 }
             }
         }

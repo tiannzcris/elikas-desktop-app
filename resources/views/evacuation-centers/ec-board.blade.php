@@ -29,6 +29,11 @@
                     @endif
                 </form>
             @endif
+            @if ($events->isNotEmpty() && ! $selectedEventClosed && $currentUser->can('families.re_enroll'))
+                <a href="{{ route('returning-families.index', ['center' => $center, 'event' => $selectedEventId]) }}" class="btn btn-secondary">
+                    <i class="ti ti-history" style="font-size: 15px;" aria-hidden="true"></i> Returning families
+                </a>
+            @endif
             @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
             @if ($events->isNotEmpty() && ! $selectedEventClosed)
                 <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
@@ -102,6 +107,19 @@
                             @if ($entry->sync_error)
                                 <p class="text-xs text-red-700 mt-1.5">{{ $entry->sync_error }}</p>
                             @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+            @if ($pendingReturning->isNotEmpty())
+                <ul class="divide-y divide-gray-100 border-t border-gray-100" data-pending-returning>
+                    @foreach ($pendingReturning as $returning)
+                        <li class="px-5 py-2.5 flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold text-sm text-gray-900 truncate">{{ $returning->family_name }}</p>
+                                <p class="text-xs text-gray-600">Returning family · {{ count($returning->members) }} {{ str('person')->plural(count($returning->members)) }}</p>
+                            </div>
+                            <span class="badge {{ $returning->sync_state ? 'badge-danger' : 'badge-warning' }}">{{ $returning->sync_state ? 'Needs attention' : 'Waiting to sync' }}</span>
                         </li>
                     @endforeach
                 </ul>

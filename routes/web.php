@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
+use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Middleware\OfficialOnly;
@@ -47,4 +48,7 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::get('/ec-board-entries/{entry}/edit', [EcBoardEntryController::class, 'edit'])->name('ec-board-entries.edit');
     Route::put('/ec-board-entries/{entry}', [EcBoardEntryController::class, 'update'])->name('ec-board-entries.update');
     Route::delete('/ec-board-entries/{entry}', [EcBoardEntryController::class, 'destroy'])->name('ec-board-entries.destroy');
+
+    Route::get('/evacuation-centers/{center}/returning-families', [ReturningFamilyController::class, 'index'])->name('returning-families.index');
+    Route::post('/evacuation-centers/{center}/returning-families', [ReturningFamilyController::class, 'store'])->name('returning-families.store');
 });

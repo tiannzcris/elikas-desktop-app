@@ -158,6 +158,24 @@ class CentralApiService
         return $this->send('get', "evacuation-centers/{$centerRemoteId}/families", $token, ['evacuation_event_id' => $eventRemoteId], 10)['data'] ?? [];
     }
 
+    /**
+     * Returning families (GET .../returning-families): without a source
+     * event, the past events; with one, that event's re-enrollable families.
+     */
+    public function fetchReturningFamilies(string $token, int $centerRemoteId, int $eventRemoteId, ?int $sourceEventRemoteId = null): array
+    {
+        return $this->send('get', "evacuation-centers/{$centerRemoteId}/returning-families", $token, array_filter([
+            'evacuation_event_id' => $eventRemoteId,
+            'source_event_id' => $sourceEventRemoteId,
+        ]), 15)['data'] ?? [];
+    }
+
+    /** Re-enrolls a past event's family at a center (POST .../re-enroll); returns the data block. */
+    public function reEnroll(string $token, int $centerRemoteId, array $payload): array
+    {
+        return $this->send('post', "evacuation-centers/{$centerRemoteId}/re-enroll", $token, $payload)['data'] ?? [];
+    }
+
     /** Sends one fully registered family (POST /families/register); returns its id. */
     public function registerFamily(string $token, array $payload): int
     {
