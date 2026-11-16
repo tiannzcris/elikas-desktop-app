@@ -35,8 +35,7 @@ Route::middleware(OfficialOnly::class)->group(function () {
 
     Route::post('/sync/all', [SyncController::class, 'all'])->name('sync.all');
 
-    Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardBarangays'])->name('ec-board.index');
-    Route::get('/ec-board/{barangay}', [EvacuationCenterController::class, 'ecBoardCenters'])->name('ec-board.centers');
+    Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardIndex'])->name('ec-board.index');
 
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');
     // Fetched by the page after it renders, never during: the local server

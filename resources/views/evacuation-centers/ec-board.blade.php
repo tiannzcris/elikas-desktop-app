@@ -1,28 +1,35 @@
 @extends('layouts.app')
 
-@section('title', 'EC Information Board -- '.$center->name)
+@section('title', $center->name.' · EC Board')
 @section('nav-ec-board', 'active')
 
 @section('content')
-    <div class="flex items-center justify-between gap-3 mb-4">
-        {{-- Always returns to THIS center's own barangay in the EC
-             Board flow -- resolved from the center's own
-             barangay_remote_id (see EvacuationCenterController::
-             ecBoard()), not a query param, so it's correct regardless
-             of how this page was reached. Falls back to the barangay
-             list if that barangay somehow isn't cached locally. --}}
-        <a href="{{ $backBarangay ? route('ec-board.centers', $backBarangay) : route('ec-board.index') }}" class="btn btn-secondary">
-            <i class="ti ti-arrow-left" style="font-size: 15px;" aria-hidden="true"></i> Back to {{ $barangayName }}
-        </a>
-        {{-- Lets staff sync directly from this page without navigating
-             away to Registered Families -- redirects back to this SAME
-             center+event afterward (see FamilyController::sync()'s own
-             resolveSyncRedirect()), so the board reflects the sync
-             immediately. --}}
-        <div class="flex flex-wrap items-center justify-end gap-2">
+    <a href="{{ route('ec-board.index') }}" class="back-link">
+        <i class="ti ti-arrow-left" style="font-size: 14px;" aria-hidden="true"></i> EC Board
+    </a>
+
+    {{-- One header: the center, its barangay and event; one primary button
+         (Add evacuee, a pop-up over the board as on the web). --}}
+    <div class="page-header">
+        <div class="min-w-0">
+            <h1 class="page-title"><x-center-name :center="$center" /></h1>
+            <p class="page-subtitle">Barangay {{ $barangayName }}</p>
+        </div>
+        <div class="page-actions items-end">
+            @if ($events->isNotEmpty())
+                <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}" class="flex items-center gap-2">
+                    <label for="ecb-event" class="sr-only">Event</label>
+                    <select id="ecb-event" name="event" onchange="this.form.submit()" class="input w-auto min-w-[13rem]">
+                        @foreach ($events as $e)
+                            <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->optionLabel() }}{{ $e->isClosed() ? ' (closed)' : '' }}</option>
+                        @endforeach
+                    </select>
+                    @if ($events->firstWhere('id', $selectedEventId)?->is_demo)
+                        <span class="badge badge-warning" data-demo-badge>DEMO</span>
+                    @endif
+                </form>
+            @endif
             @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
-            {{-- Add evacuee opens in a pop-up over the board, the same as
-                 the web dashboard's EC Board. --}}
             @if ($events->isNotEmpty() && ! $selectedEventClosed)
                 <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
                     <i class="ti ti-user-plus" style="font-size: 16px;" aria-hidden="true"></i> Add evacuee
@@ -32,42 +39,17 @@
     </div>
 
     @if ($events->isEmpty())
-        <div class="card p-5 mb-6">
-            <p class="text-xs font-medium text-gray-600">EC Information Board</p>
-            <h1 class="text-lg font-semibold text-gray-900"><x-center-name :center="$center" /></h1>
-            <p class="text-sm text-gray-600 mb-4">Barangay {{ $barangayName }}</p>
-            <div class="callout callout-warning">
-                No disaster events cached on this device -- refresh reference data while online before adding evacuees here.
-            </div>
+        <div class="callout callout-warning mb-6">
+            No disaster events on this device yet. Refresh reference data while online, then add evacuees here.
         </div>
     @else
             <section class="card ecb-sheet mb-5" aria-label="EC Information Board">
-                <div class="px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-xs font-medium text-gray-600">EC Information Board</p>
-                        <h1 class="text-lg font-semibold text-gray-900 leading-snug"><x-center-name :center="$center" /></h1>
-                        <p class="text-sm text-gray-600">
-                            Barangay <span class="font-medium text-gray-900">{{ $barangayName }}</span>
-                        </p>
-                    </div>
-                    <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}" class="flex flex-col">
-                        <label for="ecb-event" class="label-sm">Event</label>
-                        <select id="ecb-event" name="event" onchange="this.form.submit()" class="input w-auto min-w-[13rem]">
-                            @foreach ($events as $e)
-                                <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->optionLabel() }}{{ $e->isClosed() ? ' (closed)' : '' }}</option>
-                            @endforeach
-                        </select>
-                        @if ($events->firstWhere('id', $selectedEventId)?->is_demo)
-                            <span class="badge badge-warning self-start mt-2" data-demo-badge>DEMO</span>
-                        @endif
-                    </form>
-                </div>
 
                 {{-- Shown here only because entries for it are still
                      waiting on this device (see EvacuationCenterController::
                      ecBoard()): they can't sync any more. --}}
                 @if ($selectedEventClosed)
-                    <p class="callout callout-warning mx-5 mb-3 flex items-start gap-2" role="note" data-closed-event-note>
+                    <p class="callout callout-warning m-5 flex items-start gap-2" role="note" data-closed-event-note>
                         <i class="ti ti-lock shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
                         <span>This event is closed. Evacuees can no longer be added to it, so the entries below that are still waiting on this device can't sync. Check them, then delete them from this device.</span>
                     </p>

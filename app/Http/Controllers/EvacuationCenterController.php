@@ -31,79 +31,14 @@ class EvacuationCenterController extends Controller
     private const UNCLASSIFIED_BRACKET = 'unclassified';
 
     /**
-     * The sidebar's "EC Board" landing page -- step 1 of the real
-     * barangay -> centers -> board flow (replacing the earlier stopgap
-     * that just relabeled the old Evacuation Centers management list).
-     * Only barangays with at least one non-closed center are listed --
-     * an empty barangay has nowhere for this flow to go next, same
-     * closed-exclusion reasoning as index()/ecBoard() below. This route
-     * is now what the sidebar's "EC Board" link points to; the OLD
-     * management list below (index()/show()) still exists at its own
-     * URL, reachable via a secondary link on this page -- see this
-     * method's view for where.
+     * EC Board: the official's own barangay's open centers (the only
+     * centers their account may add evacuees to). One click to a board.
      */
-    public function ecBoardBarangays()
+    public function ecBoardIndex()
     {
         $auth = LocalAuth::current();
-        if (! $auth) {
-            return redirect()->route('login');
-        }
 
-        $barangayRemoteIds = EvacuationCenter::where('status', '!=', 'closed')
-            ->pluck('barangay_remote_id')
-            ->unique();
-
-        // Always include the staff's own barangay, even if it happens to
-        // have zero cached centers right now -- pinned first below either
-        // way, so it's never simply missing from the list they'd expect
-        // to see it in first.
-        if ($auth->barangay_id) {
-            $barangayRemoteIds->push($auth->barangay_id);
-            $barangayRemoteIds = $barangayRemoteIds->unique();
-        }
-
-        $rows = Barangay::whereIn('remote_id', $barangayRemoteIds)
-            ->orderBy('name')
-            ->get()
-            ->map(function (Barangay $barangay) use ($auth) {
-                $centerIds = EvacuationCenter::where('barangay_remote_id', $barangay->remote_id)
-                    ->where('status', '!=', 'closed')
-                    ->pluck('id');
-
-                return [
-                    'barangay' => $barangay,
-                    'centerCount' => $centerIds->count(),
-                    'pendingCount' => EcBoardEntry::whereIn('evacuation_center_id', $centerIds)->whereNull('synced_at')->count(),
-                    'isOwnBarangay' => $auth->barangay_id !== null && $barangay->remote_id === $auth->barangay_id,
-                ];
-            });
-
-        // Pinned first -- see this method's own docblock/Part 2 fix for
-        // why, everything else keeps its existing alphabetical order.
-        $ownRow = $rows->firstWhere('isOwnBarangay', true);
-        if ($ownRow) {
-            $rows = collect([$ownRow])->merge($rows->reject(fn ($row) => $row['isOwnBarangay']))->values();
-        }
-
-        return view('ec-board.index', [
-            'currentUser' => $auth,
-            'rows' => $rows,
-        ]);
-    }
-
-    /**
-     * Step 2 of the EC Board flow: this one barangay's own centers, name
-     * only -- pure fast navigation, no occupancy/capacity/facilities here
-     * (those still live on the old management pages, linked from here).
-     */
-    public function ecBoardCenters(Barangay $barangay)
-    {
-        $auth = LocalAuth::current();
-        if (! $auth) {
-            return redirect()->route('login');
-        }
-
-        $centers = EvacuationCenter::where('barangay_remote_id', $barangay->remote_id)
+        $centers = EvacuationCenter::where('barangay_remote_id', $auth->barangay_id)
             ->where('status', '!=', 'closed')
             ->orderBy('name')
             ->get()
@@ -112,9 +47,9 @@ class EvacuationCenterController extends Controller
                 'pendingCount' => EcBoardEntry::where('evacuation_center_id', $c->id)->whereNull('synced_at')->count(),
             ]);
 
-        return view('ec-board.centers', [
+        return view('ec-board.index', [
             'currentUser' => $auth,
-            'barangay' => $barangay,
+            'barangayName' => $auth->barangay_name,
             'centers' => $centers,
         ]);
     }
@@ -193,13 +128,11 @@ class EvacuationCenterController extends Controller
         // new EC Board flow, a bookmark, or a direct URL), so "Back"
         // always lands somewhere correct rather than trusting stale state.
         // Null only if that barangay somehow isn't cached locally.
-        $backBarangay = Barangay::where('remote_id', $center->barangay_remote_id)->first();
 
         return view('evacuation-centers.ec-board', $this->boardData($center, $selectedEventId) + [
             'currentUser' => $auth,
             'center' => $center,
             'barangayName' => Barangay::where('remote_id', $center->barangay_remote_id)->value('name') ?? 'Unknown barangay',
-            'backBarangay' => $backBarangay,
             'events' => $events,
             'selectedEventId' => $selectedEventId,
             'selectedEventClosed' => (bool) $events->firstWhere('id', $selectedEventId)?->isClosed(),

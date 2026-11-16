@@ -5,44 +5,38 @@
 
 @section('content')
     <div class="page-header">
-        <div>
+        <div class="min-w-0">
             <h1 class="page-title">EC Board</h1>
-            <p class="page-subtitle">Pick a barangay, then a center, to open its live headcount board.</p>
+            @if ($barangayName)
+                <p class="page-subtitle">Evacuation centers of Barangay {{ $barangayName }}</p>
+            @endif
         </div>
     </div>
 
-    @if ($rows->isEmpty())
-        <div class="empty-state">
-            <i class="ti ti-building-community" aria-hidden="true"></i>
-            <p>No evacuation centers cached on this device yet -- refresh reference data while online.</p>
+    @if ($centers->isEmpty())
+        <div class="card">
+            <div class="empty-state">
+                <i class="ti ti-building-community" aria-hidden="true"></i>
+                <p>No evacuation centers on this device yet.</p>
+                <form method="POST" action="{{ route('reference-data.refresh') }}" class="mt-4">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary">Refresh reference data</button>
+                </form>
+            </div>
         </div>
     @else
-        <p class="callout callout-info text-xs mb-4">
-            Your barangay is shown first. Other barangays are included so you can help register displaced residents temporarily staying in your area, or view city-wide activity.
-        </p>
-        <div class="grid grid-cols-2 gap-3">
-            @foreach ($rows as $row)
-                <a href="{{ route('ec-board.centers', $row['barangay']) }}" class="card card-link p-4 flex items-center justify-between {{ $row['isOwnBarangay'] ? 'border-brand-200' : '' }}">
-                    <div class="flex items-center gap-2.5">
-                        <div class="icon-chip">
-                            <i class="ti ti-map-pin" style="font-size: 16px;" aria-hidden="true"></i>
-                        </div>
-                        <div>
-                            <p class="font-semibold text-sm text-gray-900 flex items-center gap-1.5">
-                                {{ $row['barangay']->name }}
-                                @if ($row['isOwnBarangay'])
-                                    <span class="badge badge-info">Your barangay</span>
-                                @endif
-                            </p>
-                            <p class="text-xs text-gray-600">{{ $row['centerCount'] }} center{{ $row['centerCount'] === 1 ? '' : 's' }}</p>
-                        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @foreach ($centers as $row)
+                <a href="{{ route('evacuation-centers.ec-board', $row['center']) }}" class="card card-link card-body flex flex-col gap-2" data-center-card>
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="card-title min-w-0"><x-center-name :center="$row['center']" /></p>
+                        <span class="badge shrink-0 {{ $row['center']->status === 'active' ? 'badge-success' : ($row['center']->status === 'full' ? 'badge-danger' : 'badge-neutral') }}">
+                            {{ \Illuminate\Support\Str::headline($row['center']->status) }}
+                        </span>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        @if ($row['pendingCount'] > 0)
-                            <span class="badge badge-warning">{{ $row['pendingCount'] }} pending</span>
-                        @endif
-                        <i class="ti ti-chevron-right text-gray-500" style="font-size: 16px;" aria-hidden="true"></i>
-                    </div>
+                    @if ($row['pendingCount'] > 0)
+                        <p class="text-sm text-amber-800 font-medium">{{ $row['pendingCount'] }} waiting to sync</p>
+                    @endif
                 </a>
             @endforeach
         </div>
