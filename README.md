@@ -1,66 +1,45 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# E-LIKAS Offline Companion (Windows)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Desktop companion to the E-LIKAS web system for barangay halls and the CSWDO
+office where the internet is weak. Laravel 12 inside NativePHP/Electron, local
+SQLite, talking to the central API (`/api/v1`). Version 2.0.0.
 
-## About Laravel
+## Who uses it
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Account | On the desktop |
+| --- | --- |
+| Barangay official | EC Board for the own barangay's centers: Add evacuee (new or existing family, purok), Returning families, whole-family check-out. Works offline; Sync sends everything when the server answers. |
+| CSWD personnel | Read-only Monitoring and Final counts, kept for offline reading, marked "As of ..." with "Validate on the web". |
+| Administrator | "Use the web" screen. Nothing is kept. |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Screens follow the permissions from `/auth/login` and `/auth/me`, never the role name.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Offline and sync
 
-## Learning Laravel
+- Copies kept on the device (refreshed at login, with "Refresh reference data",
+  and on reconnect): barangays, events (with DEMO), own centers (with approval
+  state), puroks, families checked in per center and event, returning families
+  per open event, and for CSWD the Monitoring and Final counts pages.
+- Work queued on the device: EC Board entries, returning families, check-outs.
+  Each record has its own `client_ref` (UUID); the server returns the first
+  answer for a repeat, so a retry never makes a duplicate
+  (elikas-backend `docs/client-ref-api.md`).
+- Sync sends one record per request, oldest first; a record waits for the
+  family it belongs to. It runs by itself whenever the server answers, and with
+  Sync now. Refused records and "same family?" questions wait on the Sync page.
+- Logout revokes the token, keeps unsent records for the same account's next
+  login, and removes copies of server data.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Develop and test
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+    composer install && npm install
+    php artisan test            # PHP 8.3+ (e.g. Herd's php84)
+    php artisan elikas:api-target http://127.0.0.1:8000/api/v1   # point at a local backend
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Build the Windows installer
 
-## Laravel Sponsors
+    npm run build
+    php artisan native:build win x64
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The installer lands in `dist/` (`E-LIKAS-2.0.0-setup.exe`). `CENTRAL_API_URL`
+in `.env` must be the production URL when building.
