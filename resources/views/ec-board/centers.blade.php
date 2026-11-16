@@ -43,9 +43,6 @@
                         <a href="{{ route('evacuation-centers.ec-board', $row['center']) }}" class="link text-sm flex items-center gap-1">
                             Open EC Board <i class="ti ti-chevron-right" style="font-size: 12px;" aria-hidden="true"></i>
                         </a>
-                        <a href="{{ route('evacuation-centers.show', $row['center']) }}" class="text-sm text-gray-600 hover:text-gray-900 hover:underline underline-offset-2">
-                            Center details
-                        </a>
                     </div>
                 </div>
             @endforeach

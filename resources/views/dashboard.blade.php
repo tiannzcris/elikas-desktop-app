@@ -47,7 +47,7 @@
         @if ($barangayCount === 0)
             <p class="callout callout-warning text-xs mt-3 flex items-center gap-1.5">
                 <i class="ti ti-alert-circle" style="font-size: 14px;" aria-hidden="true"></i>
-                No reference data cached yet -- you'll need internet at least once to refresh before registering families.
+                No reference data cached yet -- you need internet once to refresh before adding evacuees.
             </p>
         @endif
     </div>
@@ -59,8 +59,5 @@
                 <i class="ti ti-refresh" style="font-size: 15px;" aria-hidden="true"></i> Refresh reference data
             </button>
         </form>
-        <a href="{{ route('families.index') }}" class="btn btn-secondary">
-            <i class="ti ti-users" style="font-size: 15px;" aria-hidden="true"></i> View registered families
-        </a>
     </div>
 @endsection

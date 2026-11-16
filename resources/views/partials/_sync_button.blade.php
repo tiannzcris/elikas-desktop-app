@@ -5,10 +5,10 @@
     $primary = $primary ?? false;
 @endphp
 {{-- "Sync now": with JavaScript the page sends one record at a time
-     (POST sync.step) and shows progress; without it, families.sync sends
+     (POST sync.step) and shows progress; without it, sync.all sends
      everything in one request. Disabled while the device is offline. --}}
 <div data-sync-control>
-    <form method="POST" action="{{ route('families.sync') }}" data-sync-form data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}">
+    <form method="POST" action="{{ route('sync.all') }}" data-sync-form data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}">
         @csrf
         @if ($returnToCenterId)
             <input type="hidden" name="return_to_center_id" value="{{ $returnToCenterId }}">

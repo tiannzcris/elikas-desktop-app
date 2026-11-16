@@ -85,22 +85,6 @@ class EcBoardStandaloneSectionTest extends TestCase
         $page->assertSee(route('ec-board.index'), false);
     }
 
-    public function test_old_evacuation_centers_management_pages_remain_fully_reachable(): void
-    {
-        $this->login();
-        $barangay = Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
-        $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Center One', 'status' => 'active']);
-
-        $landing = $this->get(route('ec-board.index'));
-        $landing->assertSee(route('evacuation-centers.index'), false);
-
-        $centers = $this->get(route('ec-board.centers', $barangay));
-        $centers->assertSee(route('evacuation-centers.show', $center), false);
-
-        $this->get(route('evacuation-centers.index'))->assertOk();
-        $this->get(route('evacuation-centers.show', $center))->assertOk();
-    }
-
     // -----------------------------------------------------------------
     // Part 2: sectoral group reporting
     // -----------------------------------------------------------------
@@ -209,7 +193,7 @@ class EcBoardStandaloneSectionTest extends TestCase
 
         Http::fake();
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
         $response->assertSessionHas('status', 'Nothing to sync -- everything is already up to date.');
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '/quick-count'));

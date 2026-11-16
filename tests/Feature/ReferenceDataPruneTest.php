@@ -219,24 +219,4 @@ class ReferenceDataPruneTest extends TestCase
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'quick-count'));
     }
 
-    public function test_registration_form_excludes_closed_centers(): void
-    {
-        EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 1, 'name' => 'Active Center', 'status' => 'active']);
-        EvacuationCenter::create(['remote_id' => 2, 'barangay_remote_id' => 1, 'name' => 'Closed Center', 'status' => 'closed']);
-        EvacuationCenter::create(['remote_id' => 3, 'barangay_remote_id' => 1, 'name' => 'Full Center', 'status' => 'full']);
-        EvacuationCenter::create(['remote_id' => 4, 'barangay_remote_id' => 1, 'name' => 'Standby Center', 'status' => 'on_standby']);
-
-        LocalAuth::create([
-            'remote_user_id' => 1, 'name' => 'Tester', 'email' => 't@example.com', 'role' => 'barangay_official',
-            'api_token' => 'fake-token', 'logged_in_at' => now(),
-        ]);
-
-        $response = $this->get(route('families.create'));
-
-        $response->assertOk();
-        $response->assertSee('Active Center');
-        $response->assertSee('Full Center');
-        $response->assertSee('Standby Center');
-        $response->assertDontSee('Closed Center');
-    }
 }

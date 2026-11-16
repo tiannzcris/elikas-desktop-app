@@ -36,8 +36,8 @@ class ClientRefTest extends TestCase
             ->pushFailedConnection()
             ->push(['data' => ['id' => 50], 'evacuee_id' => 900], 201);
 
-        $this->post(route('families.sync'));
-        $this->post(route('families.sync'));
+        $this->post(route('sync.all'));
+        $this->post(route('sync.all'));
 
         $sent = Http::recorded()->map(fn ($pair) => $pair[0]['client_ref']);
         $this->assertSame([$ref, $ref], $sent->values()->all());

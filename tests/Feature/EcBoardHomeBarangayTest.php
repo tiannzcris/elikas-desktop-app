@@ -82,7 +82,7 @@ class EcBoardHomeBarangayTest extends TestCase
         $this->assertSame(55, EcBoardEntry::sole()->toSyncPayload()['barangay_id']);
 
         Http::fake(['*/evacuation-centers/1/evacuees' => Http::response(['data' => ['id' => 700], 'evacuee_id' => 900], 201)]);
-        $this->post(route('families.sync'));
+        $this->post(route('sync.all'));
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/evacuation-centers/1/evacuees')
             && $request['household_mode'] === 'new' && $request['barangay_id'] === 55);
     }

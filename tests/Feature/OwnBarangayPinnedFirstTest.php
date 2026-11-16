@@ -70,48 +70,4 @@ class OwnBarangayPinnedFirstTest extends TestCase
         $page->assertSee('0 centers');
     }
 
-    public function test_registered_families_pins_the_staffs_own_barangay_first_with_a_badge(): void
-    {
-        $this->loginWithOwnBarangay(2);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        $a = Barangay::create(['remote_id' => 1, 'name' => 'Abella']);
-        $own = Barangay::create(['remote_id' => 2, 'name' => 'Zamora']);
-        Family::create(['barangay_id' => $a->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center', 'remote_id' => 101, 'synced_at' => now()]);
-        Family::create(['barangay_id' => $own->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center', 'remote_id' => 102, 'synced_at' => now()]);
-
-        $page = $this->get(route('families.index'));
-
-        $page->assertOk();
-        $content = $page->getContent();
-        $ownPos = strpos($content, 'Zamora');
-        $otherPos = strpos($content, 'Abella');
-        $this->assertNotFalse($ownPos);
-        $this->assertNotFalse($otherPos);
-        $this->assertTrue($ownPos < $otherPos, 'own barangay (Zamora) must appear before Abella despite alphabetical order');
-        $page->assertSee('Your barangay');
-        $page->assertSee('Your barangay is shown first', false);
-    }
-
-    /**
-     * Confirmed real gap this fix closes: barangaySummary() used to be
-     * built ONLY from Family::groupBy('barangay_id') -- a barangay with
-     * zero registrations so far never appeared at all, meaning a staff
-     * account whose own barangay had nothing registered yet would never
-     * see it in this list, hiding the exact place they're most likely to
-     * start registering from.
-     */
-    public function test_registered_families_shows_the_staffs_own_barangay_even_with_zero_registrations(): void
-    {
-        $this->loginWithOwnBarangay(9);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
-        Barangay::create(['remote_id' => 9, 'name' => 'Nothing Registered Yet']);
-        $other = Barangay::create(['remote_id' => 1, 'name' => 'Has Families']);
-        Family::create(['barangay_id' => $other->id, 'evacuation_event_id' => $event->id, 'displacement_type' => 'outside_center', 'remote_id' => 103, 'synced_at' => now()]);
-
-        $page = $this->get(route('families.index'));
-
-        $page->assertOk();
-        $page->assertSee('Nothing Registered Yet');
-        $page->assertSee('0 synced families');
-    }
 }

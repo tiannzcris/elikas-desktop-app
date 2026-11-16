@@ -4,7 +4,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
-use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Middleware\OfficialOnly;
@@ -34,19 +33,11 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::post('/sync/retry', [SyncController::class, 'retry'])->name('sync.retry');
     Route::get('/sync/probe', [SyncController::class, 'probe'])->name('sync.probe');
 
-    Route::get('/families', [FamilyController::class, 'index'])->name('families.index');
-    Route::get('/families/create', [FamilyController::class, 'create'])->name('families.create');
-    Route::post('/families', [FamilyController::class, 'store'])->name('families.store');
-    Route::post('/families/sync', [FamilyController::class, 'sync'])->name('families.sync');
-    Route::get('/families/{family}/edit', [FamilyController::class, 'edit'])->name('families.edit');
-    Route::put('/families/{family}', [FamilyController::class, 'update'])->name('families.update');
-    Route::delete('/families/{family}', [FamilyController::class, 'destroy'])->name('families.destroy');
+    Route::post('/sync/all', [SyncController::class, 'all'])->name('sync.all');
 
     Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardBarangays'])->name('ec-board.index');
     Route::get('/ec-board/{barangay}', [EvacuationCenterController::class, 'ecBoardCenters'])->name('ec-board.centers');
 
-    Route::get('/evacuation-centers', [EvacuationCenterController::class, 'index'])->name('evacuation-centers.index');
-    Route::get('/evacuation-centers/{center}', [EvacuationCenterController::class, 'show'])->name('evacuation-centers.show');
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');
     // Fetched by the page after it renders, never during: the local server
     // answers one request at a time, so a slow live call would hold up the

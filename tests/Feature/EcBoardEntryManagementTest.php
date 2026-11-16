@@ -252,7 +252,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 200], 'evacuee_id' => 321], 201)]);
 
-        $this->post(route('families.sync'));
+        $this->post(route('sync.all'));
 
         Http::assertSent(fn ($request) => $request['household_mode'] === 'existing'
             && $request['family_id'] === 99
@@ -290,7 +290,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 777], 201)]);
 
-        $this->post(route('families.sync'));
+        $this->post(route('sync.all'));
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/evacuation-centers/1/evacuees')
@@ -325,7 +325,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 888], 201)]);
 
-        $this->post(route('families.sync'));
+        $this->post(route('sync.all'));
 
         Http::assertSent(function ($request) {
             return $request['household_mode'] === 'existing'
@@ -354,7 +354,7 @@ class EcBoardEntryManagementTest extends TestCase
         // was actually just created, which is what should be stored.
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 777], 201)]);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
         $response->assertSessionHas('status', '1 record(s) synced successfully.');
 
@@ -390,7 +390,7 @@ class EcBoardEntryManagementTest extends TestCase
             '*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 556], 'evacuee_id' => 777], 201),
         ]);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
         $response->assertSessionHas('status', '2 record(s) synced successfully.');
         $this->assertNotNull($family->refresh()->synced_at);
@@ -423,7 +423,7 @@ class EcBoardEntryManagementTest extends TestCase
         // it stays queued, not yet known to the central server at all.
         Http::fake(['*/families/register' => Http::response(['message' => 'Rejected.'], 422)]);
 
-        $this->post(route('families.sync'));
+        $this->post(route('sync.all'));
 
         // The entry waits for its household (no error of its own) and the
         // Sync page says what it waits for.
@@ -473,47 +473,6 @@ class EcBoardEntryManagementTest extends TestCase
 
         $response->assertRedirect(route('evacuation-centers.ec-board', $center));
         $this->assertDatabaseMissing('ec_board_entries', ['id' => $entry->id]);
-    }
-
-    public function test_basic_info_page_no_longer_shows_ec_board_content_and_links_to_it_prominently(): void
-    {
-        [$barangay, $event, $center] = $this->seedBase();
-
-        $page = $this->get(route('evacuation-centers.show', $center));
-
-        $page->assertOk();
-        $page->assertSee($center->name);
-        $page->assertSee('EC Information Board');
-        $page->assertSee(route('evacuation-centers.ec-board', $center), false);
-        // Content that now lives ONLY on the dedicated EC Board page.
-        $page->assertDontSee('No. of Persons (Cum/Now)');
-        $page->assertDontSee('Added on this device, not yet synced');
-        $page->assertDontSee('Add evacuee (offline)');
-    }
-
-    public function test_ec_board_page_links_back_to_its_barangays_centers_list_and_still_links_to_basic_info(): void
-    {
-        [$barangay, $event, $center] = $this->seedBase();
-
-        $page = $this->get(route('evacuation-centers.ec-board', $center));
-
-        $page->assertOk();
-        $page->assertSee('Back to '.$barangay->name);
-        $page->assertSee(route('ec-board.centers', $barangay), false);
-        // Center details (basic info page) stays reachable as a secondary
-        // link, even though it's no longer the primary "Back" target.
-        $page->assertSee(route('evacuation-centers.show', $center), false);
-    }
-
-    public function test_evacuation_centers_list_links_to_the_basic_info_page_by_default(): void
-    {
-        [$barangay, $event, $center] = $this->seedBase();
-
-        $page = $this->get(route('evacuation-centers.index'));
-
-        $page->assertOk();
-        $page->assertSee(route('evacuation-centers.show', $center), false);
-        $page->assertDontSee(route('evacuation-centers.ec-board', $center), false);
     }
 
     public function test_add_evacuee_flow_still_works_end_to_end_on_its_new_dedicated_page(): void

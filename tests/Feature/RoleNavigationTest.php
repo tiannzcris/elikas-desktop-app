@@ -28,6 +28,6 @@ class RoleNavigationTest extends TestCase
         $this->signIn('cswd_personnel', ['operations.access', 'scope.all_barangays']);
         $this->get(route('dashboard'))->assertOk()->assertDontSee('data-nav-group="operations"', false);
         $this->get(route('ec-board.index'))->assertRedirect(route('dashboard'));
-        $this->post(route('families.sync'))->assertRedirect(route('dashboard'));
+        $this->post(route('sync.all'))->assertRedirect(route('dashboard'));
     }
 }

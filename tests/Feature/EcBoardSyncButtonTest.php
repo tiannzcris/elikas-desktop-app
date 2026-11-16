@@ -66,7 +66,7 @@ class EcBoardSyncButtonTest extends TestCase
 
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['data' => ['id' => 100], 'evacuee_id' => 900], 201)]);
 
-        $response = $this->post(route('families.sync'), [
+        $response = $this->post(route('sync.all'), [
             'return_to_center_id' => $center->id,
             'return_to_event_id' => $event->id,
         ]);
@@ -85,9 +85,9 @@ class EcBoardSyncButtonTest extends TestCase
         Barangay::create(['remote_id' => 1, 'name' => 'Barangay A']);
         EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
-        $response->assertRedirect(route('families.index'));
+        $response->assertRedirect(route('sync.index'));
         $response->assertSessionHas('status', 'Nothing to sync -- everything is already up to date.');
     }
 
@@ -95,9 +95,9 @@ class EcBoardSyncButtonTest extends TestCase
     {
         $this->login();
 
-        $response = $this->post(route('families.sync'), ['return_to_center_id' => 999999]);
+        $response = $this->post(route('sync.all'), ['return_to_center_id' => 999999]);
 
-        $response->assertRedirect(route('families.index'));
+        $response->assertRedirect(route('sync.index'));
     }
 
     public function test_an_auth_expired_failure_from_ec_board_also_redirects_back_to_ec_board_not_families_index(): void
@@ -117,7 +117,7 @@ class EcBoardSyncButtonTest extends TestCase
 
         Http::fake(['*/evacuation-centers/*/evacuees' => Http::response(['message' => 'Unauthenticated.'], 401)]);
 
-        $response = $this->post(route('families.sync'), [
+        $response = $this->post(route('sync.all'), [
             'return_to_center_id' => $center->id,
             'return_to_event_id' => $event->id,
         ]);

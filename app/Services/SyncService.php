@@ -184,7 +184,9 @@ class SyncService
         return match ($item['kind']) {
             'entry' => trim((EcBoardEntry::AGE_BRACKETS[$model->age_bracket] ?? $model->age_bracket).', '.$model->sex)
                 .' · '.$model->householdLabel(),
-            'family' => 'Family '.$model->displayName(),
+            // Full registrations were removed in 2.0; ones queued before the
+            // upgrade are still sent so nothing already entered is lost.
+            'family' => 'Family '.$model->displayName().' (registered before 2.0)',
             default => $item['key'],
         };
     }

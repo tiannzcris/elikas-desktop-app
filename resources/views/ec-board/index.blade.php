@@ -9,12 +9,6 @@
             <h1 class="page-title">EC Board</h1>
             <p class="page-subtitle">Pick a barangay, then a center, to open its live headcount board.</p>
         </div>
-        {{-- The old center-management pages (create/edit centers' basic
-             info) aren't a top-level nav item anymore now that EC Board
-             has taken that sidebar slot -- still fully reachable here. --}}
-        <a href="{{ route('evacuation-centers.index') }}" class="btn btn-sm btn-ghost shrink-0">
-            <i class="ti ti-settings" style="font-size: 14px;" aria-hidden="true"></i> Manage centers
-        </a>
     </div>
 
     @if ($rows->isEmpty())

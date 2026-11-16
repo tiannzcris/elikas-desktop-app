@@ -40,9 +40,9 @@ class SyncAuthExpiredTest extends TestCase
 
         Http::fake(['*/families/register' => Http::response(['message' => 'Unauthenticated.'], 401)]);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
-        $response->assertRedirect(route('families.index'));
+        $response->assertRedirect(route('sync.index'));
         $response->assertSessionHas('authExpired', 'Your session has expired. Please log in again to continue syncing.');
         $response->assertSessionMissing('status');
 
@@ -58,8 +58,8 @@ class SyncAuthExpiredTest extends TestCase
         $this->seedPendingFamily();
         Http::fake(['*/families/register' => Http::response(['message' => 'Unauthenticated.'], 401)]);
 
-        $this->post(route('families.sync'));
-        $page = $this->get(route('families.index'));
+        $this->post(route('sync.all'));
+        $page = $this->get(route('sync.index'));
 
         $page->assertSee('Your session has expired. Please log in again to continue syncing.');
         $page->assertSee(route('logout'), false);
@@ -75,9 +75,9 @@ class SyncAuthExpiredTest extends TestCase
             'errors' => ['evacuation_event_id' => ['The selected evacuation event id is invalid.']],
         ], 422)]);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
-        $response->assertRedirect(route('families.index'));
+        $response->assertRedirect(route('sync.index'));
         $response->assertSessionMissing('authExpired');
         $response->assertSessionHas('status');
 
@@ -86,7 +86,7 @@ class SyncAuthExpiredTest extends TestCase
         $this->assertStringContainsString('evacuation event id is invalid', $family->sync_error);
         $this->assertNull($family->synced_at);
 
-        $page = $this->get(route('families.index'));
+        $page = $this->get(route('sync.index'));
         $page->assertSee('evacuation event id is invalid', false);
         $page->assertDontSee('session has expired', false);
     }
@@ -96,7 +96,7 @@ class SyncAuthExpiredTest extends TestCase
         $this->seedPendingFamily();
         Http::fake(['*/families/register' => Http::response(['data' => ['id' => 42]], 201)]);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
 
         $response->assertSessionMissing('authExpired');
         $response->assertSessionHas('status', '1 record(s) synced successfully.');

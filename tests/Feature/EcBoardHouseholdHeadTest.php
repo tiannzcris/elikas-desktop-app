@@ -348,23 +348,6 @@ class EcBoardHouseholdHeadTest extends TestCase
         $page->assertSeeInOrder(['Who is this person?', 'Family', 'About the actual family head', 'Sectoral details', 'Will be recorded', 'Add evacuee (offline)']);
     }
 
-    public function test_the_family_card_shows_head_not_yet_linked_until_a_head_is_linked(): void
-    {
-        [$event, $center] = $this->seedBase();
-        $entry = $this->addNewHousehold($event, $center, ['is_single_headed' => '1', 'head_sex' => 'male', 'head_is_minor' => '0']);
-        $family = $entry->household()->firstOrFail();
-
-        $page = $this->get(route('families.index'));
-        $page->assertSee('Head not yet linked. Counts use the answers given for the head (male, not a minor) until a member is linked.');
-        $page->assertSee('Family details: single-headed yes, child-headed no (male)');
-
-        $this->addToExisting($event, $center, (string) $family->id, ['sex' => 'female', 'head_is_self' => '1']);
-
-        $page = $this->get(route('families.index'));
-        $page->assertDontSee('Head not yet linked');
-        $page->assertSee('Family details: single-headed yes, child-headed no (female)');
-    }
-
     // -----------------------------------------------------------------
     // Offline add, then one sync run
     // -----------------------------------------------------------------
@@ -386,7 +369,7 @@ class EcBoardHouseholdHeadTest extends TestCase
             ->push(['data' => ['id' => 485], 'evacuee_id' => 1769], 201)
             ->push(['data' => ['id' => 485], 'evacuee_id' => 1770], 201);
 
-        $this->post(route('families.sync'))->assertSessionHas('status', '2 record(s) synced successfully.');
+        $this->post(route('sync.all'))->assertSessionHas('status', '2 record(s) synced successfully.');
 
         // client_ref is checked in ClientRefTest; here only the record itself.
         $sent = collect(Http::recorded())->map(fn ($pair) => \Illuminate\Support\Arr::except($pair[0]->data(), 'client_ref'))->values();

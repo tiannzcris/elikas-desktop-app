@@ -138,7 +138,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
             ->push(['data' => ['id' => 500], 'evacuee_id' => 901], 201),
         ]);
 
-        $response = $this->post(route('families.sync'));
+        $response = $this->post(route('sync.all'));
         $response->assertSessionHas('status', '2 record(s) synced successfully.');
 
         $family->refresh();
