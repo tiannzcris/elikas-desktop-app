@@ -763,3 +763,57 @@ document.addEventListener('submit', (e) => {
         e.stopImmediatePropagation();
     }
 }, true);
+
+// ---------------------------------------------------------------------
+// Sync now, one record at a time: the local server answers one request
+// at a time, so the page sends a record per request (sync.step) and the
+// window stays usable. Reloads when done so every figure is current.
+// ---------------------------------------------------------------------
+window.ELIKAS.syncRunning = false;
+window.ELIKAS.runSync = async function runSync(form, { retryFailed = true } = {}) {
+    if (window.ELIKAS.syncRunning) return null;
+    window.ELIKAS.syncRunning = true;
+    const control = form.closest('[data-sync-control]');
+    const progress = control?.querySelector('[data-sync-progress]');
+    const button = form.querySelector('[data-sync-button]');
+    const token = form.querySelector('input[name="_token"]').value;
+    const post = (url, body = {}) => fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token },
+        body: JSON.stringify(body),
+    }).then((r) => r.json());
+
+    if (button) button.disabled = true;
+    let sent = 0;
+    let refused = 0;
+    let last = null;
+    try {
+        if (retryFailed) await post(form.dataset.retryUrl);
+        for (let i = 0; i < 1000; i++) {
+            last = await post(form.dataset.stepUrl);
+            if (last.status === 'sent') sent++;
+            if (last.status === 'failed' || last.status === 'decision') refused++;
+            if (progress) progress.textContent = `Sent ${sent}` + (last.remaining ? `, ${last.remaining} to go` : '');
+            if (last.status === 'empty' || last.status === 'stopped') break;
+        }
+    } catch (e) {
+        last = { status: 'stopped', stop: 'offline' };
+    } finally {
+        window.ELIKAS.syncRunning = false;
+        if (button) button.disabled = !navigator.onLine;
+    }
+    return { sent, refused, last };
+};
+
+document.querySelectorAll('[data-sync-form]').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const result = await window.ELIKAS.runSync(form);
+        if (!result) return;
+        if (result.last?.stop === 'auth') {
+            form.submit(); // the server shows "Log in again"
+            return;
+        }
+        window.location.reload();
+    });
+});

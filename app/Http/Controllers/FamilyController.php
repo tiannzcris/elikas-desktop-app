@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\CentralApiAuthenticationException;
-use App\Exceptions\CentralApiException;
 use App\Http\Requests\RegisterFamilyRequest;
 use App\Models\Barangay;
 use App\Models\EcBoardEntry;
@@ -12,7 +10,7 @@ use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
-use App\Services\CentralApiService;
+use App\Services\SyncService;
 use Illuminate\Http\Request;
 
 class FamilyController extends Controller
@@ -430,139 +428,29 @@ class FamilyController extends Controller
      * never a raw redirect URL taken from input, so there's no
      * open-redirect surface despite honoring caller-supplied ids.
      */
-    public function sync(Request $request, CentralApiService $api)
+    public function sync(Request $request, SyncService $sync)
     {
         $auth = LocalAuth::current();
-        if (! $auth) {
-            return redirect()->route('login');
-        }
-
         $returnTo = $this->resolveSyncRedirect($request);
 
-        // created_via_ec_board families are excluded here -- they never
-        // go through registerFamily() at all (the real /families/register
-        // endpoint requires date_of_birth/contact_number per member,
-        // which "Add Evacuee" never collects). They sync instead through
-        // their own originating ec_board_entries row below -- see
-        // EcBoardEntry::toSyncPayload()'s originated_household docblock.
-        $pendingFamilies = Family::whereNull('synced_at')
-            ->where('created_via_ec_board', false)
-            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
-            ->get();
-
-        // originated_household entries sorted first so a household
-        // created AND given a second member in the SAME sync run
-        // resolves in one pass: the second entry's toSyncPayload() needs
-        // its Family already synced (the originating entry's own job, a
-        // few lines below), which only happens if that one runs first.
-        $pendingEntries = EcBoardEntry::whereNull('synced_at')
-            ->orderByDesc('originated_household')
-            ->with(['evacuationEvent', 'evacuationCenter', 'household.evacuees'])
-            ->get();
-
-        if ($pendingFamilies->isEmpty() && $pendingEntries->isEmpty()) {
-            return redirect($returnTo)
-                ->with('status', 'Nothing to sync -- everything is already up to date.');
+        if ($sync->unsent()->isEmpty()) {
+            return redirect($returnTo)->with('status', 'Nothing to sync -- everything is already up to date.');
         }
 
-        $successCount = 0;
-        $failCount = 0;
-        $centralUnreachable = false;
+        // Pressing Sync now also gives refused records another try.
+        $sync->retryFailed();
+        $summary = $sync->runAll($auth);
 
-        foreach ($pendingFamilies as $family) {
-            try {
-                // client_ref: a retry after a lost answer returns the first result, never a second family.
-                $remoteId = $api->registerFamily($auth->api_token, $family->toSyncPayload() + ['client_ref' => $family->client_ref]);
-                $family->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null]);
-                $family->evacuees()->update(['synced_at' => now()]);
-                $successCount++;
-            } catch (CentralApiAuthenticationException $e) {
-                // The token itself is dead -- not a problem with this
-                // family's data, so it's left exactly as it was (still
-                // "Waiting to sync", no sync_error stamped on it) rather
-                // than being marked failed with a raw "Unauthenticated."
-                // message that would wrongly imply something about ITS
-                // data is wrong. Every other queued family would fail the
-                // exact same way with the same dead token, so stop here
-                // instead of repeating a doomed call for each one, and
-                // surface a distinct, actionable message instead of the
-                // generic sync summary below.
-                return redirect($returnTo)->with(
-                    'authExpired',
-                    'Your session has expired. Please log in again to continue syncing.'
-                );
-            } catch (\RuntimeException $e) {
-                $family->update(['sync_error' => $e->getMessage()]);
-                $failCount++;
-
-                // A "can't reach the server at all" failure means every
-                // remaining queued family (and every queued EC Board entry
-                // below) will fail the exact same way -- stop here instead
-                // of repeating a doomed network call for each one and
-                // showing the same error N times.
-                if ($e instanceof CentralApiException && $e->isOffline()) {
-                    $centralUnreachable = true;
-                    break;
-                }
-            }
+        if ($summary['stop'] === 'auth') {
+            return redirect($returnTo)->with('authExpired', 'Your session has expired. Please log in again to continue syncing.');
         }
 
-        // Pushed after families, in this same run, not a separate sync --
-        // an "existing household" entry linked to a family queued above
-        // needs that family's freshly-assigned remote_id, which only
-        // exists once its own update() a few lines up has actually run.
-        if (! $centralUnreachable) {
-            foreach ($pendingEntries as $entry) {
-                try {
-                    // Forces a fresh read of this entry's household --
-                    // $pendingEntries eager-loaded it once, up front,
-                    // before this loop started. Without this, a SECOND
-                    // entry referencing the SAME household a prior
-                    // iteration just synced (see the originated_household
-                    // branch below) would still see that relation's
-                    // stale, pre-sync state and wrongly fail toSyncPayload
-                    // ()'s "has this household synced yet" check within
-                    // this same run.
-                    $entry->unsetRelation('household');
-
-                    $result = $api->addEvacuee($auth->api_token, $entry->evacuationCenter->remote_id, $entry->toSyncPayload() + ['client_ref' => $entry->client_ref]);
-                    $entry->update(['remote_id' => $result['evacuee_id'], 'synced_at' => now(), 'sync_error' => null]);
-
-                    // This entry's own submission created its linked
-                    // Family locally (see EcBoardEntryController::
-                    // createNewHousehold()) -- stamp the family id THIS
-                    // same response just assigned it, since that Family
-                    // has no other sync path of its own (created_via_ec_
-                    // board is permanently excluded from the families
-                    // loop above).
-                    if ($entry->originated_household && $entry->household_family_local_id) {
-                        Family::whereKey($entry->household_family_local_id)->update([
-                            'remote_id' => $result['family_id'],
-                            'synced_at' => now(),
-                            'sync_error' => null,
-                        ]);
-                    }
-
-                    $successCount++;
-                } catch (CentralApiAuthenticationException $e) {
-                    return redirect($returnTo)->with(
-                        'authExpired',
-                        'Your session has expired. Please log in again to continue syncing.'
-                    );
-                } catch (\RuntimeException $e) {
-                    $entry->update(['sync_error' => $e->getMessage()]);
-                    $failCount++;
-
-                    if ($e instanceof CentralApiException && $e->isOffline()) {
-                        break;
-                    }
-                }
-            }
+        $message = "{$summary['sent']} record(s) synced successfully.";
+        if ($summary['failed'] > 0) {
+            $message .= " {$summary['failed']} failed -- see details below.";
         }
-
-        $message = "{$successCount} record(s) synced successfully.";
-        if ($failCount > 0) {
-            $message .= " {$failCount} failed -- see details below.";
+        if ($summary['stop'] === 'offline' || $summary['stop'] === 'server') {
+            $message .= ' '.$summary['message'].' The rest will go next time.';
         }
 
         return redirect($returnTo)->with('status', $message);

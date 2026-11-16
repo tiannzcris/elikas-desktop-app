@@ -80,7 +80,7 @@ class RegisteredFamiliesTest extends TestCase
         $page->assertOk();
         $page->assertDontSee('> Evacuees', false);
         $page->assertDontSee('All Evacuees');
-        $page->assertSee('> Registered families', false);
+        $page->assertSee('> Sync', false);
     }
 
     public function test_the_registration_forms_duplicate_warning_matches_this_devices_own_households(): void

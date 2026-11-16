@@ -46,7 +46,7 @@ class EcBoardSyncButtonTest extends TestCase
 
         $page->assertOk();
         $page->assertSee('Sync now');
-        $page->assertSee('Sync requires an internet connection', false);
+        $page->assertSee('Sync needs an internet connection', false);
     }
 
     public function test_syncing_from_the_ec_board_page_redirects_back_to_that_same_center_and_event(): void

@@ -47,8 +47,11 @@
                         <a href="{{ route('ec-board.index') }}" class="nav-link @yield('nav-ec-board')">
                             <i class="ti ti-building-community" aria-hidden="true"></i> EC Board
                         </a>
-                        <a href="{{ route('families.index') }}" class="nav-link @yield('nav-families')">
-                            <i class="ti ti-users" aria-hidden="true"></i> Registered families
+                        <a href="{{ route('sync.index') }}" class="nav-link @yield('nav-sync')">
+                            <i class="ti ti-cloud-upload" aria-hidden="true"></i> Sync
+                            @if ($pendingTotal > 0)
+                                <span class="ml-auto rounded-full bg-amber-400 px-2 text-xs font-semibold text-gray-900" data-nav-pending>{{ $pendingTotal }}</span>
+                            @endif
                         </a>
                     </div>
                 @endif

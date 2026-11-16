@@ -55,7 +55,7 @@ class EcBoardEntry extends Model
         'evacuation_center_id', 'evacuation_event_id', 'sex', 'age_bracket', 'head_is_self',
         'is_pwd', 'is_pregnant', 'is_lactating', 'is_solo_parent', 'is_indigenous_person', 'is_4ps_beneficiary',
         'household_family_local_id', 'existing_household_remote_id', 'new_household_head_name',
-        'originated_household', 'remote_id', 'synced_at', 'sync_error',
+        'originated_household', 'remote_id', 'synced_at', 'sync_error', 'sync_state', 'client_ref',
     ];
 
     protected $casts = [

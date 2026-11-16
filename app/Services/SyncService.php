@@ -1,0 +1,221 @@
+<?php
+
+namespace App\Services;
+
+use App\Exceptions\CentralApiException;
+use App\Models\AppState;
+use App\Models\EcBoardEntry;
+use App\Models\Family;
+use App\Models\LocalAuth;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+
+/**
+ * Sends this device's queued records to the central server, one per call
+ * (step()), so the local server -- which answers one request at a time --
+ * stays responsive while a long queue goes out.
+ *
+ * Order: oldest first, across every kind of record. A record that depends
+ * on another one not yet accepted (a second person in a household still
+ * waiting to be sent) is skipped until that one is in.
+ *
+ * Every record carries its own client_ref, so sending one again after a
+ * lost answer returns the first result and never creates a duplicate.
+ *
+ * What a refusal does:
+ *  - no connection, or a server error (5xx): the run stops; the record
+ *    keeps its place and goes with the next run.
+ *  - 401: the run stops; log in again. Nothing is marked.
+ *  - 403, 404, 410, 422: the record is marked failed with the server's own
+ *    words, and waits for the user (try again, edit or remove).
+ *  - 409: the record is marked "decision" (a possible duplicate family).
+ */
+class SyncService
+{
+    public const SENT = 'sent';
+
+    public const FAILED = 'failed';
+
+    public const DECISION = 'decision';
+
+    public const EMPTY = 'empty';
+
+    public const STOPPED = 'stopped';
+
+    public function __construct(private CentralApiService $api) {}
+
+    /**
+     * Every record not yet accepted, oldest first.
+     *
+     * @return Collection<int, array{key: string, model: Model, kind: string}>
+     */
+    public function unsent(): Collection
+    {
+        $entries = EcBoardEntry::whereNull('synced_at')
+            ->with(['evacuationEvent', 'evacuationCenter', 'household.evacuees', 'household.barangay'])
+            ->get()->map(fn ($m) => ['key' => 'entry:'.$m->id, 'model' => $m, 'kind' => 'entry']);
+
+        $families = Family::whereNull('synced_at')->where('created_via_ec_board', false)
+            ->with(['evacuees', 'barangay', 'evacuationEvent', 'evacuationCenter'])
+            ->get()->map(fn ($m) => ['key' => 'family:'.$m->id, 'model' => $m, 'kind' => 'family']);
+
+        return $entries->concat($families)
+            ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
+            ->values();
+    }
+
+    /** Waiting to be sent (not failed, not waiting for a decision). */
+    public function waiting(): Collection
+    {
+        return $this->unsent()->filter(fn ($item) => $item['model']->sync_state === null)->values();
+    }
+
+    /** Refused by the server or waiting for a decision: the user's turn. */
+    public function needsAttention(): Collection
+    {
+        return $this->unsent()->filter(fn ($item) => $item['model']->sync_state !== null)->values();
+    }
+
+    /** Puts every failed record back in line (the user pressed Sync now or Try again). */
+    public function retryFailed(?string $key = null): void
+    {
+        foreach ($this->needsAttention() as $item) {
+            if ($item['model']->sync_state === self::FAILED && ($key === null || $key === $item['key'])) {
+                $item['model']->update(['sync_state' => null]);
+            }
+        }
+    }
+
+    /** The record this one has to wait for, if any (not yet accepted). */
+    public function blockedBy(array $item): ?Model
+    {
+        if ($item['kind'] === 'entry') {
+            $entry = $item['model'];
+            if ($entry->household_family_local_id && ! $entry->originated_household) {
+                $household = Family::find($entry->household_family_local_id);
+                if ($household && ! $household->isSynced()) {
+                    return $household;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Sends the next record that can go.
+     *
+     * @return array{status: string, key?: string, label?: string, message?: string, stop?: string, remaining: int}
+     */
+    public function step(LocalAuth $auth): array
+    {
+        $item = $this->waiting()->first(fn ($candidate) => $this->blockedBy($candidate) === null);
+        if (! $item) {
+            return ['status' => self::EMPTY, 'remaining' => 0];
+        }
+
+        $model = $item['model'];
+        $label = $this->label($item);
+
+        try {
+            $this->send($item, $auth);
+            AppState::put('last_sync_at', now()->toIso8601String());
+
+            return ['status' => self::SENT, 'key' => $item['key'], 'label' => $label, 'remaining' => $this->remaining()];
+        } catch (CentralApiException $e) {
+            if ($e->isOffline() || $e->kind === CentralApiException::SERVER) {
+                $model->update(['sync_error' => $e->getMessage()]);
+
+                return ['status' => self::STOPPED, 'stop' => $e->isOffline() ? 'offline' : 'server', 'message' => $e->getMessage(), 'remaining' => $this->remaining()];
+            }
+            if ($e->kind === CentralApiException::UNAUTHENTICATED) {
+                return ['status' => self::STOPPED, 'stop' => 'auth', 'message' => 'Your session has expired. Please log in again to continue syncing.', 'remaining' => $this->remaining()];
+            }
+
+            $state = $e->kind === CentralApiException::CONFLICT ? self::DECISION : self::FAILED;
+            $model->update(['sync_state' => $state, 'sync_error' => $e->getMessage()]);
+
+            return ['status' => $state, 'key' => $item['key'], 'label' => $label, 'message' => $e->getMessage(), 'remaining' => $this->remaining()];
+        } catch (\RuntimeException $e) {
+            // A record this device can't build yet (e.g. its family isn't in).
+            $model->update(['sync_state' => self::FAILED, 'sync_error' => $e->getMessage()]);
+
+            return ['status' => self::FAILED, 'key' => $item['key'], 'label' => $label, 'message' => $e->getMessage(), 'remaining' => $this->remaining()];
+        }
+    }
+
+    /**
+     * Sends everything that can go, in one call (the no-JavaScript path and
+     * the tests). The page normally drives step() itself.
+     *
+     * @return array{sent: int, failed: int, stop: ?string, message: ?string}
+     */
+    public function runAll(LocalAuth $auth): array
+    {
+        $summary = ['sent' => 0, 'failed' => 0, 'stop' => null, 'message' => null];
+
+        // A bounded loop: each step either sends, marks or stops.
+        for ($i = 0; $i < 1000; $i++) {
+            $result = $this->step($auth);
+            match ($result['status']) {
+                self::SENT => $summary['sent']++,
+                self::FAILED, self::DECISION => $summary['failed']++,
+                default => null,
+            };
+            if (in_array($result['status'], [self::EMPTY, self::STOPPED], true)) {
+                $summary['stop'] = $result['stop'] ?? null;
+                $summary['message'] = $result['message'] ?? null;
+                break;
+            }
+        }
+
+        return $summary;
+    }
+
+    public function remaining(): int
+    {
+        return $this->waiting()->count();
+    }
+
+    public function label(array $item): string
+    {
+        $model = $item['model'];
+
+        return match ($item['kind']) {
+            'entry' => trim((EcBoardEntry::AGE_BRACKETS[$model->age_bracket] ?? $model->age_bracket).', '.$model->sex)
+                .' · '.$model->householdLabel(),
+            'family' => 'Family '.$model->displayName(),
+            default => $item['key'],
+        };
+    }
+
+    public function place(array $item): string
+    {
+        return $item['model']->evacuationCenter?->name ?? '';
+    }
+
+    private function send(array $item, LocalAuth $auth): void
+    {
+        $model = $item['model'];
+
+        if ($item['kind'] === 'family') {
+            $remoteId = $this->api->registerFamily($auth->api_token, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
+            $model->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+            $model->evacuees()->update(['synced_at' => now()]);
+
+            return;
+        }
+
+        // A fresh read: a household sent earlier in this run is synced now.
+        $model->unsetRelation('household');
+        $result = $this->api->addEvacuee($auth->api_token, $model->evacuationCenter->remote_id, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
+        $model->update(['remote_id' => $result['evacuee_id'], 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+        // The household this entry created gets the id the server just gave it.
+        if ($model->originated_household && $model->household_family_local_id) {
+            Family::whereKey($model->household_family_local_id)->update([
+                'remote_id' => $result['family_id'], 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null,
+            ]);
+        }
+    }
+}

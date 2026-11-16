@@ -425,9 +425,12 @@ class EcBoardEntryManagementTest extends TestCase
 
         $this->post(route('families.sync'));
 
+        // The entry waits for its household (no error of its own) and the
+        // Sync page says what it waits for.
         $entry->refresh();
         $this->assertNull($entry->synced_at);
-        $this->assertStringContainsString('has not synced yet', $entry->sync_error);
+        $this->assertNull($entry->sync_state);
+        $this->get(route('sync.index'))->assertOk()->assertSee('Waits for family');
     }
 
     public function test_delete_is_refused_for_an_already_synced_entry(): void
@@ -564,15 +567,15 @@ class EcBoardEntryManagementTest extends TestCase
         $content = $page->getContent();
         $dashboardPos = strpos($content, '> Dashboard');
         $ecBoardPos = strpos($content, '> EC Board');
-        $familiesPos = strpos($content, '> Registered families');
+        $familiesPos = strpos($content, '> Sync');
 
         $this->assertNotFalse($dashboardPos);
         $this->assertNotFalse($ecBoardPos);
         $this->assertNotFalse($familiesPos);
 
         // EC Board is now the elevated primary workflow, immediately after
-        // Dashboard; Registered families follows it.
+        // Dashboard; Sync follows it.
         $this->assertTrue($dashboardPos < $ecBoardPos, 'Dashboard must come before EC Board');
-        $this->assertTrue($ecBoardPos < $familiesPos, 'EC Board must come before Registered families');
+        $this->assertTrue($ecBoardPos < $familiesPos, 'EC Board must come before Sync');
     }
 }

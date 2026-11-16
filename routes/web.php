@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
 use App\Http\Controllers\FamilyController;
+use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Middleware\OfficialOnly;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,10 @@ Route::post('/reference-data/refresh', [AuthController::class, 'refreshReference
 
 // The barangay official's work: registration at their own centers, and sync.
 Route::middleware(OfficialOnly::class)->group(function () {
+    Route::get('/sync', [SyncController::class, 'index'])->name('sync.index');
+    Route::post('/sync/step', [SyncController::class, 'step'])->name('sync.step');
+    Route::post('/sync/retry', [SyncController::class, 'retry'])->name('sync.retry');
+
     Route::get('/families', [FamilyController::class, 'index'])->name('families.index');
     Route::get('/families/create', [FamilyController::class, 'create'])->name('families.create');
     Route::post('/families', [FamilyController::class, 'store'])->name('families.store');

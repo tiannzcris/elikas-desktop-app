@@ -15,7 +15,7 @@ class Family extends Model
         'barangay_id', 'purok_remote_id', 'evacuation_event_id', 'evacuation_center_id',
         'displacement_type', 'is_4ps_beneficiary', 'home_address', 'name',
         'is_single_headed', 'head_is_minor', 'head_sex', 'head_ec_board_entry_id',
-        'created_via_ec_board', 'remote_id', 'synced_at', 'sync_error',
+        'created_via_ec_board', 'remote_id', 'synced_at', 'sync_error', 'sync_state', 'client_ref',
     ];
 
     protected $casts = [
