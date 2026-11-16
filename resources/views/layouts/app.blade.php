@@ -61,6 +61,9 @@
                         <a href="{{ route('monitoring.index') }}" class="nav-link @yield('nav-monitoring')">
                             <i class="ti ti-activity" aria-hidden="true"></i> Monitoring
                         </a>
+                        <a href="{{ route('final-counts.index') }}" class="nav-link @yield('nav-final-counts')">
+                            <i class="ti ti-clipboard-check" aria-hidden="true"></i> Final counts
+                        </a>
                     </div>
                 @endif
             </nav>

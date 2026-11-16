@@ -5,6 +5,7 @@ use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
+use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\SyncController;
@@ -64,4 +65,6 @@ Route::middleware(OfficialOnly::class)->group(function () {
 Route::middleware(CityOnly::class)->group(function () {
     Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
     Route::post('/monitoring/refresh', [MonitoringController::class, 'refresh'])->name('monitoring.refresh');
+    Route::get('/final-counts', [FinalCountController::class, 'index'])->name('final-counts.index');
+    Route::post('/final-counts/refresh', [FinalCountController::class, 'refresh'])->name('final-counts.refresh');
 });
