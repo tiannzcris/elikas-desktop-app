@@ -7,6 +7,7 @@ use App\Models\CenterFamilySnapshot;
 use App\Models\EcBoardEntry;
 use App\Models\Family;
 use App\Models\LocalAuth;
+use App\Models\PendingCheckOut;
 use App\Models\PendingReEnrollment;
 use App\Models\ReturningFamilySnapshot;
 
@@ -22,7 +23,8 @@ class LocalData
     {
         return EcBoardEntry::whereNull('synced_at')->count()
             + Family::whereNull('synced_at')->where('created_via_ec_board', false)->count()
-            + PendingReEnrollment::whereNull('synced_at')->count();
+            + PendingReEnrollment::whereNull('synced_at')->count()
+            + PendingCheckOut::whereNull('synced_at')->count();
     }
 
     /** @return array{id: int, name: string, email: string}|null */
@@ -58,6 +60,7 @@ class LocalData
         CenterFamilySnapshot::query()->delete();
         ReturningFamilySnapshot::query()->delete();
         PendingReEnrollment::whereNotNull('synced_at')->delete();
+        PendingCheckOut::whereNotNull('synced_at')->delete();
     }
 
     /** Sent EC Board entries and families, except households a waiting entry still points to. */

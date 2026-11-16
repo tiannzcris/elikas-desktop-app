@@ -137,6 +137,8 @@ class EvacuationCenterController extends Controller
             'selectedEventId' => $selectedEventId,
             'selectedEventClosed' => (bool) $events->firstWhere('id', $selectedEventId)?->isClosed(),
             'pendingEntries' => $pendingEntries,
+            'familiesHere' => ($selected = $events->firstWhere('id', $selectedEventId)) ? CheckOutController::familiesHere($center, $selected) : collect(),
+            'checkOutStatuses' => \App\Models\PendingCheckOut::STATUSES,
             'pendingReturning' => \App\Models\PendingReEnrollment::where('evacuation_center_id', $center->id)->where('evacuation_event_id', $selectedEventId)->whereNull('synced_at')->get(),
             'households' => $households,
             // New family's "Home barangay" choices.

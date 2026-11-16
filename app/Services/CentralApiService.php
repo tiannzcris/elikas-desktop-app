@@ -176,6 +176,23 @@ class CentralApiService
         return $this->send('post', "evacuation-centers/{$centerRemoteId}/re-enroll", $token, $payload)['data'] ?? [];
     }
 
+    /**
+     * Checks a whole family out (POST families/bulk-check-out, one family).
+     * At an own-barangay host center the server also checks out a visiting
+     * family. Returns that family's result row.
+     */
+    public function checkOutFamily(string $token, int $familyRemoteId, string $status, int $centerRemoteId, int $eventRemoteId): array
+    {
+        $body = $this->send('post', 'families/bulk-check-out', $token, [
+            'family_ids' => [$familyRemoteId],
+            'status' => $status,
+            'evacuation_center_id' => $centerRemoteId,
+            'evacuation_event_id' => $eventRemoteId,
+        ]);
+
+        return $body['data']['results'][0] ?? [];
+    }
+
     /** Sends one fully registered family (POST /families/register); returns its id. */
     public function registerFamily(string $token, array $payload): int
     {

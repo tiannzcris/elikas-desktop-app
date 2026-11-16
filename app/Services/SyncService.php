@@ -7,6 +7,7 @@ use App\Models\AppState;
 use App\Models\EcBoardEntry;
 use App\Models\Family;
 use App\Models\LocalAuth;
+use App\Models\PendingCheckOut;
 use App\Models\PendingReEnrollment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -63,7 +64,10 @@ class SyncService
         $returning = PendingReEnrollment::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter'])
             ->get()->map(fn ($m) => ['key' => 'returning:'.$m->id, 'model' => $m, 'kind' => 'returning']);
 
-        return $entries->concat($families)->concat($returning)
+        $checkOuts = PendingCheckOut::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter', 'household'])
+            ->get()->map(fn ($m) => ['key' => 'checkout:'.$m->id, 'model' => $m, 'kind' => 'checkout']);
+
+        return $entries->concat($families)->concat($returning)->concat($checkOuts)
             ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
             ->values();
     }
@@ -93,6 +97,13 @@ class SyncService
     /** The record this one has to wait for, if any (not yet accepted). */
     public function blockedBy(array $item): ?Model
     {
+        if ($item['kind'] === 'checkout' && ! $item['model']->family_remote_id) {
+            $household = $item['model']->household;
+            if ($household && ! $household->isSynced()) {
+                return $household;
+            }
+        }
+
         if ($item['kind'] === 'entry') {
             $entry = $item['model'];
             if ($entry->household_family_local_id && ! $entry->originated_household) {
@@ -191,6 +202,7 @@ class SyncService
             // Full registrations were removed in 2.0; ones queued before the
             // upgrade are still sent so nothing already entered is lost.
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
+            'checkout' => 'Check-out: '.$model->family_label.' ('.(PendingCheckOut::STATUSES[$model->status] ?? $model->status).')',
             'returning' => 'Returning family '.$model->family_name.' · '.count($model->members).' '.str('person')->plural(count($model->members)),
             default => $item['key'],
         };
@@ -204,6 +216,28 @@ class SyncService
     private function send(array $item, LocalAuth $auth): void
     {
         $model = $item['model'];
+
+        if ($item['kind'] === 'checkout') {
+            $familyId = $model->familyRemoteId();
+            if (! $familyId) {
+                throw new \RuntimeException('This family is no longer on this device. Remove the check-out and do it again.');
+            }
+            try {
+                $result = $this->api->checkOutFamily($auth->api_token, $familyId, $model->status,
+                    $model->evacuationCenter->remote_id, $model->evacuationEvent->remote_id);
+            } catch (CentralApiException $e) {
+                // "No one in this family is still checked in": already done
+                // (an earlier try went through, or someone did it elsewhere).
+                if (($e->errors()['results'][0]['reason_code'] ?? null) !== 'none_checked_in') {
+                    throw $e;
+                }
+                $result = $e->errors()['results'][0];
+            }
+            $model->update(['family_remote_id' => $familyId, 'people_checked_out' => $result['people_checked_out'] ?? 0,
+                'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+            return;
+        }
 
         if ($item['kind'] === 'returning') {
             try {

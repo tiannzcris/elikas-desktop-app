@@ -126,6 +126,46 @@
             @endif
         </section>
 
+        {{-- Families here: check a whole family out (sent with the next sync). --}}
+        <section class="card mb-5" aria-labelledby="families-here-title" data-families-here>
+            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <h2 id="families-here-title" class="card-title">Families here</h2>
+                <span class="section-count">{{ $familiesHere->count() }}</span>
+            </div>
+            @if ($familiesHere->isEmpty())
+                <p class="px-5 py-4 text-sm text-gray-600">No families checked in here on this device's list.</p>
+            @else
+                <ul class="divide-y divide-gray-100">
+                    @foreach ($familiesHere as $family)
+                        <li class="px-5 py-2.5 flex flex-wrap items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold text-sm text-gray-900 truncate">{{ $family['label'] }}</p>
+                                <p class="text-xs text-gray-600">
+                                    {{ $family['here'] !== null ? $family['here'].' here' : 'Added on this device' }}{{ $family['purok'] ? ' · '.$family['purok'] : '' }}
+                                </p>
+                            </div>
+                            @if ($family['checking_out'])
+                                <span class="badge badge-warning">Checked out, waiting to sync</span>
+                            @elseif (! $selectedEventClosed)
+                                <form method="POST" action="{{ route('check-outs.store', $center) }}" class="flex items-center gap-2"
+                                    data-confirm="Check out the whole family {{ $family['label'] }}?">
+                                    @csrf
+                                    <input type="hidden" name="evacuation_event_id" value="{{ $selectedEventId }}">
+                                    <input type="hidden" name="family" value="{{ $family['key'] }}">
+                                    <select name="status" class="input input-sm w-auto" aria-label="Reason for leaving">
+                                        @foreach ($checkOutStatuses as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="btn btn-neutral btn-sm">Check out</button>
+                                </form>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </section>
+
 
         {{-- Add evacuee, in a pop-up: its header and the read-back + save
              button stay put while the questions scroll. Still saved on this
