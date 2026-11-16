@@ -31,7 +31,7 @@
                             <a href="{{ route('evacuation-centers.show', $row['center']) }}" class="card card-link p-4">
                                 <div class="flex items-start justify-between">
                                     <div>
-                                        <p class="font-semibold text-sm text-gray-900">{{ $row['center']->name }}</p>
+                                        <p class="font-semibold text-sm text-gray-900"><x-center-name :center="$row['center']" /></p>
                                     </div>
                                     <span class="badge shrink-0
                                         {{ $row['center']->status === 'active' ? 'badge-success' : ($row['center']->status === 'full' ? 'badge-danger' : 'badge-neutral') }}">

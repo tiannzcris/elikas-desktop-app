@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EvacuationCenter extends Model
 {
-    protected $fillable = ['remote_id', 'barangay_remote_id', 'name', 'status'];
+    protected $fillable = ['remote_id', 'barangay_remote_id', 'name', 'status', 'approval_status'];
+
+    /** Added by the barangay and not yet approved by CSWD. Usable by its own barangay. */
+    public function isUnverified(): bool
+    {
+        return $this->approval_status === 'pending';
+    }
 
     /**
      * Keyed off barangay_remote_id -> barangays.remote_id, not the usual

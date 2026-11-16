@@ -174,12 +174,21 @@ class AuthController extends Controller
         }
         $this->pruneStale(EvacuationEvent::class, $eventRemoteIds, 'evacuation_event_id', EcBoardEntry::class, 'evacuation_event_id');
 
+        // The server already lists only the centers this user may see (an
+        // official: their own barangay's; never a rejected one). Kept to
+        // the official's own barangay here too, in case of an older server.
+        $ownBarangay = LocalAuth::current()?->isBarangayOfficial() ? (int) LocalAuth::current()->barangay_id : null;
         $centerRemoteIds = [];
         foreach ($data['centers'] as $c) {
+            if (($c['approval_status'] ?? 'approved') === 'rejected'
+                || ($ownBarangay && (int) $c['barangay_id'] !== $ownBarangay)) {
+                continue;
+            }
             EvacuationCenter::updateOrCreate(['remote_id' => $c['id']], [
                 'barangay_remote_id' => $c['barangay_id'],
                 'name' => $c['name'],
                 'status' => $c['status'],
+                'approval_status' => $c['approval_status'] ?? 'approved',
             ]);
             $centerRemoteIds[] = $c['id'];
         }

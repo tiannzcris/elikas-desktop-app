@@ -26,7 +26,7 @@
                 <div class="card p-4">
                     <div class="flex items-start justify-between">
                         <a href="{{ route('evacuation-centers.ec-board', $row['center']) }}" class="flex-1 min-w-0">
-                            <p class="font-semibold text-sm text-gray-900 hover:underline underline-offset-2">{{ $row['center']->name }}</p>
+                            <p class="font-semibold text-sm text-gray-900 hover:underline underline-offset-2"><x-center-name :center="$row['center']" /></p>
                         </a>
                         <span class="badge shrink-0
                             {{ $row['center']->status === 'active' ? 'badge-success' : ($row['center']->status === 'full' ? 'badge-danger' : 'badge-neutral') }}">

@@ -34,7 +34,7 @@
     @if ($events->isEmpty())
         <div class="card p-5 mb-6">
             <p class="text-xs font-medium text-gray-600">EC Information Board</p>
-            <h1 class="text-lg font-semibold text-gray-900">{{ $center->name }}</h1>
+            <h1 class="text-lg font-semibold text-gray-900"><x-center-name :center="$center" /></h1>
             <p class="text-sm text-gray-600 mb-4">Barangay {{ $barangayName }}</p>
             <div class="callout callout-warning">
                 No disaster events cached on this device -- refresh reference data while online before adding evacuees here.
@@ -45,7 +45,7 @@
                 <div class="px-5 pt-4 pb-3 flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-xs font-medium text-gray-600">EC Information Board</p>
-                        <h1 class="text-lg font-semibold text-gray-900 leading-snug">{{ $center->name }}</h1>
+                        <h1 class="text-lg font-semibold text-gray-900 leading-snug"><x-center-name :center="$center" /></h1>
                         <p class="text-sm text-gray-600">
                             Barangay <span class="font-medium text-gray-900">{{ $barangayName }}</span>
                             &middot; <a href="{{ route('evacuation-centers.show', $center) }}" class="link">center details</a>

@@ -34,7 +34,7 @@
     <div class="card p-5">
         <div class="flex items-start justify-between">
             <div>
-                <h1 class="page-title">{{ $center->name }}</h1>
+                <h1 class="page-title"><x-center-name :center="$center" /></h1>
                 <p class="page-subtitle">{{ $barangayName }}</p>
             </div>
             <span class="badge shrink-0
