@@ -471,7 +471,8 @@ class FamilyController extends Controller
 
         foreach ($pendingFamilies as $family) {
             try {
-                $remoteId = $api->registerFamily($auth->api_token, $family->toSyncPayload());
+                // client_ref: a retry after a lost answer returns the first result, never a second family.
+                $remoteId = $api->registerFamily($auth->api_token, $family->toSyncPayload() + ['client_ref' => $family->client_ref]);
                 $family->update(['remote_id' => $remoteId, 'synced_at' => now(), 'sync_error' => null]);
                 $family->evacuees()->update(['synced_at' => now()]);
                 $successCount++;
@@ -524,7 +525,7 @@ class FamilyController extends Controller
                     // this same run.
                     $entry->unsetRelation('household');
 
-                    $result = $api->addEvacuee($auth->api_token, $entry->evacuationCenter->remote_id, $entry->toSyncPayload());
+                    $result = $api->addEvacuee($auth->api_token, $entry->evacuationCenter->remote_id, $entry->toSyncPayload() + ['client_ref' => $entry->client_ref]);
                     $entry->update(['remote_id' => $result['evacuee_id'], 'synced_at' => now(), 'sync_error' => null]);
 
                     // This entry's own submission created its linked

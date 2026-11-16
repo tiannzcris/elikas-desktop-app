@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasClientRef;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Family extends Model
 {
+    use HasClientRef;
+
     protected $fillable = [
         'barangay_id', 'purok_remote_id', 'evacuation_event_id', 'evacuation_center_id',
         'displacement_type', 'is_4ps_beneficiary', 'home_address', 'name',

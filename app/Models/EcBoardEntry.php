@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasClientRef;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EcBoardEntry extends Model
 {
+    use HasClientRef;
+
     /**
      * Confirmed against the real central API: matches
      * EvacuationCenterQuickCount::AGE_BRACKETS on the backend exactly

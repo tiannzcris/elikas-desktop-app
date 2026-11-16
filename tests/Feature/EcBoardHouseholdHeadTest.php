@@ -388,7 +388,8 @@ class EcBoardHouseholdHeadTest extends TestCase
 
         $this->post(route('families.sync'))->assertSessionHas('status', '2 record(s) synced successfully.');
 
-        $sent = collect(Http::recorded())->map(fn ($pair) => $pair[0]->data())->values();
+        // client_ref is checked in ClientRefTest; here only the record itself.
+        $sent = collect(Http::recorded())->map(fn ($pair) => \Illuminate\Support\Arr::except($pair[0]->data(), 'client_ref'))->values();
         $this->assertCount(2, $sent);
         $this->assertSame([
             'evacuation_event_id' => 7, 'sex' => 'female', 'age_bracket' => 'school_age',
