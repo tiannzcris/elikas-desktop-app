@@ -29,6 +29,7 @@ Route::get('/use-the-web', [AuthController::class, 'useWeb'])->name('use-web');
 // Every route below needs a signed-in CSWD or barangay official account
 // (RequireDesktopAccess, on the whole web group).
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::view('/about', 'about')->name('about');
 Route::post('/reference-data/refresh', [AuthController::class, 'refreshReferenceDataAction'])->name('reference-data.refresh');
 
 // The barangay official's work: registration at their own centers, and sync.
