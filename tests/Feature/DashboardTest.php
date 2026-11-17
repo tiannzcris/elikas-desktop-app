@@ -25,7 +25,7 @@ class DashboardTest extends TestCase
         EcBoardEntry::create(['evacuation_center_id' => $center->id, 'evacuation_event_id' => $event->id, 'sex' => 'male', 'age_bracket' => 'adult']);
 
         $this->get(route('dashboard'))->assertOk()
-            ->assertSeeInOrder(['Current event', 'DEMO - Typhoon Drill', 'Waiting to send', '1', 'Your centers', 'Bacong Gym', '1 waiting'])
+            ->assertSeeInOrder(['Current event', 'DEMO - Typhoon Drill', 'Waiting to send', '1', 'Your centers', 'Bacong Gym', '1 person waiting to sync'])
             ->assertSee('data-demo-badge', false)
             ->assertDontSee('Welcome back');
     }

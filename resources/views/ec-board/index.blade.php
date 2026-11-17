@@ -29,17 +29,36 @@
             </div>
         </div>
     @else
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {{-- The answer first: how full the barangay's centers are. --}}
+        @php
+            $inside = $centers->sum(fn ($row) => $row['center']->occupancyHere());
+            $capacity = $centers->sum(fn ($row) => (int) $row['center']->capacity_persons);
+            $inUse = $centers->filter(fn ($row) => in_array($row['center']->displayStatus(), ['active', 'full'], true))->count();
+            $full = $centers->filter(fn ($row) => $row['center']->displayStatus() === 'full')->count();
+            $waiting = $centers->sum('pendingCount');
+        @endphp
+        <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-6" data-ec-summary>
+            <div class="stat">
+                <p class="stat-label">Centers in use</p>
+                <p class="stat-value">{{ $inUse }} <span class="text-base font-normal text-gray-600">of {{ $centers->count() }}</span></p>
+            </div>
+            <div class="stat">
+                <p class="stat-label">People inside</p>
+                <p class="stat-value">{{ number_format($inside) }} <span class="text-base font-normal text-gray-600">/ {{ $capacity ? number_format($capacity) : '—' }}</span></p>
+            </div>
+            <div class="stat {{ $full > 0 ? 'stat-alert' : '' }}">
+                <p class="stat-label">Full</p>
+                <p class="stat-value">{{ $full }}</p>
+            </div>
+            <a href="{{ route('sync.index') }}" class="stat {{ $waiting > 0 ? 'stat-pending' : '' }}">
+                <p class="stat-label">Waiting to sync</p>
+                <p class="stat-value">{{ $waiting }}</p>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach ($centers as $row)
-                <a href="{{ route('evacuation-centers.ec-board', $row['center']) }}" class="card card-link card-body flex flex-col gap-2" data-center-card>
-                    <div class="flex items-start justify-between gap-2">
-                        <p class="card-title min-w-0"><x-center-name :center="$row['center']" /></p>
-                        <x-center-status :center="$row['center']" />
-                    </div>
-                    @if ($row['pendingCount'] > 0)
-                        <p class="text-sm text-amber-800 font-medium">{{ \App\Support\Plural::of($row['pendingCount'], 'person', 'people') }} waiting to sync</p>
-                    @endif
-                </a>
+                @include('ec-board._center_card', ['center' => $row['center'], 'pending' => $row['pendingCount']])
             @endforeach
         </div>
     @endif

@@ -59,14 +59,9 @@
                 <p>No evacuation centers on this device yet. Refresh reference data while online.</p>
             </div></div>
         @else
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 @foreach ($centers as $row)
-                    <a href="{{ route('evacuation-centers.ec-board', $row['center']) }}" class="card card-link card-body flex items-center justify-between gap-3">
-                        <span class="card-title min-w-0"><x-center-name :center="$row['center']" /></span>
-                        @if ($row['pending'] > 0)
-                            <span class="badge badge-warning shrink-0">{{ $row['pending'] }} waiting</span>
-                        @endif
-                    </a>
+                    @include('ec-board._center_card', ['center' => $row['center'], 'pending' => $row['pending']])
                 @endforeach
             </div>
         @endif
