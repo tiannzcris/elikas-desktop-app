@@ -2,7 +2,9 @@
 
 Desktop companion to the E-LIKAS web system for barangay halls and the CSWDO
 office where the internet is weak. Laravel 12 inside NativePHP/Electron, local
-SQLite, talking to the central API (`/api/v1`). Version 2.0.0.
+SQLite, talking to the central API (`/api/v1`). Version 2.0.1, aligned with
+the web backend at b0ff476 and its design system (`docs/design-system.md` there).
+Screenshots at 1366x768: `docs/screenshots/2.0.1/`.
 
 ## Who uses it
 
@@ -27,6 +29,10 @@ Screens follow the permissions from `/auth/login` and `/auth/me`, never the role
 - Sync sends one record per request, oldest first; a record waits for the
   family it belongs to. It runs by itself whenever the server answers, and with
   Sync now. Refused records and "same family?" questions wait on the Sync page.
+  "No open event" and "event closed" answers wait there too and are never
+  resent by themselves; a closed event is read-only on the board.
+- The top-bar chip says how it stands: "Offline · 3 records waiting",
+  "Sending…", "All sent", "Needs attention".
 - Logout revokes the token, keeps unsent records for the same account's next
   login, and removes copies of server data.
 
@@ -35,11 +41,12 @@ Screens follow the permissions from `/auth/login` and `/auth/me`, never the role
     composer install && npm install
     php artisan test            # PHP 8.3+ (e.g. Herd's php84)
     php artisan elikas:api-target http://127.0.0.1:8000/api/v1   # point at a local backend
+    npm run check:layout -- <out-dir> 1366x768 dash=http://127.0.0.1:8000/dashboard   # layout check + screenshot
 
 ## Build the Windows installer
 
     npm run build
     php artisan native:build win x64
 
-The installer lands in `dist/` (`E-LIKAS-2.0.0-setup.exe`). `CENTRAL_API_URL`
+The installer lands in `dist/` (`E-LIKAS-2.0.1-setup.exe`). `CENTRAL_API_URL`
 in `.env` must be the production URL when building.

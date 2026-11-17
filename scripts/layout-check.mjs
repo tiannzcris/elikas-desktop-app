@@ -6,6 +6,8 @@
 // Optional per page: <name>=<url>@@<js to run before the shot>
 import { spawn } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const [outDir, size, ...pages] = process.argv.slice(2);
 const [width, height] = size.split('x').map(Number);
@@ -13,12 +15,12 @@ mkdirSync(outDir, { recursive: true });
 
 const edge = spawn('C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', [
     '--headless=new', '--disable-gpu', '--hide-scrollbars', '--remote-debugging-port=9333',
-    `--user-data-dir=${outDir}/../edge-cdp`, 'about:blank',
+    `--user-data-dir=${join(tmpdir(), 'elikas-layout-check-edge')}`, 'about:blank',
 ], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let target;
-for (let i = 0; i < 40 && !target; i++) {
+for (let i = 0; i < 120 && !target; i++) {
     await sleep(250);
     try {
         const list = await (await fetch('http://127.0.0.1:9333/json/list')).json();
