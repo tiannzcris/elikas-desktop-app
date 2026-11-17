@@ -48,7 +48,14 @@
                                 <td class="font-medium text-gray-900">{{ $item['label'] }}</td>
                                 <td>{{ $item['place'] }}</td>
                                 <td>
-                                    <span class="badge {{ $item['model']->sync_state === 'decision' ? 'badge-warning' : 'badge-danger' }}">{{ $item['model']->sync_state === 'decision' ? 'Decide' : 'Refused' }}</span>
+                                    @php
+                                        [$stateLabel, $stateTone] = match ($item['model']->sync_state) {
+                                            'decision' => ['Decide', 'badge-warning'],
+                                            'event_closed' => ['Event closed', 'badge-neutral'],
+                                            default => ['Refused', 'badge-danger'],
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $stateTone }}" data-sync-state="{{ $item['model']->sync_state }}">{{ $stateLabel }}</span>
                                     <span class="text-sm text-gray-700">{{ $item['model']->sync_error }}</span>
                                     @if ($item['kind'] === 'returning' && $item['model']->sync_state === 'decision')
                                         {{-- The server's possible duplicates: the same family, or a different one? --}}
@@ -75,7 +82,7 @@
                                 </td>
                                 <td class="cell-actions">
                                     <div class="flex justify-end gap-2">
-                                        @if ($item['model']->sync_state === 'failed')
+                                        @if (in_array($item['model']->sync_state, ['failed', 'event_closed'], true))
                                             <form method="POST" action="{{ route('sync.retry') }}">
                                                 @csrf
                                                 <input type="hidden" name="key" value="{{ $item['key'] }}">

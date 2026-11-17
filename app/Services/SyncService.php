@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\CentralApiException;
 use App\Models\AppState;
 use App\Models\EcBoardEntry;
+use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
@@ -39,6 +40,12 @@ class SyncService
     public const FAILED = 'failed';
 
     public const DECISION = 'decision';
+
+    /** The server refused because the event is closed or none is open. */
+    public const EVENT_CLOSED = 'event_closed';
+
+    /** The server's words when no event is open (EventFlow::NO_OPEN_EVENT). */
+    public const NO_OPEN_EVENT = 'No open event yet. CSWDO opens an event when a threat is announced.';
 
     public const EMPTY = 'empty';
 
@@ -88,10 +95,30 @@ class SyncService
     public function retryFailed(?string $key = null): void
     {
         foreach ($this->needsAttention() as $item) {
-            if ($item['model']->sync_state === self::FAILED && ($key === null || $key === $item['key'])) {
+            // An "event closed" answer is not retried by Sync now (it would be
+            // refused again every time); only Try again on that one record.
+            $retryable = $item['model']->sync_state === self::FAILED
+                || ($key !== null && $item['model']->sync_state === self::EVENT_CLOSED);
+            if ($retryable && ($key === null || $key === $item['key'])) {
                 $item['model']->update(['sync_state' => null]);
             }
         }
+    }
+
+    /**
+     * The server's "no open event" or "this event is closed" refusal
+     * (EnsureEventOpen and the closed-event checks on the backend).
+     */
+    public static function isEventClosedAnswer(CentralApiException $e): bool
+    {
+        if ($e->kind !== CentralApiException::INVALID) {
+            return false;
+        }
+        $message = $e->getMessage();
+
+        return str_starts_with($message, self::NO_OPEN_EVENT)
+            || str_contains($message, 'A closed event is read-only.')
+            || str_starts_with($message, EvacuationEvent::CLOSED_TO_ARRIVALS);
     }
 
     /** The record this one has to wait for, if any (not yet accepted). */
@@ -147,8 +174,17 @@ class SyncService
                 return ['status' => self::STOPPED, 'stop' => 'auth', 'message' => 'Your session has expired. Please log in again to continue syncing.', 'remaining' => $this->remaining()];
             }
 
-            $state = $e->kind === CentralApiException::CONFLICT ? self::DECISION : self::FAILED;
+            $state = match (true) {
+                $e->kind === CentralApiException::CONFLICT => self::DECISION,
+                self::isEventClosedAnswer($e) => self::EVENT_CLOSED,
+                default => self::FAILED,
+            };
             $model->update(['sync_state' => $state, 'sync_error' => $e->getMessage()]);
+            // The server says the event is closed (or none is open): this
+            // device now knows too, so the board turns read-only for it.
+            if ($state === self::EVENT_CLOSED && $model->evacuationEvent) {
+                $model->evacuationEvent->update(['status' => 'closed']);
+            }
 
             return ['status' => $state, 'key' => $item['key'], 'label' => $label, 'message' => $e->getMessage(), 'remaining' => $this->remaining()];
         } catch (\RuntimeException $e) {
@@ -174,7 +210,7 @@ class SyncService
             $result = $this->step($auth);
             match ($result['status']) {
                 self::SENT => $summary['sent']++,
-                self::FAILED, self::DECISION => $summary['failed']++,
+                self::FAILED, self::DECISION, self::EVENT_CLOSED => $summary['failed']++,
                 default => null,
             };
             if (in_array($result['status'], [self::EMPTY, self::STOPPED], true)) {

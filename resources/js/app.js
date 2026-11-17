@@ -613,7 +613,7 @@ window.ELIKAS.runSync = async function runSync(form, { retryFailed = true } = {}
         for (let i = 0; i < 1000; i++) {
             last = await post(form.dataset.stepUrl);
             if (last.status === 'sent') sent++;
-            if (last.status === 'failed' || last.status === 'decision') refused++;
+            if (['failed', 'decision', 'event_closed'].includes(last.status)) refused++;
             if (progress) progress.textContent = `Sent ${sent}` + (last.remaining ? `, ${last.remaining} to go` : '');
             if (last.status === 'empty' || last.status === 'stopped') break;
         }

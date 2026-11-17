@@ -60,6 +60,11 @@ class SyncController extends Controller
             return redirect($returnTo)->with('authExpired', 'Your session has expired. Please log in again to continue syncing.');
         }
 
+        if ($summary['sent'] === 0 && $summary['failed'] === 0 && $summary['stop'] === null) {
+            // Only records waiting for the user are left (event closed, a decision).
+            return redirect($returnTo)->with('status', 'Nothing to send right now.');
+        }
+
         $message = "{$summary['sent']} record(s) synced successfully.";
         if ($summary['failed'] > 0) {
             $message .= " {$summary['failed']} failed -- see details below.";
