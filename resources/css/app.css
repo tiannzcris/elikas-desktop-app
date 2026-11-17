@@ -17,7 +17,7 @@
    and the contrast ratio behind each pairing. */
 @layer base {
     /* Web design system 3: root 16px, body and inputs 15/24. */
-    body { @apply font-sans text-[15px] leading-6 text-gray-800 bg-gray-50 antialiased; }
+    body { @apply font-sans text-base text-gray-800 bg-gray-50 antialiased; }
     ::placeholder { color: #6B7280; opacity: 1; }
     input[type="checkbox"], input[type="radio"] { accent-color: #2563EB; }
     :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }
@@ -28,108 +28,119 @@
 }
 
 @layer components {
-    /* Page header */
-    .page-header { @apply flex flex-wrap items-start justify-between gap-4 mb-6; }
-    .page-title { @apply text-2xl leading-8 font-bold tracking-tight text-gray-900; }
-    .section-title { @apply text-lg leading-7 font-semibold text-gray-900; }
-    .page-subtitle { @apply mt-1 text-sm text-gray-600 max-w-2xl; }
-    .back-link { @apply inline-flex items-center gap-1 mb-4 text-sm font-medium text-gray-600 hover:text-gray-900; }
+    /* Copied from the web's resources/views/partials/design-system.blade.php
+       (docs/design-system.md section 5) so both apps read as one system.
+       Desktop-only additions are marked. */
+    .page-header { @apply flex flex-wrap items-center justify-between gap-4 mb-6; }
+    .page-title { @apply text-2xl font-bold tracking-tight text-gray-900; }
+    .page-subtitle { @apply mt-1 text-base text-gray-600 max-w-2xl; }
+    .page-actions { @apply flex flex-wrap items-center gap-2; }
+    .back-link { @apply inline-flex items-center gap-1 mb-2 text-sm font-medium text-gray-600 hover:text-gray-900; }
+    .section { @apply mb-8; }
+    .section-title { @apply text-lg font-semibold text-gray-900; }
 
-    /* Cards */
     .card { @apply bg-white border border-gray-200 rounded-xl; }
-    .card-link { @apply transition-colors hover:border-gray-300 hover:bg-gray-50; }
-    .card-header { @apply flex items-center justify-between gap-3 mb-3; }
-    .card-title { @apply text-[15px] leading-6 font-semibold text-gray-900; }
     .card-body { @apply p-4 sm:p-6; }
-    .page-actions { @apply flex flex-wrap items-start gap-2; }
-
-    /* Tables (web design system 5): numbers right-aligned, actions last. */
-    .data-table { @apply w-full text-sm text-gray-700; }
-    .data-table th { @apply px-3 py-2 text-left text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-200; }
-    .data-table td { @apply px-3 py-3 align-top border-b border-gray-100; }
-    .data-table tr:last-child td { @apply border-b-0; }
-    .data-table .num { @apply text-right tabular-nums; }
-    .cell-actions { @apply text-right whitespace-nowrap; }
-
-    /* Tabs: brand underline marks the selected one. */
-    .tabs { @apply flex flex-wrap gap-6 border-b border-gray-200; }
-    .tab { @apply -mb-px border-b-2 border-transparent pb-3 pt-1 text-sm font-medium text-gray-600 hover:text-gray-900; }
-    .tab[aria-selected="true"] { @apply border-brand text-brand-dark; }
+    .card-header { @apply flex flex-wrap items-center justify-between gap-3 mb-4; }
+    .card-title { @apply text-base font-semibold text-gray-900; }
     .icon-chip { @apply w-9 h-9 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center shrink-0; }
+    /* Desktop: a whole card that opens something. */
+    .card-link { @apply transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:border-brand; }
 
-    /* Stat strip: one ruled card of figures. Each cell draws its own
-       right/bottom hairline; the container's overflow clips the ones on
-       the outer edge, so it wraps cleanly at any column count. */
     .stat-strip { @apply grid bg-white border border-gray-200 rounded-xl overflow-hidden; }
-    .stat { @apply relative min-w-0 px-4 py-3.5; box-shadow: 1px 0 0 0 #E5E7EB, 0 1px 0 0 #E5E7EB; }
+    .stat { @apply relative min-w-0 px-4 py-4 sm:px-6; box-shadow: 1px 0 0 0 #E5E7EB, 0 1px 0 0 #E5E7EB; }
     .stat-label { @apply flex items-center gap-1.5 text-sm font-medium text-gray-600; }
-    .stat-value { @apply mt-1 text-2xl leading-8 font-semibold text-gray-900 tabular-nums; }
-    .stat-note { @apply mt-0.5 text-xs text-gray-500; }
-    /* Amber = waiting on this device (the EC Board's own convention). */
+    .stat-value { @apply mt-1 text-2xl font-semibold tabular-nums text-gray-900; }
+    .stat-note { @apply mt-0.5 text-sm text-gray-600; }
+    .stat-alert .stat-value { @apply text-red-700; }
+    .stat-alert .stat-label::before { content: ''; @apply w-2 h-2 rounded-full bg-red-600 shrink-0; }
+    a.stat { @apply hover:bg-gray-50; }
+    /* Desktop: amber = waiting on this device, not yet sent. */
     .stat-pending { @apply bg-amber-50; }
     .stat-pending .stat-value { @apply text-amber-800; }
-    /* A figure in an alert state: red dot and red figure. */
-    .stat-alert .stat-value { @apply text-red-700; }
-    .stat-alert .stat-label::before { content: ''; @apply w-2 h-2 rounded-full bg-red-600; }
+    a.stat-pending { @apply hover:bg-amber-100; }
 
-    /* Buttons */
-    .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-transparent px-4 py-2 text-sm font-medium leading-5 whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed; }
-    .btn-sm { @apply px-3 py-1.5 text-xs leading-4; }
+    .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-semibold leading-5 whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 2.5rem; }
+    .btn-sm { @apply px-3 py-1.5 text-sm leading-5; min-height: 2.25rem; }
     .btn-primary { @apply bg-brand text-white hover:bg-brand-dark; }
-    .btn-secondary { @apply bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900; }
+    .btn-secondary { @apply bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900; }
     .btn-neutral { @apply bg-gray-800 text-white hover:bg-gray-900; }
     .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
-    .btn-attention { @apply bg-amber-700 text-white hover:bg-amber-800; }
-    .btn-ghost { @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900; }
-    .btn-icon { @apply inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors; }
+    .btn-danger-secondary { @apply bg-white text-red-700 border-red-200 hover:bg-red-50 hover:border-red-300; }
+    .btn-attention { @apply bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100; }
+    .btn-ghost { @apply text-gray-700 hover:bg-gray-100 hover:text-gray-900; }
+    .btn-icon { @apply inline-flex items-center justify-center w-9 h-9 shrink-0 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors; }
     .btn-icon-danger { @apply hover:bg-red-50 hover:text-red-700; }
     .link { @apply font-medium text-brand hover:text-brand-dark hover:underline underline-offset-2; }
+    .link-danger { @apply font-medium text-red-700 hover:underline underline-offset-2; }
 
-    /* Forms */
-    .label { @apply block mb-2 text-sm font-medium text-gray-700; }
-    .label-sm { @apply block mb-1 text-xs font-medium text-gray-600; }
+    /* "..." menu (web .menu; .menu-list here because .modal pages use .menu-wrap). */
+    .menu-list { @apply absolute right-0 top-full z-40 mt-1 w-52 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg; }
+    .menu-item { @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50; min-height: 2.5rem; }
+    .menu-item i { font-size: 16px; @apply text-gray-500; }
+    .menu-item-danger { @apply text-red-700 hover:bg-red-50; }
+    .menu-item-danger i { @apply text-red-600; }
+    .menu-divider { @apply my-1 border-t border-gray-100; }
+
+    .tabs { @apply flex flex-wrap gap-x-1 mb-6 border-b border-gray-200; }
+    .tab { @apply -mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:border-gray-300; }
+    .tab[aria-selected="true"] { @apply border-brand text-brand-700; }
+    .tab-count { @apply rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-700; }
+
+    .label { @apply block mb-1 text-sm font-medium text-gray-800; }
+    .label-sm { @apply block mb-1 text-sm font-medium text-gray-700; }
     .help { @apply mt-1 text-sm text-gray-600; }
-    .input { @apply w-full rounded-lg border border-field bg-white px-3 py-2 text-[15px] leading-6 text-gray-900 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-600; }
-    .input-sm { @apply px-2.5 py-1.5; }
+    .input { @apply w-full rounded-lg border border-field bg-white px-3 py-2 text-base text-gray-900 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-600; min-height: 2.5rem; }
+    .input-sm { @apply px-2.5 py-1.5 text-sm; min-height: 2.25rem; }
+    .input[aria-invalid="true"] { @apply border-red-600 focus:border-red-600 focus:ring-red-600/25; }
+    .field-error { @apply mt-1 flex items-start gap-1 text-sm font-medium text-red-700; }
+    .form-grid { @apply grid gap-4 sm:grid-cols-2; }
+    .form-actions { @apply flex flex-wrap items-center justify-end gap-2 pt-4 mt-6 border-t border-gray-200; }
 
-    /* Badges */
-    .badge { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[13px] font-semibold leading-5 whitespace-nowrap ring-1 ring-inset; }
+    .badge { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold leading-5 whitespace-nowrap ring-1 ring-inset; }
     .badge-neutral { @apply bg-gray-100 text-gray-700 ring-gray-500/20; }
     .badge-success { @apply bg-green-50 text-green-800 ring-green-600/20; }
     .badge-warning { @apply bg-amber-50 text-amber-800 ring-amber-600/30; }
     .badge-danger { @apply bg-red-50 text-red-700 ring-red-600/20; }
     .badge-info { @apply bg-blue-50 text-blue-700 ring-blue-600/20; }
-    /* Closed center: dark gray (web map and chips). */
+    /* Closed center: dark gray, as on the web map. */
     .badge-dark { @apply bg-gray-700 text-white ring-gray-700; }
 
-    /* Callouts (block, not flex: form-error boxes can hold several <p>s) */
-    .callout { @apply rounded-lg border px-3 py-2.5 text-sm; }
+    .callout { @apply rounded-lg border px-4 py-3 text-base; }
     .callout-danger { @apply bg-red-50 border-red-200 text-red-800; }
     .callout-warning { @apply bg-amber-50 border-amber-200 text-amber-900; }
     .callout-info { @apply bg-blue-50 border-blue-200 text-blue-900; }
     .callout-success { @apply bg-green-50 border-green-200 text-green-900; }
 
-    /* Modals (the dynamic ones are built in app.js; this is their card).
-       .board-modal-backdrop is the EC Board's in-page pop-ups (Add
-       evacuee); the page toggles its display itself. */
-    .board-modal-backdrop { @apply fixed inset-0 z-50 items-center justify-center p-4; background: rgba(17, 24, 39, 0.5); }
+    .empty-state { @apply flex flex-col items-center justify-center gap-2 px-6 py-12 text-center; }
+    .empty-state > i { font-size: 32px; @apply text-gray-400; }
+    .empty-state p { @apply text-base text-gray-700 max-w-md; }
+    .empty-title { @apply text-base font-semibold text-gray-900; }
+    .empty-text { @apply text-sm text-gray-600 max-w-sm; }
+
+    .data-table { @apply relative w-full text-sm; }
+    .data-table thead th { @apply bg-gray-50 px-4 py-2.5 text-left text-sm font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap; }
+    .data-table tbody td { @apply px-4 py-3 text-gray-800 border-b border-gray-100 align-middle; }
+    .data-table tbody tr:last-child td { @apply border-b-0; }
+    .data-table .num { @apply text-right tabular-nums; }
+    .data-table thead th.num { @apply text-right; }
+    .data-table td.cell-actions { @apply text-right whitespace-nowrap; }
+    /* Desktop: a table flush with its card's edges. */
+    .card > .data-table thead th:first-child, .card > .data-table td:first-child { @apply pl-6; }
+
+    .meter { @apply w-full h-2 rounded-full bg-gray-100 overflow-hidden; }
+    .meter-fill { @apply h-full rounded-full; }
+
+    .modal-backdrop, .board-modal-backdrop { @apply fixed inset-0 z-50 items-center justify-center bg-gray-900/50 p-4; }
     .modal { @apply w-full rounded-xl bg-white shadow-xl; }
     .modal-header { @apply flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4; }
-    .modal-title { @apply text-lg leading-7 font-semibold text-gray-900; }
-    .modal-footer { @apply flex justify-end gap-2 px-6 py-4; }
+    .modal-title { @apply text-lg font-semibold text-gray-900; }
+    .modal-footer { @apply flex flex-wrap justify-end gap-2 border-t border-gray-200 px-6 py-4; }
 
-    /* "..." menu: row actions; destructive ones last, in red. */
-    .menu-list { @apply absolute right-0 top-full z-30 mt-1 w-48 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg; }
-    .menu-item { @apply flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50; }
-    .menu-item-danger { @apply text-red-700 hover:bg-red-50; }
-    .menu-divider { @apply my-1 border-t border-gray-100; }
+    .dl-grid { @apply grid gap-x-6 gap-y-4 sm:grid-cols-2; }
+    .dl-grid dt { @apply text-sm text-gray-600; }
+    .dl-grid dd { @apply mt-0.5 text-base font-medium text-gray-900; }
 
-    /* Empty states */
-    .empty-state { @apply flex flex-col items-center text-center py-16; }
-    .empty-state i { @apply text-gray-300 mb-3; font-size: 40px; }
-    .empty-state p { @apply text-sm text-gray-600; }
-
-    /* Sidebar navigation */
     .nav-link { @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-5 text-[#C7D7F0] transition-colors hover:bg-white/10 hover:text-white; }
     .nav-link i { font-size: 18px; width: 18px; text-align: center; }
     .nav-link.active { @apply bg-white/15 text-white font-semibold; }

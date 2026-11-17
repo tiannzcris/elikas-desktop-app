@@ -93,7 +93,7 @@
                             <div class="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-semibold shrink-0">{{ $initials }}</div>
                             <div class="text-left leading-tight">
                                 <p class="text-sm font-semibold text-gray-900">{{ $currentUser->name }}</p>
-                                <p class="text-xs text-gray-600">{{ \Illuminate\Support\Str::headline($currentUser->role) }}</p>
+                                <p class="text-xs text-gray-600">{{ $currentUser->roleLabel() }}</p>
                             </div>
                             <i class="ti ti-chevron-down text-gray-500" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>

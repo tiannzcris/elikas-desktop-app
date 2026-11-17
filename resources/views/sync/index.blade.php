@@ -41,7 +41,7 @@
                     <h2 id="attention-title" class="card-title">Needs attention</h2>
                 </div>
                 <table class="data-table">
-                    <thead><tr><th>Record</th><th>Center</th><th>Why</th><th class="sr-only">Actions</th></tr></thead>
+                    <thead><tr><th>Record</th><th>Center</th><th>Why</th><th class="cell-actions"><span class="sr-only">Actions</span></th></tr></thead>
                     <tbody>
                         @foreach ($attention as $item)
                             <tr data-sync-item="{{ $item['key'] }}">
