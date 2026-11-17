@@ -10,15 +10,17 @@
             <p class="page-subtitle">Barangay {{ $currentUser->barangay_name }}</p>
         </div>
         <div class="page-actions">
-            <form method="POST" action="{{ route('reference-data.refresh') }}">
-                @csrf
-                <button type="submit" class="btn btn-secondary" data-online-only>
-                    <i class="ti ti-refresh" style="font-size: 15px;" aria-hidden="true"></i> Refresh reference data
-                </button>
-            </form>
             <a href="{{ route('ec-board.index') }}" class="btn btn-primary">
                 <i class="ti ti-building-community" style="font-size: 15px;" aria-hidden="true"></i> Open EC Board
             </a>
+            <x-row-menu label="More actions">
+                <form method="POST" action="{{ route('reference-data.refresh') }}">
+                    @csrf
+                    <button type="submit" class="menu-item" role="menuitem" data-online-only>
+                        <i class="ti ti-refresh" aria-hidden="true"></i> Refresh reference data
+                    </button>
+                </form>
+            </x-row-menu>
         </div>
     </div>
 

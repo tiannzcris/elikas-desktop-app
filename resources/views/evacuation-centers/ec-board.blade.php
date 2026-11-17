@@ -29,17 +29,27 @@
                     @endif
                 </form>
             @endif
-            @if ($events->isNotEmpty() && ! $selectedEventClosed && $currentUser->can('families.re_enroll'))
-                <a href="{{ route('returning-families.index', ['center' => $center, 'event' => $selectedEventId]) }}" class="btn btn-secondary">
-                    <i class="ti ti-history" style="font-size: 15px;" aria-hidden="true"></i> Returning families
-                </a>
-            @endif
-            @include('partials._sync_button', ['returnToCenterId' => $center->id, 'returnToEventId' => $selectedEventId])
             @if ($events->isNotEmpty() && ! $selectedEventClosed)
                 <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
                     <i class="ti ti-user-plus" style="font-size: 16px;" aria-hidden="true"></i> Add evacuee
                 </button>
             @endif
+            {{-- The one primary button above; the rest in "..." (web design system 5). --}}
+            <x-row-menu label="More actions for this center">
+                @if ($events->isNotEmpty() && ! $selectedEventClosed && $currentUser->can('families.re_enroll'))
+                    <a href="{{ route('returning-families.index', ['center' => $center, 'event' => $selectedEventId]) }}" class="menu-item" role="menuitem">
+                        <i class="ti ti-history" aria-hidden="true"></i> Returning families
+                    </a>
+                @endif
+                <form method="POST" action="{{ route('sync.all') }}" data-sync-form data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}">
+                    @csrf
+                    <input type="hidden" name="return_to_center_id" value="{{ $center->id }}">
+                    <input type="hidden" name="return_to_event_id" value="{{ $selectedEventId }}">
+                    <button type="submit" class="menu-item" role="menuitem" data-sync-button data-online-only>
+                        <i class="ti ti-cloud-upload" aria-hidden="true"></i> Sync now
+                    </button>
+                </form>
+            </x-row-menu>
         </div>
     </div>
 
