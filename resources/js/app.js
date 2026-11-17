@@ -663,10 +663,26 @@ document.querySelectorAll('[data-sync-form]').forEach((form) => {
     const chip = document.getElementById('sync-chip');
     if (!form || !chip) return;
 
+    const plural = (n) => `${n} ${n === 1 ? 'record' : 'records'}`;
+    let state = null; // null: idle; else 'sending' | 'auth' | 'attention' | 'unreachable'
     const setChip = (text, tone) => {
         chip.textContent = text;
-        chip.className = `badge badge-${tone}`;
+        chip.className = `badge badge-${tone} text-sm px-3 py-1`;
     };
+    // What the chip says, from the connection, the queue and the last run.
+    const render = () => {
+        const waiting = Number(chip.dataset.pending || 0);
+        if (!navigator.onLine) return setChip(waiting ? `Offline · ${plural(waiting)} waiting` : 'Offline', waiting ? 'warning' : 'neutral');
+        if (state === 'sending') return setChip('Sending…', 'info');
+        if (state === 'auth') return setChip('Log in again to send', 'danger');
+        if (state === 'attention') return setChip('Needs attention', 'danger');
+        if (state === 'unreachable' && waiting) return setChip(`Server not reachable · ${plural(waiting)} waiting`, 'warning');
+        return setChip(waiting ? `${plural(waiting)} waiting` : 'All sent', waiting ? 'warning' : 'success');
+    };
+    window.ELIKAS.renderSyncChip = render;
+    render();
+    window.addEventListener('offline', render);
+    window.addEventListener('online', () => { state = null; render(); });
 
     async function attempt() {
         if (!navigator.onLine || window.ELIKAS.syncRunning) return;
@@ -677,20 +693,15 @@ document.querySelectorAll('[data-sync-form]').forEach((form) => {
         } catch (e) {
             return;
         }
-        if (!probe.reachable) return;
-        if (!probe.auth) {
-            setChip('Log in again to send', 'danger');
-            return;
-        }
-        setChip('Sending…', 'info');
+        if (!probe.reachable) { state = 'unreachable'; return render(); }
+        if (!probe.auth) { state = 'auth'; return render(); }
+        state = 'sending';
+        render();
         const result = await window.ELIKAS.runSync(form, { retryFailed: false });
         if (!result) return;
-        const waiting = result.last?.remaining ?? 0;
-        chip.dataset.pending = String(waiting);
-        if (result.last?.stop === 'auth') setChip('Log in again to send', 'danger');
-        else if (result.refused > 0) setChip('Needs attention', 'danger');
-        else if (waiting > 0) setChip(`${waiting} waiting`, 'warning');
-        else setChip('All sent', 'success');
+        chip.dataset.pending = String(result.last?.remaining ?? 0);
+        state = result.last?.stop === 'auth' ? 'auth' : (result.refused > 0 ? 'attention' : null);
+        render();
     }
 
     setTimeout(attempt, 3000);

@@ -78,14 +78,16 @@
             </div>
 
             <div class="flex items-center gap-4">
-                <span id="connection-badge" class="badge badge-neutral"></span>
                 @if (($currentUser ?? null)?->isBarangayOfficial())
-                    {{-- Sends waiting records by itself whenever the server can
-                         be reached (app.js, auto sync); the chip says how it stands. --}}
-                    <a href="{{ route('sync.index') }}" id="sync-chip" class="badge {{ $pendingTotal > 0 ? 'badge-warning' : 'badge-success' }}" data-pending="{{ $pendingTotal }}">
-                        {{ $pendingTotal > 0 ? $pendingTotal.' waiting' : 'All sent' }}
+                    {{-- One chip for the connection and the queue: "Offline · 3 waiting",
+                         "Sending…", "All sent" (app.js renderSyncChip; auto sync). --}}
+                    <a href="{{ route('sync.index') }}" id="sync-chip" role="status" aria-live="polite"
+                        class="badge {{ $pendingTotal > 0 ? 'badge-warning' : 'badge-success' }} text-sm px-3 py-1" data-pending="{{ $pendingTotal }}">
+                        {{ $pendingTotal > 0 ? \App\Support\Plural::of($pendingTotal, 'record', 'records').' waiting' : 'All sent' }}
                     </a>
                     <form hidden data-auto-sync data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}" data-probe-url="{{ route('sync.probe') }}">@csrf</form>
+                @elseif ($currentUser ?? null)
+                    <span id="connection-badge" class="badge badge-neutral text-sm px-3 py-1" role="status" aria-live="polite"></span>
                 @endif
                 @if($currentUser ?? null)
                     <div class="relative">

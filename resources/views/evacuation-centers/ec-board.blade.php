@@ -145,8 +145,9 @@
         {{-- Families here: check a whole family out (sent with the next sync). --}}
         <section class="card mb-5" aria-labelledby="families-here-title" data-families-here>
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <h2 id="families-here-title" class="card-title">Families here</h2>
-                <span class="section-count">{{ $familiesHere->count() }}</span>
+                <h2 id="families-here-title" class="card-title">Families here <span class="section-count ml-1">{{ $familiesHere->count() }}</span></h2>
+                @php $hereAsOf = ($selectedEvent = $events->firstWhere('id', $selectedEventId)) ? \App\Models\CenterFamilySnapshot::for($center, $selectedEvent)?->fetched_at : null; @endphp
+                <span class="text-sm text-gray-600" data-as-of>As of {{ $hereAsOf ? $hereAsOf->timezone('Asia/Manila')->format('M j, g:i A') : 'never fetched' }}</span>
             </div>
             @if ($familiesHere->isEmpty())
                 <x-empty icon="ti-users" title="No families checked in here yet." text="Families added here, or listed by the server at the last refresh, show here." compact>
