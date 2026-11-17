@@ -185,15 +185,19 @@ class AuthController extends Controller
         $ownBarangay = LocalAuth::current()?->isBarangayOfficial() ? (int) LocalAuth::current()->barangay_id : null;
         $centerRemoteIds = [];
         foreach ($data['centers'] as $c) {
+            $barangayId = (int) ($c['barangay_id'] ?? $c['barangay']['id'] ?? 0);
             if (($c['approval_status'] ?? 'approved') === 'rejected'
-                || ($ownBarangay && (int) $c['barangay_id'] !== $ownBarangay)) {
+                || ($ownBarangay && $barangayId !== $ownBarangay)) {
                 continue;
             }
             EvacuationCenter::updateOrCreate(['remote_id' => $c['id']], [
-                'barangay_remote_id' => $c['barangay_id'],
+                'barangay_remote_id' => $barangayId,
                 'name' => $c['name'],
                 'status' => $c['status'],
                 'approval_status' => $c['approval_status'] ?? 'approved',
+                'capacity_persons' => $c['capacity_persons'] ?? null,
+                'current_occupancy' => $c['current_occupancy'] ?? null,
+                'effective_status' => $c['effective_status'] ?? null,
             ]);
             $centerRemoteIds[] = $c['id'];
         }

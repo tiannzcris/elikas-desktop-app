@@ -7,7 +7,48 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EvacuationCenter extends Model
 {
-    protected $fillable = ['remote_id', 'barangay_remote_id', 'name', 'status', 'approval_status'];
+    protected $fillable = [
+        'remote_id', 'barangay_remote_id', 'name', 'status', 'approval_status',
+        'capacity_persons', 'current_occupancy', 'effective_status',
+    ];
+
+    /** At this share of capacity a center with people inside shows as full (server: FULL_AT_PERCENT). */
+    public const FULL_AT_PERCENT = 90;
+
+    /** Status labels and chip tones, as on the web (active green, standby blue, full red, closed dark gray). */
+    public const STATUSES = [
+        'active' => ['Active', 'badge-success'],
+        'on_standby' => ['On standby', 'badge-info'],
+        'full' => ['Full', 'badge-danger'],
+        'closed' => ['Closed', 'badge-dark'],
+    ];
+
+    /** People in this center as far as this device knows: the server's count plus arrivals not yet sent. */
+    public function occupancyHere(): int
+    {
+        $pending = EcBoardEntry::where('evacuation_center_id', $this->id)->whereNull('synced_at')
+            ->whereHas('evacuationEvent', fn ($q) => $q->where('status', '!=', 'closed'))->count();
+        $returning = PendingReEnrollment::where('evacuation_center_id', $this->id)->whereNull('synced_at')
+            ->whereHas('evacuationEvent', fn ($q) => $q->where('status', '!=', 'closed'))->get()
+            ->sum(fn (PendingReEnrollment $r) => count($r->members));
+
+        return (int) $this->current_occupancy + $pending + $returning;
+    }
+
+    /**
+     * The status shown, by the server's rule (EvacuationCenter::effectiveStatusOf):
+     * people inside make a center active, or full from 90% of capacity; an
+     * empty center shows its stored status (what officials set).
+     */
+    public function displayStatus(): string
+    {
+        $inside = $this->occupancyHere();
+        if ($inside > 0 && $this->capacity_persons && $inside * 100 >= self::FULL_AT_PERCENT * $this->capacity_persons) {
+            return 'full';
+        }
+
+        return $inside > 0 ? 'active' : ($this->status ?: 'on_standby');
+    }
 
     /** Added by the barangay and not yet approved by CSWD. Usable by its own barangay. */
     public function isUnverified(): bool

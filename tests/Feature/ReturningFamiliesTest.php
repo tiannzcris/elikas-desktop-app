@@ -60,7 +60,7 @@ class ReturningFamiliesTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 4, 'name' => 'Bacong']]]),
             '*/evacuation-events' => Http::response(['data' => [['id' => 24, 'name' => 'Typhoon', 'event_type' => 'typhoon', 'status' => 'active']]]),
-            '*/evacuation-centers' => Http::response(['data' => [['id' => 7, 'barangay_id' => 4, 'name' => 'Gym', 'status' => 'active']]]),
+            '*/evacuation-centers?detail=1' => Http::response(['data' => [['id' => 7, 'barangay_id' => 4, 'name' => 'Gym', 'status' => 'active']]]),
             '*/puroks*' => Http::response(['data' => []]),
             '*/evacuation-centers/7/families*' => Http::response(['data' => []]),
             '*/returning-families*' => function ($request) {

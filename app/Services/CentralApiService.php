@@ -131,7 +131,8 @@ class CentralApiService
         return [
             'barangays' => $this->send('get', 'barangays', $token, [], 10)['data'] ?? [],
             'events' => $this->send('get', 'evacuation-events', $token, [], 10)['data'] ?? [],
-            'centers' => $this->send('get', 'evacuation-centers', $token, [], 10)['data'] ?? [],
+            // detail=1: capacity, people checked in and the status shown, in one answer.
+            'centers' => $this->send('get', 'evacuation-centers', $token, ['detail' => 1], 15)['data'] ?? [],
         ];
     }
 

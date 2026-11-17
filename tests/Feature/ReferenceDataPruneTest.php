@@ -52,7 +52,7 @@ class ReferenceDataPruneTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 1, 'name' => 'Old Barangay Name']]]),
             '*/evacuation-events' => Http::response(['data' => [['id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']]]),
-            '*/evacuation-centers' => Http::response(['data' => [
+            '*/evacuation-centers?detail=1' => Http::response(['data' => [
                 ['id' => 2, 'barangay_id' => 1, 'name' => 'Barangay Hall (renamed)', 'status' => 'active'],
                 ['id' => 3, 'barangay_id' => 1, 'name' => 'Covered Court', 'status' => 'active'],
             ]]),
@@ -114,7 +114,7 @@ class ReferenceDataPruneTest extends TestCase
             '*/evacuation-events' => Http::response(['data' => [
                 ['id' => 7, 'name' => 'Tropical Storm Amang', 'event_type' => 'typhoon', 'status' => 'active'],
             ]]),
-            '*/evacuation-centers' => Http::response(['data' => [
+            '*/evacuation-centers?detail=1' => Http::response(['data' => [
                 ['id' => 27, 'barangay_id' => 1, 'name' => 'Binatagan Covered Court', 'status' => 'active'],
             ]]),
         ]);
@@ -184,7 +184,7 @@ class ReferenceDataPruneTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('reference-data.refresh'));
@@ -211,7 +211,7 @@ class ReferenceDataPruneTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('reference-data.refresh'));

@@ -268,7 +268,7 @@ class EcBoardEntryManagementTest extends TestCase
         Http::fake([
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('reference-data.refresh'));

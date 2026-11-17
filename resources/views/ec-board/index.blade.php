@@ -34,9 +34,7 @@
                 <a href="{{ route('evacuation-centers.ec-board', $row['center']) }}" class="card card-link card-body flex flex-col gap-2" data-center-card>
                     <div class="flex items-start justify-between gap-2">
                         <p class="card-title min-w-0"><x-center-name :center="$row['center']" /></p>
-                        <span class="badge shrink-0 {{ $row['center']->status === 'active' ? 'badge-success' : ($row['center']->status === 'full' ? 'badge-danger' : 'badge-neutral') }}">
-                            {{ \Illuminate\Support\Str::headline($row['center']->status) }}
-                        </span>
+                        <x-center-status :center="$row['center']" />
                     </div>
                     @if ($row['pendingCount'] > 0)
                         <p class="text-sm text-amber-800 font-medium">{{ $row['pendingCount'] }} waiting to sync</p>
