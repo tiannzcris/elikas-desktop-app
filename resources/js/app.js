@@ -229,6 +229,15 @@ function openEcBoardEntryModal(url) {
     backdrop.addEventListener('click', (e) => {
         if (e.target === backdrop) closeDynamicModal(backdrop);
     });
+    // Esc closes it, as every dialog (web design system, keyboard use).
+    const opener = document.activeElement;
+    const onKey = (e) => {
+        if (e.key !== 'Escape' || !document.body.contains(backdrop)) return;
+        closeDynamicModal(backdrop);
+        document.removeEventListener('keydown', onKey);
+        opener?.focus?.();
+    };
+    document.addEventListener('keydown', onKey);
 
     fetch(url, { headers: { 'X-Modal-Request': '1' }, credentials: 'same-origin' })
         .then((r) => r.text())
@@ -236,6 +245,8 @@ function openEcBoardEntryModal(url) {
             backdrop.innerHTML = html;
             const modalRoot = backdrop.querySelector('[data-ec-board-entry-modal]');
             if (modalRoot) window.ELIKAS.initEcBoardEntryForm(modalRoot);
+            // Focus starts on the first field.
+            backdrop.querySelector('select:not([disabled]), input:not([type=hidden]):not([disabled])')?.focus();
         })
         .catch(() => {
             backdrop.innerHTML = '<div class="bg-white rounded-xl p-6 text-sm text-red-700 mt-10">Could not load the form. Please try again.</div>';
@@ -727,3 +738,18 @@ function updateOnlineOnly() {
 updateOnlineOnly();
 window.addEventListener('online', updateOnlineOnly);
 window.addEventListener('offline', updateOnlineOnly);
+
+// Esc closes an open "..." menu or the account menu and returns focus to its button.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('[data-menu-list]:not([hidden])').forEach((list) => {
+        list.hidden = true;
+        list.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        list.previousElementSibling?.focus();
+    });
+    const userMenu = document.getElementById('user-menu');
+    if (userMenu && !userMenu.classList.contains('hidden')) {
+        userMenu.classList.add('hidden');
+        document.getElementById('user-menu-btn')?.focus();
+    }
+});

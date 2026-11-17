@@ -35,7 +35,7 @@
                     <label for="email" class="label">Email</label>
                     <div class="relative">
                         <i class="ti ti-mail absolute left-3 top-1/2 text-gray-500" style="font-size: 16px; transform: translateY(-50%);" aria-hidden="true"></i>
-                        <input type="email" name="email" id="email" value="{{ old('email') }}" required autocomplete="username"
+                        <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="username"
                             class="input pl-9 py-2.5">
                     </div>
                 </div>

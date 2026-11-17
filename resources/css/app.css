@@ -171,7 +171,8 @@ main.page-transition.in { opacity: 1; }
 /* Add evacuee (event fixed by the board, so only a hidden input comes
    first): no rule above the first section. */
 [data-entry-fields] > input[type="hidden"]:first-child + .entry-section { border-top: 0; padding-top: 0; margin-top: 0; }
-.entry-section-title { float: left; width: 100%; margin-bottom: 0.5rem; font-size: 0.75rem; line-height: 1rem; font-weight: 600; color: #1F2937; }
+/* Each section of a long form reads as a clear step heading. */
+.entry-section-title { float: left; width: 100%; margin-bottom: 0.5rem; font-size: 0.9375rem; line-height: 1.5rem; font-weight: 600; color: #111827; }
 .entry-section-title + * { clear: both; }
 
 /* Page-level section headings (Registered families' Not yet synced /

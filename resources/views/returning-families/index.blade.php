@@ -35,7 +35,7 @@
             </form>
             <div class="flex-1 min-w-[14rem]">
                 <label for="rf-search" class="label">Search</label>
-                <input id="rf-search" type="search" class="input" placeholder="Family or member name" data-rf-search>
+                <input id="rf-search" type="search" class="input" placeholder="Family or member name" autofocus data-rf-search>
             </div>
             <p class="text-sm text-gray-600 ml-auto">As of
                 <time datetime="{{ $snapshot->fetched_at->toIso8601String() }}">{{ $snapshot->fetched_at->timezone('Asia/Manila')->format('M j, g:i A') }}</time>
