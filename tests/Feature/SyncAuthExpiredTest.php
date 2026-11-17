@@ -99,6 +99,6 @@ class SyncAuthExpiredTest extends TestCase
         $response = $this->post(route('sync.all'));
 
         $response->assertSessionMissing('authExpired');
-        $response->assertSessionHas('status', '1 record(s) synced successfully.');
+        $response->assertSessionHas('status', '1 record sent.');
     }
 }

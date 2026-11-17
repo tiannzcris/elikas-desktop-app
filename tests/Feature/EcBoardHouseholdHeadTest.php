@@ -369,7 +369,7 @@ class EcBoardHouseholdHeadTest extends TestCase
             ->push(['data' => ['id' => 485], 'evacuee_id' => 1769], 201)
             ->push(['data' => ['id' => 485], 'evacuee_id' => 1770], 201);
 
-        $this->post(route('sync.all'))->assertSessionHas('status', '2 record(s) synced successfully.');
+        $this->post(route('sync.all'))->assertSessionHas('status', '2 records sent.');
 
         // client_ref is checked in ClientRefTest; here only the record itself.
         $sent = collect(Http::recorded())->map(fn ($pair) => \Illuminate\Support\Arr::except($pair[0]->data(), 'client_ref'))->values();

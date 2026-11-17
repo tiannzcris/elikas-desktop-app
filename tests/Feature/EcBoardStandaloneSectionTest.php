@@ -29,7 +29,7 @@ class EcBoardStandaloneSectionTest extends TestCase
         $this->get(route('ec-board.index'))->assertOk()
             ->assertSee('Barangay Bacong')
             ->assertSee('Bacong Gym')->assertSee(route('evacuation-centers.ec-board', $gym), false)
-            ->assertSee('1 waiting to sync')
+            ->assertSee('1 person waiting to sync')
             ->assertDontSee('Old Chapel')->assertDontSee('Elsewhere Hall');
     }
 

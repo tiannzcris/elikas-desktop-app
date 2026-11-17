@@ -9,6 +9,7 @@ use App\Models\LocalAuth;
 use App\Models\PendingReEnrollment;
 use App\Services\CentralApiService;
 use App\Services\SyncService;
+use App\Support\Plural;
 use Illuminate\Http\Request;
 
 /**
@@ -65,9 +66,9 @@ class SyncController extends Controller
             return redirect($returnTo)->with('status', 'Nothing to send right now.');
         }
 
-        $message = "{$summary['sent']} record(s) synced successfully.";
+        $message = Plural::of($summary['sent'], 'record', 'records').' sent.';
         if ($summary['failed'] > 0) {
-            $message .= " {$summary['failed']} failed -- see details below.";
+            $message .= ' '.Plural::of($summary['failed'], 'record needs', 'records need').' attention.';
         }
         if (in_array($summary['stop'], ['offline', 'server'], true)) {
             $message .= ' '.$summary['message'].' The rest will go next time.';

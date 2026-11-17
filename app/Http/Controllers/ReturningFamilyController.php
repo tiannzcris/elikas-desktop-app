@@ -8,6 +8,7 @@ use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
 use App\Models\PendingReEnrollment;
 use App\Models\ReturningFamilySnapshot;
+use App\Support\Plural;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -99,6 +100,6 @@ class ReturningFamilyController extends Controller
         ]);
 
         return redirect()->route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id])
-            ->with('status', "{$family['name']} added on this device (".count($members).' '.str('person')->plural(count($members)).'). It will be sent with the next sync.');
+            ->with('status', "{$family['name']} added on this device (".Plural::of(count($members), 'person', 'people').'). It will be sent with the next sync.');
     }
 }

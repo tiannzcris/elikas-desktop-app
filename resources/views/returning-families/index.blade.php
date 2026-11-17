@@ -29,7 +29,7 @@
                 <label for="rf-source" class="label">Past event</label>
                 <select id="rf-source" name="source" class="input w-auto min-w-[16rem]" onchange="this.form.submit()">
                     @foreach ($pastEvents as $past)
-                        <option value="{{ $past['id'] }}" @selected($sourceId === $past['id'])>{{ $past['name'] }} ({{ $past['family_count'] ?? 0 }})</option>
+                        <option value="{{ $past['id'] }}" @selected($sourceId === $past['id'])>{{ $past['name'] }} ({{ \App\Support\Plural::of($past['family_count'] ?? 0, 'family', 'families') }})</option>
                     @endforeach
                 </select>
             </form>
@@ -53,7 +53,7 @@
                         <span class="min-w-0">
                             <span class="font-semibold text-gray-900">{{ $family['name'] }}</span>
                             <span class="text-sm text-gray-600">
-                                · {{ count($family['members']) }} {{ str('person')->plural(count($family['members'])) }}
+                                · {{ \App\Support\Plural::of(count($family['members']), 'person', 'people') }}
                                 @if (! empty($family['purok'])) · {{ $family['purok']['name'] }} @endif
                                 @if (! empty($family['last_center'])) · last at {{ $family['last_center']['name'] }} @endif
                             </span>

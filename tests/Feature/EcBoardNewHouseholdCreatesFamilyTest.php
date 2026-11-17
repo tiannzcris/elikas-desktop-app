@@ -139,7 +139,7 @@ class EcBoardNewHouseholdCreatesFamilyTest extends TestCase
         ]);
 
         $response = $this->post(route('sync.all'));
-        $response->assertSessionHas('status', '2 record(s) synced successfully.');
+        $response->assertSessionHas('status', '2 records sent.');
 
         $family->refresh();
         $this->assertSame(500, $family->remote_id);

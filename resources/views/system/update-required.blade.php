@@ -16,7 +16,7 @@
             <h1 class="text-lg font-semibold text-gray-900 mb-1">This app needs to update its local data</h1>
             <p class="text-sm text-gray-600">
                 A newer version of this app was installed, and it needs to prepare
-                {{ $pendingCount }} {{ Str::plural('change', $pendingCount) }} on this device's local data before continuing.
+                {{ \App\Support\Plural::of($pendingCount, 'change', 'changes') }} on this device's local data before continuing.
             </p>
         </div>
 

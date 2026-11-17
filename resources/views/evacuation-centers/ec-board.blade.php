@@ -123,7 +123,7 @@
                         <li class="px-5 py-2.5 flex items-center justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="font-semibold text-sm text-gray-900 truncate">{{ $returning->family_name }}</p>
-                                <p class="text-xs text-gray-600">Returning family · {{ count($returning->members) }} {{ str('person')->plural(count($returning->members)) }}</p>
+                                <p class="text-xs text-gray-600">Returning family · {{ \App\Support\Plural::of(count($returning->members), 'person', 'people') }}</p>
                             </div>
                             <span class="badge {{ $returning->sync_state ? 'badge-danger' : 'badge-warning' }}">{{ $returning->sync_state ? 'Needs attention' : 'Waiting to sync' }}</span>
                         </li>

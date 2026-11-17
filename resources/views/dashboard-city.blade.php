@@ -40,7 +40,7 @@
             <a href="{{ route('monitoring.index') }}" class="stat">
                 <p class="stat-label">Persons displaced</p>
                 <p class="stat-value">{{ $n($figures['persons'] ?? 0) }}</p>
-                <p class="stat-note">{{ $n($figures['families'] ?? 0) }} families</p>
+                <p class="stat-note">{{ \App\Support\Plural::of($figures['families'] ?? 0, 'family', 'families') }}</p>
             </a>
             <a href="{{ route('monitoring.index') }}#centers" class="stat">
                 <p class="stat-label">Centers in use</p>

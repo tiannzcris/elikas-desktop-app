@@ -57,7 +57,7 @@
 
         <section data-tab-panel="overview">
             <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-6">
-                <div class="stat"><p class="stat-label">Persons</p><p class="stat-value">{{ $n($figures['persons'] ?? 0) }}</p><p class="stat-note">{{ $n($figures['families'] ?? 0) }} families</p></div>
+                <div class="stat"><p class="stat-label">Persons</p><p class="stat-value">{{ $n($figures['persons'] ?? 0) }}</p><p class="stat-note">{{ \App\Support\Plural::of($figures['families'] ?? 0, 'family', 'families') }}</p></div>
                 <div class="stat"><p class="stat-label">Inside centers</p><p class="stat-value">{{ $n($figures['inside'] ?? 0) }}</p><p class="stat-note">{{ $n($figures['outside'] ?? 0) }} outside</p></div>
                 <div class="stat"><p class="stat-label">Arrived in the last hour</p><p class="stat-value">{{ $n($figures['arrived_last_hour'] ?? 0) }}</p></div>
                 <div class="stat"><p class="stat-label">Centers in use</p><p class="stat-value">{{ $n($figures['centers_in_use'] ?? 0) }}</p></div>

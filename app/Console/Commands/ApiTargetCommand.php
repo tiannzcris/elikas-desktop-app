@@ -113,7 +113,7 @@ class ApiTargetCommand extends Command
                     unlink($file);
                 }
             }
-            $this->info('Override cleared on '.count($files).' location(s) -- back to production ('.config('elikas.production_api_url').').');
+            $this->info('Override cleared on '.\App\Support\Plural::of(count($files), 'location', 'locations').' -- back to production ('.config('elikas.production_api_url').').');
             $this->listFiles($files);
 
             return self::SUCCESS;
@@ -134,7 +134,7 @@ class ApiTargetCommand extends Command
             file_put_contents($file, $url);
         }
 
-        $this->warn("Now targeting {$url} on ".count($files)." location(s) -- this device's app will show a warning banner on every page until you run `php artisan elikas:api-target production`.");
+        $this->warn("Now targeting {$url} on ".\App\Support\Plural::of(count($files), 'location', 'locations')." -- this device's app will show a warning banner on every page until you run `php artisan elikas:api-target production`.");
         $this->listFiles($files);
 
         return self::SUCCESS;

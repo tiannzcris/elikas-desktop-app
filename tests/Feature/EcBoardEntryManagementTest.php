@@ -356,7 +356,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         $response = $this->post(route('sync.all'));
 
-        $response->assertSessionHas('status', '1 record(s) synced successfully.');
+        $response->assertSessionHas('status', '1 record sent.');
 
         $entry->refresh();
         $this->assertNotNull($entry->synced_at);
@@ -392,7 +392,7 @@ class EcBoardEntryManagementTest extends TestCase
 
         $response = $this->post(route('sync.all'));
 
-        $response->assertSessionHas('status', '2 record(s) synced successfully.');
+        $response->assertSessionHas('status', '2 records sent.');
         $this->assertNotNull($family->refresh()->synced_at);
         $this->assertNotNull($entry->refresh()->synced_at);
         $this->assertSame(777, $entry->remote_id);

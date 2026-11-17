@@ -72,11 +72,11 @@ class EcBoardSyncButtonTest extends TestCase
         ]);
 
         $response->assertRedirect(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
-        $response->assertSessionHas('status', '1 record(s) synced successfully.');
+        $response->assertSessionHas('status', '1 record sent.');
 
         // The redirected-to page itself reflects the just-completed sync.
         $page = $this->get($response->headers->get('Location'));
-        $page->assertSee('1 record(s) synced successfully.');
+        $page->assertSee('1 record sent.');
     }
 
     public function test_syncing_with_no_return_to_center_id_still_redirects_to_registered_families_as_before(): void

@@ -67,7 +67,7 @@
                                                     <input type="hidden" name="family_id" value="{{ $match['family_id'] }}">
                                                     <span class="text-sm text-gray-900">
                                                         {{ $match['name'] ?? $match['head_name'] ?? 'Family #'.$match['family_id'] }}
-                                                        <span class="text-gray-600">· {{ $match['member_count'] ?? 0 }} {{ str('person')->plural($match['member_count'] ?? 0) }}{{ ! empty($match['evacuation_center']) ? ' · '.$match['evacuation_center']['name'] : '' }}</span>
+                                                        <span class="text-gray-600">· {{ \App\Support\Plural::of($match['member_count'] ?? 0, 'person', 'people') }}{{ ! empty($match['evacuation_center']) ? ' · '.$match['evacuation_center']['name'] : '' }}</span>
                                                     </span>
                                                     <button type="submit" class="btn btn-secondary btn-sm">Same family, link it</button>
                                                 </form>

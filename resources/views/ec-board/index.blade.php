@@ -37,7 +37,7 @@
                         <x-center-status :center="$row['center']" />
                     </div>
                     @if ($row['pendingCount'] > 0)
-                        <p class="text-sm text-amber-800 font-medium">{{ $row['pendingCount'] }} waiting to sync</p>
+                        <p class="text-sm text-amber-800 font-medium">{{ \App\Support\Plural::of($row['pendingCount'], 'person', 'people') }} waiting to sync</p>
                     @endif
                 </a>
             @endforeach
