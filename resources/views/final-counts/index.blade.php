@@ -39,15 +39,9 @@
     @include('partials._as_of', ['at' => $snapshot?->fetched_at?->toIso8601String()])
 
     @if (! $snapshot)
-        <div class="card"><div class="empty-state">
-            <i class="ti ti-cloud-download" aria-hidden="true"></i>
-            <p>Not on this device yet. Refresh while online.</p>
-        </div></div>
+        <div class="card"><x-empty icon="ti-cloud-download" title="Final counts are not on this device yet." text="Refresh while online; the copy stays readable offline."><form method="POST" action="{{ route('final-counts.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh now</button></form></x-empty></div>
     @elseif (! $event)
-        <div class="card"><div class="empty-state">
-            <i class="ti ti-circle-check" aria-hidden="true"></i>
-            <p>No event is open.</p>
-        </div></div>
+        <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
     @else
         <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-6">
             @foreach ($states as $key => [$label, $tone])
@@ -60,7 +54,7 @@
 
         <div class="card"><div class="card-body">
             @if ($rows->isEmpty())
-                <p class="text-sm text-gray-600">No barangay has families in this event yet.</p>
+                <x-empty icon="ti-users" title="No barangay has families in this event yet." compact />
             @else
                 <table class="data-table" data-final-counts>
                     <thead>

@@ -31,10 +31,11 @@
     @include('partials._as_of', ['at' => $generatedAt, 'webUrl' => app(\App\Services\CentralApiService::class)->webUrl()])
 
     @if (! $figures)
-        <div class="card"><div class="empty-state">
-            <i class="ti ti-cloud-download" aria-hidden="true"></i>
-            <p>{{ $generatedAt ? 'No event is open.' : 'Not on this device yet. Refresh while online.' }}</p>
-        </div></div>
+        @if ($generatedAt)
+            <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
+        @else
+            <div class="card"><x-empty icon="ti-cloud-download" title="The event figures are not on this device yet." text="Refresh while online; the copy stays readable offline."><form method="POST" action="{{ route('monitoring.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh now</button></form></x-empty></div>
+        @endif
     @else
         <div class="stat-strip grid-cols-2 lg:grid-cols-4">
             <a href="{{ route('monitoring.index') }}" class="stat">

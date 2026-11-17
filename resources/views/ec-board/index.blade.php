@@ -19,14 +19,7 @@
 
     @if ($centers->isEmpty())
         <div class="card">
-            <div class="empty-state">
-                <i class="ti ti-building-community" aria-hidden="true"></i>
-                <p>No evacuation centers on this device yet.</p>
-                <form method="POST" action="{{ route('reference-data.refresh') }}" class="mt-4">
-                    @csrf
-                    <button type="submit" class="btn btn-secondary">Refresh reference data</button>
-                </form>
-            </div>
+            <x-empty icon="ti-building-community" title="No evacuation centers on this device yet." text="Refresh reference data while online to bring your barangay's centers here."><form method="POST" action="{{ route('reference-data.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh reference data</button></form></x-empty>
         </div>
     @else
         {{-- The answer first: how full the barangay's centers are. --}}

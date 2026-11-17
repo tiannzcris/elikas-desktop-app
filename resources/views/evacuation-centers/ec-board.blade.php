@@ -83,7 +83,7 @@
                 @endif
             </div>
             @if ($pendingEntries->isEmpty())
-                <p class="px-5 py-4 text-sm text-gray-600">Nothing waiting to sync for this event.</p>
+                <x-empty icon="ti-cloud-check" title="Nothing waiting to sync for this event." compact />
             @else
                 <ul class="divide-y divide-gray-100">
                     @foreach ($pendingEntries as $entry)
@@ -149,7 +149,11 @@
                 <span class="section-count">{{ $familiesHere->count() }}</span>
             </div>
             @if ($familiesHere->isEmpty())
-                <p class="px-5 py-4 text-sm text-gray-600">No families checked in here on this device's list.</p>
+                <x-empty icon="ti-users" title="No families checked in here yet." text="Families added here, or listed by the server at the last refresh, show here." compact>
+                    @if ($events->isNotEmpty() && ! $selectedEventClosed)
+                        <button type="button" class="btn btn-secondary" data-open-board-modal="add-evacuee-modal"><i class="ti ti-user-plus" aria-hidden="true"></i> Add evacuee</button>
+                    @endif
+                </x-empty>
             @else
                 <ul class="divide-y divide-gray-100">
                     @foreach ($familiesHere as $family)

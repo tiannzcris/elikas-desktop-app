@@ -54,10 +54,7 @@
     <section aria-labelledby="centers-title">
         <h2 id="centers-title" class="section-title mb-4">Your centers</h2>
         @if ($centers->isEmpty())
-            <div class="card"><div class="empty-state">
-                <i class="ti ti-building-community" aria-hidden="true"></i>
-                <p>No evacuation centers on this device yet. Refresh reference data while online.</p>
-            </div></div>
+            <div class="card"><x-empty icon="ti-building-community" title="No evacuation centers on this device yet." text="Refresh reference data while online to bring your barangay's centers here."><form method="POST" action="{{ route('reference-data.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh reference data</button></form></x-empty></div>
         @else
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 @foreach ($centers as $row)

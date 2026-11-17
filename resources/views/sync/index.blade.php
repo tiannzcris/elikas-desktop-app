@@ -123,10 +123,7 @@
                 <h2 id="waiting-title" class="card-title">Waiting to send</h2>
             </div>
             @if ($waiting->isEmpty())
-                <div class="empty-state">
-                    <i class="ti ti-cloud-check" aria-hidden="true"></i>
-                    <p>Everything on this device has been sent.</p>
-                </div>
+                <x-empty icon="ti-cloud-check" title="Everything on this device has been sent." text="New entries go out by themselves whenever the server can be reached." compact />
             @else
                 <table class="data-table">
                     <thead><tr><th>Record</th><th>Center</th><th>Status</th></tr></thead>

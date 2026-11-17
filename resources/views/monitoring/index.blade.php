@@ -29,15 +29,9 @@
     @include('partials._as_of', ['at' => $generatedAt])
 
     @if (! $hasCopy)
-        <div class="card"><div class="empty-state">
-            <i class="ti ti-cloud-download" aria-hidden="true"></i>
-            <p>Not on this device yet. Refresh while online.</p>
-        </div></div>
+        <div class="card"><x-empty icon="ti-cloud-download" title="Monitoring is not on this device yet." text="Refresh while online; the copy stays readable offline."><form method="POST" action="{{ route('monitoring.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh now</button></form></x-empty></div>
     @elseif (! $event)
-        <div class="card"><div class="empty-state">
-            <i class="ti ti-circle-check" aria-hidden="true"></i>
-            <p>No event is open.</p>
-        </div></div>
+        <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
     @else
         @php
             $overview = $sections['overview'] ?? [];
@@ -71,7 +65,7 @@
                             {{ $item['text'] }}
                         </p>
                     @empty
-                        <p class="text-sm text-gray-600">Nothing needs attention.</p>
+                        <x-empty icon="ti-circle-check" title="Nothing needs attention." compact />
                     @endforelse
                 </div>
             </section>
@@ -133,7 +127,7 @@
         <section data-tab-panel="requests" hidden>
             <div class="card"><div class="card-body">
                 @if (empty($requests))
-                    <p class="text-sm text-gray-600">Nothing is waiting for CSWD.</p>
+                    <x-empty icon="ti-circle-check" title="Nothing is waiting for CSWD." compact />
                 @else
                     <table class="data-table">
                         <thead><tr><th>Waiting</th><th>What</th><th>Where</th><th class="num">Waited</th></tr></thead>

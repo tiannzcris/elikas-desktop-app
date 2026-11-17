@@ -17,10 +17,11 @@
 
     @if (! $snapshot || $pastEvents->isEmpty())
         <div class="card">
-            <div class="empty-state">
-                <i class="ti ti-history" aria-hidden="true"></i>
-                <p>{{ $snapshot ? 'No families from past events to bring back.' : 'Not on this device yet. Refresh reference data while online.' }}</p>
-            </div>
+            @if ($snapshot)
+                <x-empty icon="ti-history" title="No families from past events to bring back." text="Use Add evacuee for families coming for the first time." />
+            @else
+                <x-empty icon="ti-cloud-download" title="Returning families are not on this device yet." text="Refresh reference data while online."><form method="POST" action="{{ route('reference-data.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh reference data</button></form></x-empty>
+            @endif
         </div>
     @else
         <div class="flex flex-wrap items-end gap-4 mb-6">
