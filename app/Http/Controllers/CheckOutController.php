@@ -67,6 +67,10 @@ class CheckOutController extends Controller
             'status' => ['required', Rule::in(array_keys(PendingCheckOut::STATUSES))],
         ]);
         $event = EvacuationEvent::findOrFail($validated['evacuation_event_id']);
+        // A closed event is read-only, the same as on the server.
+        if ($event->isClosed()) {
+            throw ValidationException::withMessages(['evacuation_event_id' => "\"{$event->name}\" is closed. A closed event is read-only."]);
+        }
         $family = self::familiesHere($center, $event)->firstWhere('key', $validated['family']);
 
         if (! $family) {

@@ -92,10 +92,12 @@
                                         <i class="ti ti-clock" style="font-size: 12px;" aria-hidden="true"></i> Waiting to sync
                                     </span>
                                     <x-row-menu label="Actions for this entry">
-                                        <a href="{{ route('ec-board-entries.edit', $entry) }}" data-modal-trigger="ec-board-entry" class="menu-item" role="menuitem">
-                                            <i class="ti ti-pencil" style="font-size: 15px;" aria-hidden="true"></i> Edit
-                                        </a>
-                                        <div class="menu-divider"></div>
+                                        @unless ($selectedEventClosed)
+                                            <a href="{{ route('ec-board-entries.edit', $entry) }}" data-modal-trigger="ec-board-entry" class="menu-item" role="menuitem">
+                                                <i class="ti ti-pencil" style="font-size: 15px;" aria-hidden="true"></i> Edit
+                                            </a>
+                                            <div class="menu-divider"></div>
+                                        @endunless
                                         <form method="POST" action="{{ route('ec-board-entries.destroy', $entry) }}"
                                             data-confirm-title="Delete this entry?" data-confirm="It was never sent. Cannot be undone."
                                             data-confirm-label="Delete entry" data-confirm-tone="danger">

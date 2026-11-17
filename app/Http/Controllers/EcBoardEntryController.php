@@ -209,6 +209,11 @@ class EcBoardEntryController extends Controller
                 ->with('status', 'This entry has already synced -- it can no longer be edited from this device.');
         }
 
+        if ($entry->evacuationEvent?->isClosed()) {
+            return redirect()->route('evacuation-centers.ec-board', ['center' => $entry->evacuation_center_id, 'event' => $entry->evacuation_event_id])
+                ->withErrors(['evacuation_event_id' => "\"{$entry->evacuationEvent->name}\" is closed. A closed event is read-only."]);
+        }
+
         return $this->renderForm($request, $auth, $entry->evacuationCenter, $entry);
     }
 
