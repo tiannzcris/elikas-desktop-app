@@ -44,8 +44,7 @@ class SyncService
     /** The server refused because the event is closed or none is open. */
     public const EVENT_CLOSED = 'event_closed';
 
-    /** The server's words when no event is open (EventFlow::NO_OPEN_EVENT). */
-    public const NO_OPEN_EVENT = 'No open event yet. CSWDO opens an event when a threat is announced.';
+    public const NO_OPEN_EVENT = EvacuationEvent::NO_OPEN_EVENT;
 
     public const EMPTY = 'empty';
 
@@ -162,6 +161,11 @@ class SyncService
         try {
             $this->send($item, $auth);
             AppState::put('last_sync_at', now()->toIso8601String());
+            // The first arrival switches a monitoring event to active on the
+            // server (EventFlow); show the same here at once.
+            if ($item['kind'] !== 'checkout' && $model->evacuationEvent?->status === 'monitoring') {
+                $model->evacuationEvent->update(['status' => 'active']);
+            }
 
             return ['status' => self::SENT, 'key' => $item['key'], 'label' => $label, 'remaining' => $this->remaining()];
         } catch (CentralApiException $e) {

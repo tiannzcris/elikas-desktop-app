@@ -42,6 +42,6 @@ class EcBoardStandaloneSectionTest extends TestCase
 
         $this->get(route('evacuation-centers.ec-board', $gym))->assertOk()
             ->assertSee(route('ec-board.index'), false)
-            ->assertSee('No disaster events on this device yet.');
+            ->assertSee('No open event yet. CSWDO opens an event when a threat is announced.');
     }
 }

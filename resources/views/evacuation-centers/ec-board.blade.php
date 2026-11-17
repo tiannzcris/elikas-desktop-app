@@ -43,11 +43,10 @@
         </div>
     </div>
 
-    @if ($events->isEmpty())
-        <div class="callout callout-warning mb-6">
-            No disaster events on this device yet. Refresh reference data while online, then add evacuees here.
-        </div>
-    @else
+    @if (! $events->contains(fn ($e) => ! $e->isClosed()))
+        <div class="callout callout-info mb-6" role="status" data-no-open-event>{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}</div>
+    @endif
+    @if ($events->isNotEmpty())
             <section class="card ecb-sheet mb-5" aria-label="EC Information Board">
 
                 {{-- Shown here only because entries for it are still

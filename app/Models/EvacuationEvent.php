@@ -13,6 +13,15 @@ class EvacuationEvent extends Model
      */
     public const CLOSED_TO_ARRIVALS = 'This event is closed. Evacuees can no longer be added to it.';
 
+    /** The server's words when no event is open (EventFlow::NO_OPEN_EVENT). */
+    public const NO_OPEN_EVENT = 'No open event yet. CSWDO opens an event when a threat is announced.';
+
+    /** Whether any event takes arrivals (active, or monitoring: the server switches it to active). */
+    public static function anyOpen(): bool
+    {
+        return static::where('status', '!=', 'closed')->exists();
+    }
+
     protected $fillable = ['remote_id', 'name', 'event_type', 'status', 'is_demo', 'start_date'];
 
     protected $casts = ['is_demo' => 'boolean', 'start_date' => 'date'];
@@ -36,7 +45,7 @@ class EvacuationEvent extends Model
     {
         return function (string $attribute, mixed $value, \Closure $fail) {
             if (static::whereKey($value)->value('status') === 'closed') {
-                $fail(static::CLOSED_TO_ARRIVALS);
+                $fail(static::anyOpen() ? static::CLOSED_TO_ARRIVALS : static::NO_OPEN_EVENT);
             }
         };
     }

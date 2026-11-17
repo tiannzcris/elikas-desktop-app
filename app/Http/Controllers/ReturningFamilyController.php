@@ -45,7 +45,7 @@ class ReturningFamilyController extends Controller
     {
         $event = EvacuationEvent::findOrFail($request->integer('evacuation_event_id'));
         if ($event->isClosed()) {
-            throw ValidationException::withMessages(['evacuation_event_id' => EvacuationEvent::CLOSED_TO_ARRIVALS]);
+            throw ValidationException::withMessages(['evacuation_event_id' => EvacuationEvent::anyOpen() ? EvacuationEvent::CLOSED_TO_ARRIVALS : EvacuationEvent::NO_OPEN_EVENT]);
         }
 
         $sourceEventId = $request->integer('source_event_id');

@@ -13,6 +13,10 @@
         </div>
     </div>
 
+    @unless (\App\Models\EvacuationEvent::anyOpen())
+        <div class="callout callout-info mb-6" role="status" data-no-open-event>{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}</div>
+    @endunless
+
     @if ($centers->isEmpty())
         <div class="card">
             <div class="empty-state">
