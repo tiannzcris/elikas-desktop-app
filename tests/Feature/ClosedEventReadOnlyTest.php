@@ -27,7 +27,8 @@ class ClosedEventReadOnlyTest extends TestCase
         CenterFamilySnapshot::create(['evacuation_center_id' => $center->id, 'evacuation_event_id' => $closed->id,
             'families' => [['id' => 50, 'name' => 'Reyes', 'here_count' => 2]], 'fetched_at' => now()]);
 
-        $board = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $closed->id]))->assertOk();
+        $this->selectEvent($closed);
+        $board = $this->get(route('evacuation-centers.ec-board', ['center' => $center]))->assertOk();
         $board->assertDontSee(route('ec-board-entries.edit', $entry), false)
             ->assertDontSee('>Check out</button>', false)
             ->assertSee('Delete');

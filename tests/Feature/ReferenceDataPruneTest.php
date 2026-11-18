@@ -158,11 +158,12 @@ class ReferenceDataPruneTest extends TestCase
         // be removed; on its board there is no Add evacuee.
         $amangId = EvacuationEvent::where('remote_id', 7)->value('id');
         $page = $this->get(route('evacuation-centers.ec-board', $droppedCenter));
-        $page->assertSee('<option value="'.$amangId.'" selected>Tropical Storm Amang</option>', false);
-        $page->assertSee('<option value="'.$droppedEvent->id.'" >Typhoon Bagwis (closed)</option>', false);
+        $page->assertSee('Saves to: Tropical Storm Amang', false);
+        $page->assertSee('Typhoon Bagwis');
         $page->assertSee('<input type="hidden" name="evacuation_event_id" value="'.$amangId.'">', false);
 
-        $closedBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $droppedCenter, 'event' => $droppedEvent->id]));
+        $this->selectEvent($droppedEvent);
+        $closedBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $droppedCenter]));
         $closedBoard->assertSee('This event is closed. Evacuees can no longer be added to it');
         $closedBoard->assertSee('Juan Dela Cruz');
         $closedBoard->assertDontSee('id="add-evacuee-modal"', false);

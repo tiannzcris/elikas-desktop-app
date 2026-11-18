@@ -64,20 +64,20 @@ class ClosedEventTest extends TestCase
     {
         [$open, $closed, $center, $bacong] = $this->seedBase();
 
-        $board = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $closed->id]));
-        $board->assertDontSee('Typhoon Kristine');
-        $board->assertSee('<option value="'.$open->id.'" selected>', false);
+        // The board follows the event switcher; with nothing chosen it opens
+        // on the open event, and the closed one is offered read-only.
+        $board = $this->get(route('evacuation-centers.ec-board', ['center' => $center]));
+        $board->assertSee('Saves to: Tropical Storm Amang', false);
+        $board->assertSee('Closed events (read-only)');
 
         // An entry saved while this device still thought the event open.
         $closed->update(['status' => 'active']);
         $this->entry($closed, $center, $bacong)->assertSessionHasNoErrors();
         $closed->update(['status' => 'closed']);
 
+        $this->selectEvent($closed);
         $board = $this->get(route('evacuation-centers.ec-board', ['center' => $center]));
-        $board->assertSee('<option value="'.$open->id.'" selected>', false);
-        $board->assertSee('Typhoon Kristine (closed)');
-
-        $board = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $closed->id]));
+        $board->assertSee('Closed: read-only');
         $board->assertSee('This event is closed. Evacuees can no longer be added to it, so the entries below that are still waiting on this device can\'t sync.', false);
         $board->assertSee('Rosa Bautista');
         $board->assertSee(route('ec-board-entries.destroy', EcBoardEntry::sole()), false);
@@ -85,7 +85,7 @@ class ClosedEventTest extends TestCase
         $board->assertDontSee('id="add-evacuee-modal"', false);
 
         $this->delete(route('ec-board-entries.destroy', EcBoardEntry::sole()));
-        $this->get(route('evacuation-centers.ec-board', ['center' => $center]))->assertDontSee('Typhoon Kristine');
+        $this->assertSame(0, EcBoardEntry::count());
     }
 
     public function test_the_servers_refusal_reads_once_in_the_sync_error(): void

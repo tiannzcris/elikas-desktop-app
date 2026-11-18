@@ -88,19 +88,11 @@ class EvacuationCenterController extends Controller
             return redirect()->route('login');
         }
 
-        // A closed event stays on this board only while entries added here
-        // for it are still waiting on this device -- they can no longer
-        // sync (the server refuses new evacuees there), so they must stay
-        // reachable to be seen and removed.
-        $events = EvacuationEvent::where('status', '!=', 'closed')
-            ->orWhereIn('id', EcBoardEntry::where('evacuation_center_id', $center->id)->whereNull('synced_at')->select('evacuation_event_id'))
-            ->orderByDesc('id')
-            ->get();
-
-        $selectedEventId = (int) $request->query('event', 0);
-        if (! $events->contains('id', $selectedEventId)) {
-            $selectedEventId = optional($events->first(fn (EvacuationEvent $e) => ! $e->isClosed()) ?? $events->first())->id;
-        }
+        // The board shows the event chosen in the top-bar switcher (a closed
+        // one read-only, so entries waiting for it can be seen and removed).
+        $working = EvacuationEvent::working();
+        $events = collect([$working])->filter()->values();
+        $selectedEventId = $working?->id;
 
         $pendingEntries = $this->pendingEntriesQuery($center, $selectedEventId)
             ->with(['evacuationEvent', 'household.evacuees'])

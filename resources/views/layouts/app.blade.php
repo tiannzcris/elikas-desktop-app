@@ -74,7 +74,11 @@
         <header class="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between gap-4 shrink-0">
             <div class="flex items-center gap-4 text-sm text-gray-600">
                 <span id="live-clock" class="flex items-center gap-1.5"><i class="ti ti-calendar" style="font-size: 15px;" aria-hidden="true"></i></span>
-                <span class="flex items-center gap-1.5"><i class="ti ti-map-pin" style="font-size: 15px;" aria-hidden="true"></i> Ligao City, Albay</span>
+                @if (($currentUser ?? null)?->hasOperationsAccess())
+                    @include('partials._event_switcher')
+                @else
+                    <span class="flex items-center gap-1.5"><i class="ti ti-map-pin" style="font-size: 15px;" aria-hidden="true"></i> Ligao City, Albay</span>
+                @endif
             </div>
 
             <div class="flex items-center gap-4">

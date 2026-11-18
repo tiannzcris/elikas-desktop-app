@@ -13,22 +13,16 @@
     <div class="page-header">
         <div class="min-w-0">
             <h1 class="page-title"><x-center-name :center="$center" /></h1>
-            <p class="page-subtitle">Barangay {{ $barangayName }}</p>
+            <p class="page-subtitle flex flex-wrap items-center gap-2">
+                Barangay {{ $barangayName }}
+                @if ($events->first())
+                    <span aria-hidden="true">·</span> <x-event-name :event="$events->first()" />
+                    @if ($selectedEventClosed)<span class="badge badge-dark">Closed: read-only</span>@endif
+                @endif
+            </p>
         </div>
         <div class="page-actions items-end">
-            @if ($events->isNotEmpty())
-                <form method="GET" action="{{ route('evacuation-centers.ec-board', $center) }}" class="flex items-center gap-2">
-                    <label for="ecb-event" class="sr-only">Event</label>
-                    <select id="ecb-event" name="event" onchange="this.form.submit()" class="input w-auto min-w-[13rem]">
-                        @foreach ($events as $e)
-                            <option value="{{ $e->id }}" @selected($selectedEventId === $e->id)>{{ $e->optionLabel() }}{{ $e->isClosed() ? ' (closed)' : '' }}</option>
-                        @endforeach
-                    </select>
-                    @if ($events->firstWhere('id', $selectedEventId)?->is_demo)
-                        <span class="badge badge-warning" data-demo-badge>DEMO</span>
-                    @endif
-                </form>
-            @endif
+
             @if ($events->isNotEmpty() && ! $selectedEventClosed)
                 <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
                     <i class="ti ti-user-plus" style="font-size: 16px;" aria-hidden="true"></i> Add evacuee
@@ -200,7 +194,7 @@
                 <div class="modal-header shrink-0">
                     <div class="min-w-0">
                         <h2 id="add-evacuee-title" class="modal-title">Add evacuee</h2>
-                        <p class="text-xs font-medium text-gray-700 mt-0.5">{{ $center->name }} &middot; {{ $events->firstWhere('id', $selectedEventId)?->optionLabel() }}</p>
+                        <p class="text-sm font-medium text-gray-800 mt-0.5" data-saves-to>Saves to: {{ $events->firstWhere('id', $selectedEventId)?->optionLabel() }} · {{ $center->name }}</p>
                         <p class="text-xs text-gray-600">Saved on this device first -- name and birthdate can be added later.</p>
                         @if ($currentUser->can('evacuees.manage'))
                             <p class="text-sm mt-1">Staying with relatives or friends, not at a center?

@@ -19,7 +19,7 @@ class EvacuationEvent extends Model
     /** The event the user is working on (every event-based screen uses it). */
     public static function working(): ?self
     {
-        return app(\App\Services\CityViews::class)->currentEvent();
+        return app(\App\Services\SelectedEvent::class)->get();
     }
 
     /** Whether any event takes arrivals (active, or monitoring: the server switches it to active). */

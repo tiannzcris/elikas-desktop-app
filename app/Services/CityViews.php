@@ -63,13 +63,8 @@ class CityViews
      */
     public function currentEvent(): ?EvacuationEvent
     {
-        $open = EvacuationEvent::where('status', '!=', 'closed')->get();
-
-        return $open->sortBy(fn (EvacuationEvent $e) => [
-            $e->status === 'active' ? 0 : 1,
-            $e->is_demo ? 1 : 0,
-            -($e->start_date?->getTimestamp() ?? 0),
-        ])->first();
+        // The event the user works on (the top-bar event switcher).
+        return app(SelectedEvent::class)->get();
     }
 
     private function fetch(string $key, callable $load): void

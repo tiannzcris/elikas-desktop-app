@@ -9,6 +9,7 @@ use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\PrivateHouseController;
 use App\Http\Controllers\ReturningFamilyController;
+use App\Http\Controllers\SelectedEventController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Middleware\CityOnly;
@@ -31,6 +32,7 @@ Route::get('/use-the-web', [AuthController::class, 'useWeb'])->name('use-web');
 // (RequireDesktopAccess, on the whole web group).
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::view('/about', 'about')->name('about');
+Route::post('/selected-event', [SelectedEventController::class, 'update'])->name('selected-event.update');
 Route::post('/reference-data/refresh', [AuthController::class, 'refreshReferenceDataAction'])->name('reference-data.refresh');
 
 // The barangay official's work: registration at their own centers, and sync.

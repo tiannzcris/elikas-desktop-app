@@ -11,7 +11,7 @@
     <div class="page-header">
         <div class="min-w-0">
             <h1 class="page-title">Returning families</h1>
-            <p class="page-subtitle"><x-event-name :event="$event" /></p>
+            <p class="page-subtitle flex items-center gap-1">Saves to: <x-event-name :event="$event" /></p>
         </div>
     </div>
 

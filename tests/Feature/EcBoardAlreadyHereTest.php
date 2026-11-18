@@ -83,11 +83,13 @@ class EcBoardAlreadyHereTest extends TestCase
         Family::create(['barangay_id' => $bacong->id, 'evacuation_event_id' => $amang->id, 'evacuation_center_id' => $center->id, 'displacement_type' => 'inside_center', 'name' => 'Amang Family', 'created_via_ec_board' => true]);
         Family::create(['barangay_id' => $bacong->id, 'evacuation_event_id' => $mayon->id, 'evacuation_center_id' => $center->id, 'displacement_type' => 'inside_center', 'name' => 'Mayon Family', 'created_via_ec_board' => true]);
 
-        $amangBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $amang->id]));
+        $this->selectEvent($amang);
+        $amangBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $center]));
         $amangBoard->assertSee('Amang Family');
         $amangBoard->assertDontSee('Mayon Family');
 
-        $mayonBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $mayon->id]));
+        $this->selectEvent($mayon);
+        $mayonBoard = $this->get(route('evacuation-centers.ec-board', ['center' => $center]));
         $mayonBoard->assertSee('Mayon Family');
         $mayonBoard->assertDontSee('Amang Family');
     }

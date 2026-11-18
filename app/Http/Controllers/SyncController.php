@@ -90,6 +90,8 @@ class SyncController extends Controller
     public function probe(CentralApiService $api)
     {
         try {
+            // A choice of event made offline goes first.
+            app(\App\Services\SelectedEvent::class)->push(LocalAuth::current());
             AuthController::refreshIdentity($api, LocalAuth::current());
 
             return response()->json(['reachable' => true, 'auth' => true]);

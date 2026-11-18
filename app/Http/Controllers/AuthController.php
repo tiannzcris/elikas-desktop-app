@@ -14,6 +14,7 @@ use App\Models\Purok;
 use App\Models\ReturningFamilySnapshot;
 use App\Services\CentralApiService;
 use App\Services\CityViews;
+use App\Services\SelectedEvent;
 use App\Services\LocalData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -153,6 +154,11 @@ class AuthController extends Controller
 
     private function refreshReferenceData(CentralApiService $api, string $token): void
     {
+        // A choice of event made offline goes to the server first.
+        if ($auth = LocalAuth::current()) {
+            app(SelectedEvent::class)->push($auth);
+        }
+
         $data = $api->fetchReferenceData($token);
 
         $barangayRemoteIds = [];
@@ -178,6 +184,22 @@ class AuthController extends Controller
             $eventRemoteIds[] = $e['id'];
         }
         $this->pruneStale(EvacuationEvent::class, $eventRemoteIds, 'evacuation_event_id', EcBoardEntry::class, 'evacuation_event_id');
+
+        // The event this user works on, as the server remembers it (chosen
+        // on the web or here, or picked by the server).
+        try {
+            $selection = $api->send('get', 'selected-event', $token, [], 10)['data'] ?? null;
+            if (is_array($selection)) {
+                app(SelectedEvent::class)->fromServer($selection['selected'] ?? null, (bool) ($selection['chosen'] ?? false));
+            }
+        } catch (CentralApiException $e) {
+            if ($e->isOffline() || $e->kind === CentralApiException::UNAUTHENTICATED) {
+                throw $e;
+            }
+            // An older server without the switcher: the device picks.
+        } catch (\RuntimeException $e) {
+            // Not essential to the refresh.
+        }
 
         // The server already lists only the centers this user may see (an
         // official: their own barangay's; never a rejected one). Kept to
