@@ -39,6 +39,11 @@
             $centers = $sections['centers'] ?? [];
             $vulnerable = $sections['vulnerable'] ?? [];
             $requests = $sections['requests']['requests'] ?? [];
+            // Barangays under an evacuation order or on watch, highest first.
+            $situations = collect($sections['barangays']['barangays'] ?? [])
+                ->filter(fn ($b) => ($b['status'] ?? 'normal') !== 'normal')
+                ->sortByDesc(fn ($b) => $b['rank'] ?? 0)->values();
+            $orders = $situations->filter(fn ($b) => ! empty($b['order']));
             $n = fn ($v) => number_format((int) $v);
         @endphp
 
@@ -46,6 +51,7 @@
             <button type="button" class="tab" role="tab" data-tab="overview">Overview</button>
             <button type="button" class="tab" role="tab" data-tab="centers">Centers</button>
             <button type="button" class="tab" role="tab" data-tab="vulnerable">Vulnerable</button>
+            <button type="button" class="tab" role="tab" data-tab="orders">Evacuation orders ({{ $orders->count() }})</button>
             <button type="button" class="tab" role="tab" data-tab="requests">Waiting for CSWD ({{ count($requests) }})</button>
         </div>
 
@@ -127,6 +133,41 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div></div>
+        </section>
+
+        {{-- Evacuation orders and barangay situations, read-only: who ordered
+             it and when (GIS barangay status, Nov 2026). Recorded on the web. --}}
+        <section data-tab-panel="orders" hidden>
+            <div class="card"><div class="card-body">
+                @if ($situations->isEmpty())
+                    <x-empty icon="ti-circle-check" title="Every barangay is at Normal." text="Evacuation orders are recorded on the web (GIS map)." compact />
+                @else
+                    @php
+                        $tone = ['watch' => 'badge-warning', 'flooding_reported' => 'badge-warning', 'preemptive_evacuation' => 'badge-danger', 'forced_evacuation' => 'badge-dark'];
+                        $at = fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t)->timezone('Asia/Manila')->format('M j, g:i A') : '';
+                    @endphp
+                    <table class="data-table" data-orders>
+                        <thead><tr><th>Barangay</th><th>Status</th><th>Ordered by</th><th>Time</th><th>Recorded</th></tr></thead>
+                        <tbody>
+                            @foreach ($situations as $b)
+                                <tr>
+                                    <td class="font-medium text-gray-900">{{ $b['barangay']['name'] ?? '' }}</td>
+                                    <td><span class="badge {{ $tone[$b['status']] ?? 'badge-neutral' }}">{{ $b['label'] ?? $b['status'] }}</span></td>
+                                    @if (! empty($b['order']))
+                                        <td>{{ ucfirst($b['order']['ordered_by_label'] ?? $b['order']['ordered_by'] ?? '') }}</td>
+                                        <td>{{ $at($b['order']['ordered_at'] ?? null) }}</td>
+                                        <td class="text-sm text-gray-700">{{ $b['order']['summary'] ?? '' }}</td>
+                                    @else
+                                        <td class="text-gray-500">Not an order</td>
+                                        <td>{{ $at($b['set_at'] ?? null) }}</td>
+                                        <td class="text-sm text-gray-700">{{ $b['set_by']['name'] ?? '' }}</td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
             </div></div>
         </section>
 

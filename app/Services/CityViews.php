@@ -15,7 +15,7 @@ use App\Models\ServerSnapshot;
  */
 class CityViews
 {
-    public const MONITORING_SECTIONS = ['overview', 'centers', 'vulnerable', 'requests'];
+    public const MONITORING_SECTIONS = ['overview', 'centers', 'barangays', 'vulnerable', 'requests'];
 
     public function __construct(private CentralApiService $api) {}
 

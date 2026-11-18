@@ -35,6 +35,14 @@ class MonitoringTest extends TestCase
                 'outside' => 234, 'arrived_last_hour' => 12, 'centers_in_use' => 7], 'attention' => [['kind' => 'center', 'level' => 'danger', 'text' => 'Gym is at 95% of capacity.']]])),
             '*/monitoring/centers' => Http::response($this->section(['in_use' => 7, 'total' => 9, 'capacity_not_set' => 1,
                 'centers' => [['name' => 'Bacong Gym', 'barangay' => ['name' => 'Bacong'], 'inside' => 95, 'capacity' => 100, 'percent' => 95]]])),
+            '*/monitoring/barangays' => Http::response($this->section(['barangays' => [
+                ['barangay' => ['id' => 5, 'name' => 'Bonga'], 'status' => 'forced_evacuation', 'label' => 'Forced evacuation', 'rank' => 4,
+                    'set_by' => ['id' => 9, 'name' => 'Ana Cruz'], 'set_at' => '2026-11-17T07:05:00+00:00',
+                    'order' => ['ordered_by' => 'city_mayor', 'ordered_by_label' => 'the City Mayor', 'ordered_at' => '2026-11-17T07:00:00+00:00',
+                        'summary' => 'Forced evacuation ordered by the City Mayor at 3:00 PM, recorded by Ana Cruz']],
+                ['barangay' => ['id' => 4, 'name' => 'Bacong'], 'status' => 'watch', 'label' => 'Watch', 'rank' => 1, 'set_by' => ['name' => 'Maria Santos'], 'set_at' => '2026-11-17T06:00:00+00:00', 'order' => null],
+                ['barangay' => ['id' => 6, 'name' => 'Busac'], 'status' => 'normal', 'label' => 'Normal', 'rank' => 0, 'order' => null],
+            ]])),
             '*/monitoring/vulnerable' => Http::response($this->section(['totals' => ['infants' => 4, 'seniors' => 20, 'pwd' => 3, 'pregnant' => 2, 'lactating' => 1],
                 'by_barangay' => [['barangay' => ['name' => 'Bacong'], 'persons' => 50, 'infants' => 4]]])),
             '*/monitoring/requests' => Http::response($this->section(['requests' => [['kind_label' => 'Final count', 'what' => 'Bacong final count',
@@ -56,7 +64,12 @@ class MonitoringTest extends TestCase
             ->assertSee('1,234')->assertSee('Gym is at 95% of capacity.')->assertSee('Bacong Gym')
             ->assertSee('Bacong final count')->assertSee('2 h 30 min')
             ->assertSee('Read-only')->assertSee('As of')->assertSee('Validate on the web')
-            ->assertSee('data-demo-badge', false);
+            ->assertSee('data-demo-badge', false)
+            // Evacuation orders: who ordered and when (Asia/Manila), read-only.
+            ->assertSee('Evacuation orders (1)')
+            ->assertSeeInOrder(['Bonga', 'Forced evacuation', 'The City Mayor', 'Nov 17, 3:00 PM', 'Forced evacuation ordered by the City Mayor at 3:00 PM, recorded by Ana Cruz'])
+            ->assertSeeInOrder(['Bacong', 'Watch', 'Not an order'])
+            ->assertDontSee('Busac');
         $this->assertNotNull(ServerSnapshot::named('monitoring.overview'));
     }
 
