@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
@@ -34,6 +35,8 @@ Route::get('/use-the-web', [AuthController::class, 'useWeb'])->name('use-web');
 // (RequireDesktopAccess, on the whole web group).
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::view('/about', 'about')->name('about');
+Route::get('/app-version', [AppVersionController::class, 'check'])->name('app-version.check');
+Route::get('/app-version/download', [AppVersionController::class, 'download'])->name('app-version.download');
 Route::post('/selected-event', [SelectedEventController::class, 'update'])->name('selected-event.update');
 
 // The bell, and transfers between centers (officials and CSWD; writes online only).

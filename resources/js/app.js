@@ -817,3 +817,35 @@ document.addEventListener('keydown', (e) => {
     setInterval(() => { if (navigator.onLine) load(); }, 60000);
     window.addEventListener('online', load);
 })();
+
+// ---------------------------------------------------------------------
+// Update notice: checks the latest published version (downloads/
+// desktop-version.json on the hosting, through this app) shortly after
+// start and every 6 hours while online. "Later" hides it until the app
+// is opened again.
+// ---------------------------------------------------------------------
+(function updateNotice() {
+    const banner = document.querySelector('[data-update-banner]');
+    if (!banner) return;
+    let dismissed = false;
+    try { dismissed = sessionStorage.getItem('elikas-update-later') === '1'; } catch (e) {}
+
+    async function check() {
+        if (dismissed) return;
+        try {
+            const data = await fetch(banner.dataset.checkUrl, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+            if (data.update) {
+                banner.querySelector('[data-update-latest]').textContent = data.latest;
+                banner.hidden = false;
+            }
+        } catch (e) {}
+    }
+    banner.querySelector('[data-update-later]')?.addEventListener('click', () => {
+        banner.hidden = true;
+        dismissed = true;
+        try { sessionStorage.setItem('elikas-update-later', '1'); } catch (e) {}
+    });
+
+    setTimeout(check, 4000);
+    setInterval(() => { if (navigator.onLine) check(); }, 6 * 60 * 60 * 1000);
+})();

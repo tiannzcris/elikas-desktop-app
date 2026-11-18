@@ -31,6 +31,13 @@
 return [
     'production_api_url' => 'https://e-likasligao.online/api/v1',
 
+    // The latest desktop version, a small file next to the installer on the
+    // hosting (downloads/desktop-version.json):
+    // { "latest": "2.0.2", "download_url": "https://e-likasligao.online/downloads/E-LIKAS-Setup.exe" }
+    // The app compares it with its own version and offers the download.
+    'version_check_url' => env('ELIKAS_VERSION_CHECK_URL', 'https://e-likasligao.online/downloads/desktop-version.json'),
+    'download_page_url' => 'https://e-likasligao.online/downloads/E-LIKAS-Setup.exe',
+
     'central_api_url' => (function () {
         $overrideFile = storage_path('app/dev-api-target.txt');
 

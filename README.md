@@ -51,5 +51,9 @@ Screens follow the permissions from `/auth/login` and `/auth/me`, never the role
     npm run build
     php artisan native:build win x64
 
-The installer lands in `dist/` (`E-LIKAS-2.0.2-setup.exe`). `CENTRAL_API_URL`
+The installer lands in `dist/` (`E-LIKAS-2.0.2-setup.exe`). Upload it to the
+hosting as `downloads/E-LIKAS-Setup.exe` (the website's download link), and
+upload `docs/hosting/desktop-version.json` (with the new version in `latest`)
+to `downloads/desktop-version.json`: installed apps check it and show "A new
+version of E-LIKAS is available" with a Download button. `CENTRAL_API_URL`
 in `.env` must be the production URL when building.

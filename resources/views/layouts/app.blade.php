@@ -143,6 +143,21 @@
                 @endif
             </div>
         </header>
+        @if ($currentUser ?? null)
+            {{-- "A new version is available" (app.js, update notice). Hidden until a
+                 check finds a newer version on the hosting. --}}
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200 bg-blue-50 px-6 py-2.5 text-sm text-blue-900"
+                role="status" data-update-banner data-check-url="{{ route('app-version.check') }}" hidden>
+                <span class="flex items-center gap-2">
+                    <i class="ti ti-download" style="font-size: 16px;" aria-hidden="true"></i>
+                    <span>A new version of E-LIKAS is available: <strong data-update-latest></strong> (this computer has {{ config('nativephp.version') }}). Your data on this computer is kept.</span>
+                </span>
+                <span class="flex items-center gap-2">
+                    <a href="{{ route('app-version.download') }}" class="btn btn-secondary btn-sm" data-update-download>Download now</a>
+                    <button type="button" class="btn btn-ghost btn-sm" data-update-later>Later</button>
+                </span>
+            </div>
+        @endif
 
         <main class="page-transition flex-1 min-h-0 overflow-y-auto p-6 w-full max-w-[1200px] mx-auto">
             @if (session('authExpired'))
