@@ -9,8 +9,43 @@ class EvacuationCenter extends Model
 {
     protected $fillable = [
         'remote_id', 'barangay_remote_id', 'name', 'status', 'approval_status',
-        'capacity_persons', 'current_occupancy', 'effective_status',
+        'capacity_persons', 'current_occupancy', 'effective_status', 'capacity_source', 'capacity_basis',
     ];
+
+    /** Tooltips for an estimated capacity (docs/backend/apps-api-2026-11-transfers-capacity.md 3.2). */
+    public const CAPACITY_BASIS = [
+        'peak_2025' => 'Estimated from the 2025 peak',
+        'type_median' => 'Estimated: median of the same type of center',
+    ];
+
+    /** No capacity at all: never full, never a percentage. */
+    public function capacityUnknown(): bool
+    {
+        return $this->capacity_source === 'unknown' || ! $this->capacity_persons;
+    }
+
+    public function capacityEstimated(): bool
+    {
+        return ! $this->capacityUnknown() && $this->capacity_source === 'estimated';
+    }
+
+    /** The tooltip of an estimated capacity, or null. */
+    public function capacityTooltip(): ?string
+    {
+        return $this->capacityEstimated() ? (self::CAPACITY_BASIS[$this->capacity_basis] ?? 'Estimated') : null;
+    }
+
+    /** "48 / 112", "48 / 112 est." or "48 / – (capacity unknown)". */
+    public function occupancyLabel(): string
+    {
+        $inside = number_format($this->occupancyHere());
+
+        return match (true) {
+            $this->capacityUnknown() => "{$inside} / – (capacity unknown)",
+            $this->capacityEstimated() => "{$inside} / ".number_format($this->capacity_persons).' est.',
+            default => "{$inside} / ".number_format($this->capacity_persons),
+        };
+    }
 
     /** At this share of capacity a center with people inside shows as full (server: FULL_AT_PERCENT). */
     public const FULL_AT_PERCENT = 90;
@@ -43,7 +78,8 @@ class EvacuationCenter extends Model
     public function displayStatus(): string
     {
         $inside = $this->occupancyHere();
-        if ($inside > 0 && $this->capacity_persons && $inside * 100 >= self::FULL_AT_PERCENT * $this->capacity_persons) {
+        // An unknown capacity is never full (the server's rule).
+        if ($inside > 0 && ! $this->capacityUnknown() && $inside * 100 >= self::FULL_AT_PERCENT * $this->capacity_persons) {
             return 'full';
         }
 

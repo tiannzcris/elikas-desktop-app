@@ -36,6 +36,10 @@ class DashboardController extends Controller
                 'notSubmitted' => collect($finalCounts?->payload['barangays'] ?? [])
                     ->whereNull('current_submission')->count(),
                 'waitingForCswd' => count(ServerSnapshot::named('monitoring.requests')?->payload['data']['requests'] ?? []),
+                // GET /dashboard/city actions.transfer_requests_pending, else the Transfers list.
+                'transfersPending' => (int) (ServerSnapshot::named('city_dashboard')?->payload['actions']['transfer_requests_pending']
+                    ?? app(\App\Services\Transfers::class)->waitingCount($auth, \App\Models\EvacuationEvent::working())),
+                'capacityCounts' => ServerSnapshot::named('city_dashboard')?->payload['capacity'] ?? null,
             ]);
         }
 

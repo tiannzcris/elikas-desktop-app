@@ -31,6 +31,11 @@ class CityViews
         if ($auth->can('count_submissions.review')) {
             $this->refreshFinalCounts($auth);
         }
+
+        // The city dashboard's actions (transfer requests waiting) and capacity counts.
+        if ($auth->can('page.dashboard')) {
+            $this->fetch('city_dashboard', fn () => $this->api->send('get', 'dashboard/city', $auth->api_token, [], 15)['data'] ?? []);
+        }
     }
 
     public function refreshFinalCounts(LocalAuth $auth): void

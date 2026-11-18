@@ -218,6 +218,8 @@ class AuthController extends Controller
                 'status' => $c['status'],
                 'approval_status' => $c['approval_status'] ?? 'approved',
                 'capacity_persons' => $c['capacity_persons'] ?? null,
+                'capacity_source' => $c['capacity_source'] ?? (empty($c['capacity_persons']) ? 'unknown' : 'official'),
+                'capacity_basis' => $c['capacity_basis'] ?? null,
                 'current_occupancy' => $c['current_occupancy'] ?? null,
                 'effective_status' => $c['effective_status'] ?? null,
             ]);

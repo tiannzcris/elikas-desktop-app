@@ -4,10 +4,10 @@
         <p class="card-title min-w-0">Private houses</p>
         <span class="badge badge-neutral shrink-0">Outside centers</span>
     </div>
-    <p class="flex items-baseline gap-2">
-        <span class="text-2xl font-semibold tabular-nums text-gray-900">{{ \App\Support\Plural::of($privateHouses['family_count'], 'family', 'families') }}</span>
-        <span class="text-sm text-gray-600">{{ \App\Support\Plural::of($privateHouses['person_count'], 'person', 'people') }} with relatives or friends</span>
-    </p>
+    <div>
+        <p class="text-2xl font-semibold tabular-nums text-gray-900">{{ \App\Support\Plural::of($privateHouses['family_count'], 'family', 'families') }}</p>
+        <p class="text-sm text-gray-600">{{ \App\Support\Plural::of($privateHouses['person_count'], 'person', 'people') }} with relatives or friends</p>
+    </div>
     @if ($privateHouses['waiting'] > 0)
         <p class="text-sm font-medium text-amber-800">{{ \App\Support\Plural::of($privateHouses['waiting'], 'family', 'families') }} waiting to sync</p>
     @else

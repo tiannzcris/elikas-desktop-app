@@ -87,20 +87,31 @@
             <div class="stat-strip grid-cols-3 mb-6">
                 <div class="stat"><p class="stat-label">In use</p><p class="stat-value">{{ $n($centers['in_use'] ?? 0) }}</p></div>
                 <div class="stat"><p class="stat-label">Open centers</p><p class="stat-value">{{ $n($centers['total'] ?? 0) }}</p></div>
-                <div class="stat {{ ($centers['capacity_not_set'] ?? 0) > 0 ? 'stat-alert' : '' }}"><p class="stat-label">In use, no capacity on record</p><p class="stat-value">{{ $n($centers['capacity_not_set'] ?? 0) }}</p></div>
+                <div class="stat {{ ($centers['capacity_not_set'] ?? 0) > 0 ? 'stat-alert' : '' }}"><p class="stat-label">In use, no capacity on record</p><p class="stat-value">{{ $n($centers['capacity_not_set'] ?? 0) }}</p>
+                    @isset($centers['capacity'])<p class="stat-note" data-capacity-counts>Capacities: {{ $centers['capacity']['official'] ?? 0 }} official, {{ $centers['capacity']['estimated'] ?? 0 }} est., {{ $centers['capacity']['unknown'] ?? 0 }} unknown</p>@endisset</div>
             </div>
             <div class="card"><div class="card-body">
                 <table class="data-table">
-                    <thead><tr><th>Center</th><th>Barangay</th><th class="num">Inside</th><th class="num">Capacity</th><th class="num">Full</th></tr></thead>
+                    <thead><tr><th>Center</th><th>Barangay</th><th class="num">Inside</th><th class="num">Capacity</th><th class="num">Occupancy</th></tr></thead>
                     <tbody>
                         @foreach ($centers['centers'] ?? [] as $c)
                             <tr>
                                 <td class="font-medium text-gray-900">{{ $c['name'] }}</td>
                                 <td>{{ $c['barangay']['name'] ?? '' }}</td>
                                 <td class="num">{{ $n($c['inside']) }}</td>
-                                <td class="num">{{ $c['capacity'] !== null ? $n($c['capacity']) : 'Not set' }}</td>
+                                @php $unknownCap = ($c['capacity_source'] ?? null) === 'unknown' || $c['capacity'] === null; @endphp
+                                <td class="num" data-capacity>
+                                    @if ($unknownCap)
+                                        <span class="text-gray-600">Unknown</span>
+                                    @else
+                                        {{ $n($c['capacity']) }}
+                                        @if (($c['capacity_source'] ?? null) === 'estimated')
+                                            <span class="underline decoration-dotted underline-offset-2" title="{{ \App\Models\EvacuationCenter::CAPACITY_BASIS[$c['capacity_basis'] ?? ''] ?? 'Estimated' }}">est.</span>
+                                        @endif
+                                    @endif
+                                </td>
                                 <td class="num">
-                                    @if ($c['percent'] !== null)
+                                    @if (! $unknownCap && $c['percent'] !== null)
                                         <span class="badge {{ $c['percent'] >= 100 ? 'badge-danger' : ($c['percent'] >= 90 ? 'badge-warning' : 'badge-neutral') }}">{{ $c['percent'] }}%</span>
                                     @endif
                                 </td>

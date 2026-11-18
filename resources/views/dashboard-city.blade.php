@@ -37,7 +37,7 @@
             <div class="card"><x-empty icon="ti-cloud-download" title="The event figures are not on this device yet." text="Refresh while online; the copy stays readable offline."><form method="POST" action="{{ route('monitoring.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh now</button></form></x-empty></div>
         @endif
     @else
-        <div class="stat-strip grid-cols-2 lg:grid-cols-4">
+        <div class="stat-strip grid-cols-2 lg:grid-cols-5">
             <a href="{{ route('monitoring.index') }}" class="stat">
                 <p class="stat-label">Persons displaced</p>
                 <p class="stat-value">{{ $n($figures['persons'] ?? 0) }}</p>
@@ -52,10 +52,19 @@
                 <p class="stat-value">{{ $waitingValidation }}</p>
                 <p class="stat-note">{{ $notSubmitted }} not submitted</p>
             </a>
+            <a href="{{ route('transfers.index') }}" class="stat {{ $transfersPending > 0 ? 'stat-alert' : '' }}" data-transfers-pending>
+                <p class="stat-label">Transfer requests waiting</p>
+                <p class="stat-value">{{ $transfersPending }}</p>
+            </a>
             <a href="{{ route('monitoring.index') }}#requests" class="stat {{ $waitingForCswd > 0 ? 'stat-alert' : '' }}">
                 <p class="stat-label">Waiting for CSWD</p>
                 <p class="stat-value">{{ $waitingForCswd }}</p>
             </a>
         </div>
+        @if ($capacityCounts)
+            <p class="mt-4 text-sm text-gray-700" data-capacity-counts>
+                Center capacities: {{ $capacityCounts['official'] ?? 0 }} official, {{ $capacityCounts['estimated'] ?? 0 }} estimated, {{ $capacityCounts['unknown'] ?? 0 }} unknown. Capacities are imported on the web.
+            </p>
+        @endif
     @endif
 @endsection

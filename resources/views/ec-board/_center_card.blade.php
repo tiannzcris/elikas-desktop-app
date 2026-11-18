@@ -1,10 +1,12 @@
 {{-- One evacuation center: name, status chip, people inside against
-     capacity (with a meter), and what waits on this device. --}}
+     capacity (with a meter), and what waits on this device. An estimated
+     capacity says "est." (tooltip: how it was estimated); an unknown one
+     shows no percentage and is never full. --}}
 @php
     $inside = $center->occupancyHere();
-    $capacity = $center->capacity_persons;
+    $unknown = $center->capacityUnknown();
+    $capacity = $unknown ? null : (int) $center->capacity_persons;
     $percent = $capacity ? min(100, (int) round(100 * $inside / $capacity)) : null;
-    $status = $center->displayStatus();
     $meterColor = match (true) {
         $percent === null => 'bg-gray-300',
         $percent >= 90 => 'bg-red-600',
@@ -18,13 +20,18 @@
         <x-center-status :center="$center" />
     </div>
     <div>
-        <p class="flex items-baseline gap-2">
-            <span class="text-2xl font-semibold tabular-nums text-gray-900" data-occupancy>{{ number_format($inside) }} / {{ $capacity ? number_format($capacity) : '—' }}</span>
-            <span class="text-sm text-gray-600">{{ $capacity ? 'people inside · '.$percent.'% full' : 'people inside · capacity not set' }}</span>
+        <p class="flex flex-wrap items-baseline gap-x-2" data-occupancy>
+            <span class="text-2xl font-semibold tabular-nums text-gray-900">{{ number_format($inside) }} / {{ $unknown ? '–' : number_format($capacity) }}</span>
+            @if ($center->capacityEstimated())
+                <span class="text-sm font-semibold text-gray-700 underline decoration-dotted underline-offset-2" title="{{ $center->capacityTooltip() }}" data-capacity-est>est.</span>
+            @endif
+            <span class="text-sm text-gray-600">{{ $unknown ? 'people inside · capacity unknown' : 'people inside · '.$percent.'%' }}</span>
         </p>
-        <div class="meter mt-2" role="img" aria-label="{{ $capacity ? $percent.'% of capacity' : 'Capacity not set' }}">
-            <div class="meter-fill {{ $meterColor }}" style="width: {{ $percent ?? 0 }}%"></div>
-        </div>
+        @unless ($unknown)
+            <div class="meter mt-2" role="img" aria-label="{{ $percent }}% of {{ $center->capacityEstimated() ? 'the estimated capacity' : 'capacity' }}">
+                <div class="meter-fill {{ $meterColor }}" style="width: {{ $percent }}%"></div>
+            </div>
+        @endunless
     </div>
     @if (($pending ?? 0) > 0)
         <p class="text-sm font-medium text-amber-800">{{ \App\Support\Plural::of($pending, 'person', 'people') }} waiting to sync</p>

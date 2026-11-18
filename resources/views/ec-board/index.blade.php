@@ -28,10 +28,12 @@
         {{-- The answer first: how full the barangay's centers are. --}}
         @php
             $inside = $centers->sum(fn ($row) => $row['center']->occupancyHere());
-            $capacity = $centers->sum(fn ($row) => (int) $row['center']->capacity_persons);
+            $capacity = $centers->reject(fn ($row) => $row['center']->capacityUnknown())->sum(fn ($row) => (int) $row['center']->capacity_persons);
+            $unknownCapacity = $centers->filter(fn ($row) => $row['center']->capacityUnknown())->count();
+            $estimated = $centers->contains(fn ($row) => $row['center']->capacityEstimated());
             $inUse = $centers->filter(fn ($row) => in_array($row['center']->displayStatus(), ['active', 'full'], true))->count();
             $full = $centers->filter(fn ($row) => $row['center']->displayStatus() === 'full')->count();
-            $waiting = $centers->sum('pendingCount');
+            $waiting = $centers->sum('pendingCount') + $privateHouses['waiting'];
         @endphp
         <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-6" data-ec-summary>
             <div class="stat">
@@ -40,7 +42,10 @@
             </div>
             <div class="stat">
                 <p class="stat-label">People inside</p>
-                <p class="stat-value">{{ number_format($inside) }} <span class="text-base font-normal text-gray-600">/ {{ $capacity ? number_format($capacity) : '—' }}</span></p>
+                <p class="stat-value">{{ number_format($inside) }} <span class="text-base font-normal text-gray-600">/ {{ $capacity ? number_format($capacity).($estimated ? ' est.' : '') : '–' }}</span></p>
+                @if ($unknownCapacity > 0)
+                    <p class="stat-note" data-capacity-unknown>{{ \App\Support\Plural::of($unknownCapacity, 'center', 'centers') }} with capacity unknown</p>
+                @endif
             </div>
             <div class="stat {{ $full > 0 ? 'stat-alert' : '' }}">
                 <p class="stat-label">Full</p>

@@ -26,7 +26,7 @@ class EcBoardCardsTest extends TestCase
 
         $this->get(route('ec-board.index'))->assertOk()
             ->assertSeeInOrder(['Centers in use', '1', 'of 2', 'People inside', '48', '/ 320', 'Full', '0', 'Waiting to sync', '1'])
-            ->assertSee('48 / 120')->assertSee('40% full')
+            ->assertSee('48 / 120')->assertSee('people inside · 40%')
             ->assertSee('0 / 200')
             ->assertSee('data-center-status="active"', false)->assertSee('data-center-status="on_standby"', false)
             ->assertSee('1 person waiting to sync');
