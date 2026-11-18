@@ -51,6 +51,8 @@ class CityViews
             return [
                 'evacuation_event' => $barangays['evacuation_event'] ?? ['id' => $event->remote_id, 'name' => $event->name, 'is_demo' => $event->is_demo],
                 'barangays' => $barangays['barangays'] ?? [],
+                // Families added after each barangay's latest submission (Nov 2026).
+                'late_entries_total' => $barangays['late_entries_total'] ?? null,
                 'submissions' => $waiting,
             ];
         });

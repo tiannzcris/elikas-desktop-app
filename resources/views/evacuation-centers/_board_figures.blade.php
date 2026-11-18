@@ -24,6 +24,13 @@
     @else
         <span class="text-gray-600">not yet fetched from the central server -- connect to the internet to load this board.</span>
     @endif
+    @if (($sectoralSnapshot?->late_entries ?? 0) > 0)
+        {{-- Late entries: registered after the barangay's latest final count;
+             not in the validated count until a new submission includes them. --}}
+        <span class="badge badge-warning ml-2" data-late-entries title="Registered after your barangay's latest final count submission. A validated count never changes; these go into the next submission.">
+            {{ \App\Support\Plural::of($sectoralSnapshot->late_entries, 'late entry', 'late entries') }}, not yet in a final count
+        </span>
+    @endif
 </p>
 
 <div class="ecb-strip">

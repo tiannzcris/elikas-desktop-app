@@ -43,14 +43,21 @@
     @elseif (! $event)
         <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
     @else
-        <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-6">
+        @php $lateTotal = $snapshot->payload['late_entries_total'] ?? $rows->sum(fn ($r) => $r['late_entries']['total'] ?? 0); @endphp
+        <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-4">
             @foreach ($states as $key => [$label, $tone])
                 <div class="stat {{ $key === 'pending' && ($counts[$key] ?? 0) > 0 ? 'stat-alert' : '' }}">
                     <p class="stat-label">{{ $label }}</p>
                     <p class="stat-value">{{ $counts[$key] ?? 0 }}</p>
                 </div>
             @endforeach
+            <div class="stat {{ $lateTotal > 0 ? 'stat-pending' : '' }}" data-late-entries-total>
+                <p class="stat-label">Late entries</p>
+                <p class="stat-value">{{ $lateTotal }}</p>
+                <p class="stat-note">not yet in a final count</p>
+            </div>
         </div>
+        <p class="text-sm text-gray-700 mb-6">A validated count never changes. Families added after a barangay's latest submission are late entries; they go into its next submission.</p>
 
         <div class="card"><div class="card-body">
             @if ($rows->isEmpty())
@@ -64,6 +71,7 @@
                             <th class="num">Submitted families</th>
                             <th class="num">Persons</th>
                             <th class="num">Families now</th>
+                            <th class="num">Late entries</th>
                             <th class="num">Validated need</th>
                         </tr>
                     </thead>
@@ -93,6 +101,16 @@
                                     {{ $n($row['computed']['families'] ?? null) }}
                                     @if ($changed)
                                         <span class="block text-xs text-amber-800">changed since submitted</span>
+                                    @endif
+                                </td>
+                                <td class="num" data-late-entries>
+                                    @if (($row['late_entries']['total'] ?? 0) > 0)
+                                        <span class="badge badge-warning">{{ \App\Support\Plural::of($row['late_entries']['families'] ?? $row['late_entries']['total'], 'family', 'families') }}</span>
+                                        @if (! empty($row['late_entries']['removed_families']))
+                                            <span class="block text-xs text-gray-600">{{ $row['late_entries']['removed_families'] }} removed</span>
+                                        @endif
+                                    @else
+                                        <span class="text-gray-500">None</span>
                                     @endif
                                 </td>
                                 <td class="num">{{ $n($row['validated_need']['families'] ?? null) }}</td>

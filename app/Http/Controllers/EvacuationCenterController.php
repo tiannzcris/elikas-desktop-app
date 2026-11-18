@@ -301,6 +301,8 @@ class EvacuationCenterController extends Controller
                     'families_now' => $data['families_now'] ?? null,
                     'persons_cumulative' => $data['persons_cumulative'] ?? null,
                     'persons_now' => $data['persons_now'] ?? null,
+                    // Families here registered after their barangay's latest final count.
+                    'late_entries' => $data['late_entries'] ?? null,
                     'beneficiaries_4ps' => $data['beneficiaries_4ps'] ?? 0,
                     'sectoral_groups' => $data['sectoral_groups'] ?? [],
                     'updated_by_name' => $data['updated_by_name'] ?? null,

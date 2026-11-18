@@ -46,7 +46,7 @@ class EvacuationCenterSectoralSnapshot extends Model
 
     protected $fillable = [
         'evacuation_center_id', 'evacuation_event_id', 'beneficiaries_4ps',
-        'families_cumulative', 'families_now', 'persons_cumulative', 'persons_now',
+        'families_cumulative', 'families_now', 'persons_cumulative', 'persons_now', 'late_entries',
         'sectoral_groups', 'updated_by_name', 'server_updated_at', 'fetched_at',
     ];
 
