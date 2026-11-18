@@ -50,6 +50,7 @@ class ReferenceDataPruneTest extends TestCase
         // a brand new center.
         Http::fake([
             '*/auth/me' => Http::response(['data' => []]),
+            '*/transfer-requests*' => Http::response(['data' => ['requests' => []]]),
             '*/barangays' => Http::response(['data' => [['id' => 1, 'name' => 'Old Barangay Name']]]),
             '*/evacuation-events' => Http::response(['data' => [['id' => 1, 'name' => 'Typhoon A', 'event_type' => 'typhoon', 'status' => 'active']]]),
             '*/evacuation-centers?detail=1' => Http::response(['data' => [
@@ -110,6 +111,7 @@ class ReferenceDataPruneTest extends TestCase
         // all, replacing them with entirely different real records.
         Http::fake([
             '*/auth/me' => Http::response(['data' => []]),
+            '*/transfer-requests*' => Http::response(['data' => ['requests' => []]]),
             '*/barangays' => Http::response(['data' => [['id' => 1, 'name' => 'Old Barangay Name']]]),
             '*/evacuation-events' => Http::response(['data' => [
                 ['id' => 7, 'name' => 'Tropical Storm Amang', 'event_type' => 'typhoon', 'status' => 'active'],
@@ -183,6 +185,7 @@ class ReferenceDataPruneTest extends TestCase
         // centers now" and wipe the local cache.
         Http::fake([
             '*/auth/me' => Http::response(['data' => []]),
+            '*/transfer-requests*' => Http::response(['data' => ['requests' => []]]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
             '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
@@ -210,6 +213,7 @@ class ReferenceDataPruneTest extends TestCase
 
         Http::fake([
             '*/auth/me' => Http::response(['data' => []]),
+            '*/transfer-requests*' => Http::response(['data' => ['requests' => []]]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
             '*/evacuation-centers?detail=1' => Http::response(['data' => []]),

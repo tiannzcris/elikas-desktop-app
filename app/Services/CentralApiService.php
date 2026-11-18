@@ -212,6 +212,54 @@ class CentralApiService
         return $this->send('post', "barangays/{$barangayRemoteId}/private-house-families", $token, $payload)['data'] ?? [];
     }
 
+    // ---------------------------------------------------------------- transfers
+    // All online only (docs/backend/apps-api-2026-11-transfers-capacity.md 2):
+    // no client_ref; never queued.
+
+    /** Other barangays' centers with room, nearest first (GET /transfer-requests/suggestions). */
+    public function transferSuggestions(string $token, int $fromCenterRemoteId, int $persons): array
+    {
+        return $this->send('get', 'transfer-requests/suggestions', $token, ['from_center_id' => $fromCenterRemoteId, 'persons' => $persons], 10)['data'] ?? [];
+    }
+
+    /** Asks another barangay's center to take families (POST /transfer-requests); returns the request row. */
+    public function createTransferRequest(string $token, array $payload): array
+    {
+        return $this->send('post', 'transfer-requests', $token, $payload)['data'] ?? [];
+    }
+
+    /** The transfer requests of an event (GET /transfer-requests). */
+    public function transferRequests(string $token, int $eventRemoteId): array
+    {
+        return $this->send('get', 'transfer-requests', $token, ['evacuation_event_id' => $eventRemoteId], 10)['data'] ?? [];
+    }
+
+    /** Accepts or declines a request (POST /transfer-requests/{id}/accept|decline); returns the message. */
+    public function decideTransfer(string $token, int $requestId, bool $accept, ?string $reason = null): string
+    {
+        return $this->send('post', "transfer-requests/{$requestId}/".($accept ? 'accept' : 'decline'), $token, $accept ? [] : ['reason' => $reason])['message'] ?? '';
+    }
+
+    /** Moves a family to another center now (PATCH /families/{id}/evacuation-center). */
+    public function moveFamily(string $token, int $familyRemoteId, int $centerRemoteId, ?string $reason = null): array
+    {
+        return $this->send('patch', "families/{$familyRemoteId}/evacuation-center", $token, array_filter([
+            'evacuation_center_id' => $centerRemoteId,
+            'reason' => $reason,
+        ]))['data'] ?? [];
+    }
+
+    /** The account's in-app notifications (GET /notifications): {unread, notifications[]}. */
+    public function notifications(string $token): array
+    {
+        return $this->send('get', 'notifications', $token, [], 8)['data'] ?? [];
+    }
+
+    public function markNotificationsRead(string $token): void
+    {
+        $this->send('post', 'notifications/read', $token, [], 8);
+    }
+
     /** Sends one fully registered family (POST /families/register); returns its id. */
     public function registerFamily(string $token, array $payload): int
     {

@@ -247,6 +247,17 @@ class AuthController extends Controller
             app(CityViews::class)->refresh($auth);
         }
 
+        // Transfer requests of the selected event, for reading offline.
+        if ($auth && ($auth->can('transfers.request') || $auth->can('transfers.receive') || $auth->can('transfers.manage'))) {
+            try {
+                app(\App\Services\Transfers::class)->refresh($auth);
+            } catch (CentralApiException $e) {
+                if ($e->isOffline() || $e->kind === CentralApiException::UNAUTHENTICATED) {
+                    throw $e;
+                }
+            }
+        }
+
         // The EC Board's "as of last sync" breakdown is deliberately NOT
         // refreshed here -- the real central endpoint (quick-count) is
         // scoped to one center+event per call, not a bulk "all centers"

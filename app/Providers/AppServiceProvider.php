@@ -23,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
             if (! isset($view->getData()['currentUser']) && Schema::hasTable('local_auth')) {
                 $view->with('currentUser', \App\Models\LocalAuth::current());
             }
+            // Transfer requests waiting for this account (the sidebar count).
+            $auth = $view->getData()['currentUser'] ?? (Schema::hasTable('local_auth') ? \App\Models\LocalAuth::current() : null);
+            $view->with('transfersWaiting', $auth?->hasOperationsAccess() && Schema::hasTable('server_snapshots')
+                ? app(\App\Services\Transfers::class)->waitingCount($auth, \App\Models\EvacuationEvent::working())
+                : 0);
         });
     }
 }

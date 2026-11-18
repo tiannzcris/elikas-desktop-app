@@ -7,11 +7,13 @@ use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
 use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PrivateHouseController;
 use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\SelectedEventController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
+use App\Http\Controllers\TransferController;
 use App\Http\Middleware\CityOnly;
 use App\Http\Middleware\OfficialOnly;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +35,14 @@ Route::get('/use-the-web', [AuthController::class, 'useWeb'])->name('use-web');
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::view('/about', 'about')->name('about');
 Route::post('/selected-event', [SelectedEventController::class, 'update'])->name('selected-event.update');
+
+// The bell, and transfers between centers (officials and CSWD; writes online only).
+Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
+Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+Route::get('/notifications/open', [NotificationController::class, 'open'])->name('notifications.open');
+Route::get('/transfers', [TransferController::class, 'index'])->name('transfers.index');
+Route::post('/transfers/refresh', [TransferController::class, 'refresh'])->name('transfers.refresh');
+Route::post('/transfers/{requestId}/decide', [TransferController::class, 'decide'])->whereNumber('requestId')->name('transfers.decide');
 Route::post('/reference-data/refresh', [AuthController::class, 'refreshReferenceDataAction'])->name('reference-data.refresh');
 
 // The barangay official's work: registration at their own centers, and sync.
@@ -60,6 +70,9 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::delete('/ec-board-entries/{entry}', [EcBoardEntryController::class, 'destroy'])->name('ec-board-entries.destroy');
 
     Route::post('/evacuation-centers/{center}/check-outs', [CheckOutController::class, 'store'])->name('check-outs.store');
+    Route::get('/evacuation-centers/{center}/move', [TransferController::class, 'moveForm'])->name('transfers.move');
+    Route::post('/evacuation-centers/{center}/move/direct', [TransferController::class, 'moveDirect'])->name('transfers.move-direct');
+    Route::post('/evacuation-centers/{center}/move/request', [TransferController::class, 'requestTransfer'])->name('transfers.request');
     Route::get('/private-houses', [PrivateHouseController::class, 'index'])->name('private-houses.index');
     Route::get('/private-houses/add', [PrivateHouseController::class, 'create'])->name('private-houses.create');
     Route::post('/private-houses', [PrivateHouseController::class, 'store'])->name('private-houses.store');
@@ -74,5 +87,7 @@ Route::middleware(CityOnly::class)->group(function () {
     Route::post('/monitoring/refresh', [MonitoringController::class, 'refresh'])->name('monitoring.refresh');
     Route::get('/final-counts', [FinalCountController::class, 'index'])->name('final-counts.index');
     Route::post('/final-counts/refresh', [FinalCountController::class, 'refresh'])->name('final-counts.refresh');
+    Route::get('/transfers/move', [TransferController::class, 'cityMoveForm'])->name('transfers.city-move');
+    Route::post('/transfers/move', [TransferController::class, 'cityMove'])->name('transfers.city-move.store');
     Route::post('/final-counts/submit-for-barangay', [FinalCountController::class, 'submitOnBehalf'])->name('final-counts.submit-on-behalf');
 });

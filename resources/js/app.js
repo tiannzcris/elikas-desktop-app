@@ -764,3 +764,56 @@ document.addEventListener('keydown', (e) => {
         document.getElementById('user-menu-btn')?.focus();
     }
 });
+
+// ---------------------------------------------------------------------
+// The bell: in-app notifications (GET /notifications through this app).
+// A notification carries only its web href; /transfer-requests opens the
+// Transfers screen (the list is loaded again), others say where on the web.
+// Loaded at start and every minute while online; the last copy offline.
+// ---------------------------------------------------------------------
+(function bell() {
+    const root = document.querySelector('[data-bell]');
+    if (!root) return;
+    const count = root.querySelector('[data-bell-count]');
+    const list = root.querySelector('[data-bell-list]');
+    const toggle = root.querySelector('[data-bell-toggle]');
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    async function load() {
+        let data;
+        try {
+            data = await fetch(root.dataset.feedUrl, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        } catch (e) {
+            return;
+        }
+        count.hidden = !data.unread;
+        count.textContent = data.unread > 9 ? '9+' : String(data.unread);
+        toggle.setAttribute('aria-label', data.unread ? `Notifications, ${data.unread} unread` : 'Notifications');
+        list.innerHTML = data.notifications.length
+            ? data.notifications.map((n) => `
+                <a href="${esc(n.open)}" class="menu-item flex-col items-start gap-0.5 ${n.read ? '' : 'bg-blue-50'}" role="menuitem" data-notification>
+                    <span class="font-semibold text-gray-900">${esc(n.title)}</span>
+                    <span class="text-sm text-gray-700 whitespace-normal">${esc(n.message)}</span>
+                    ${n.in_app ? '' : '<span class="text-xs text-gray-500">Opens on the web</span>'}
+                </a>`).join('')
+            : '<p class="px-3 py-2 text-sm text-gray-600">No notifications.</p>';
+    }
+
+    toggle.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const open = list.hidden;
+        list.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open && !count.hidden && navigator.onLine) {
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+            fetch(root.dataset.readUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, Accept: 'application/json' } })
+                .then(() => { count.hidden = true; }).catch(() => {});
+        }
+    });
+    document.addEventListener('click', (e) => { if (!root.contains(e.target)) { list.hidden = true; toggle.setAttribute('aria-expanded', 'false'); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !list.hidden) { list.hidden = true; toggle.focus(); } });
+
+    setTimeout(load, 1500);
+    setInterval(() => { if (navigator.onLine) load(); }, 60000);
+    window.addEventListener('online', load);
+})();

@@ -47,6 +47,12 @@
                         <a href="{{ route('ec-board.index') }}" class="nav-link @yield('nav-ec-board')">
                             <i class="ti ti-building-community" aria-hidden="true"></i> EC Board
                         </a>
+                        <a href="{{ route('transfers.index') }}" class="nav-link @yield('nav-transfers')" data-nav-transfers>
+                            <i class="ti ti-arrows-exchange" aria-hidden="true"></i> Transfers
+                            @if ($transfersWaiting > 0)
+                                <span class="ml-auto rounded-full bg-white/90 px-2 text-xs font-semibold text-navy">{{ $transfersWaiting }}</span>
+                            @endif
+                        </a>
                         <a href="{{ route('sync.index') }}" class="nav-link @yield('nav-sync')">
                             <i class="ti ti-cloud-upload" aria-hidden="true"></i> Sync
                             @if ($pendingTotal > 0)
@@ -63,6 +69,12 @@
                         </a>
                         <a href="{{ route('final-counts.index') }}" class="nav-link @yield('nav-final-counts')">
                             <i class="ti ti-clipboard-check" aria-hidden="true"></i> Final counts
+                        </a>
+                        <a href="{{ route('transfers.index') }}" class="nav-link @yield('nav-transfers')" data-nav-transfers>
+                            <i class="ti ti-arrows-exchange" aria-hidden="true"></i> Transfers
+                            @if ($transfersWaiting > 0)
+                                <span class="ml-auto rounded-full bg-white/90 px-2 text-xs font-semibold text-navy">{{ $transfersWaiting }}</span>
+                            @endif
                         </a>
                     </div>
                 @endif
@@ -92,6 +104,18 @@
                     <form hidden data-auto-sync data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}" data-probe-url="{{ route('sync.probe') }}">@csrf</form>
                 @elseif ($currentUser ?? null)
                     <span id="connection-badge" class="badge badge-neutral text-sm px-3 py-1" role="status" aria-live="polite"></span>
+                @endif
+                @if (($currentUser ?? null)?->hasOperationsAccess())
+                    {{-- In-app notifications (GET /notifications), loaded by app.js. --}}
+                    <div class="relative" data-bell data-feed-url="{{ route('notifications.feed') }}" data-read-url="{{ route('notifications.read') }}">
+                        <button type="button" class="btn-icon relative" data-bell-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Notifications">
+                            <i class="ti ti-bell" style="font-size: 20px;" aria-hidden="true"></i>
+                            <span class="absolute -top-0.5 -right-0.5 min-w-[1.25rem] rounded-full bg-red-600 px-1 text-xs font-semibold text-white" data-bell-count hidden></span>
+                        </button>
+                        <div class="menu-list w-96" role="menu" data-bell-list hidden>
+                            <p class="px-3 py-2 text-sm text-gray-600" data-bell-empty>No notifications.</p>
+                        </div>
+                    </div>
                 @endif
                 @if($currentUser ?? null)
                     <div class="relative">

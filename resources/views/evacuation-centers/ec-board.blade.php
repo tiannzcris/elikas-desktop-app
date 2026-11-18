@@ -141,7 +141,18 @@
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
                 <h2 id="families-here-title" class="card-title">Families here <span class="section-count ml-1">{{ $familiesHere->count() }}</span></h2>
                 @php $hereAsOf = ($selectedEvent = $events->firstWhere('id', $selectedEventId)) ? \App\Models\CenterFamilySnapshot::for($center, $selectedEvent)?->fetched_at : null; @endphp
-                <span class="text-sm text-gray-600" data-as-of>As of {{ $hereAsOf ? $hereAsOf->timezone('Asia/Manila')->format('M j, g:i A') : 'never fetched' }}</span>
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-sm text-gray-600" data-as-of>As of {{ $hereAsOf ? $hereAsOf->timezone('Asia/Manila')->format('M j, g:i A') : 'never fetched' }}</span>
+                    @php $canMove = ! $selectedEventClosed && $currentUser->can('evacuees.transfer') && $familiesHere->contains(fn ($f) => $f['remote_id'] && ! $f['checking_out']); @endphp
+                    @if ($canMove)
+                        {{-- Ticked families of this center move together (online only). --}}
+                        <form id="move-form" method="GET" action="{{ route('transfers.move', $center) }}">
+                            <button type="submit" class="btn btn-secondary btn-sm" data-online-only data-move-ticked>
+                                <i class="ti ti-arrows-exchange" aria-hidden="true"></i> Move ticked families
+                            </button>
+                        </form>
+                    @endif
+                </div>
             </div>
             @if ($familiesHere->isEmpty())
                 <x-empty icon="ti-users" title="No families checked in here yet." text="Families added here, or listed by the server at the last refresh, show here." compact>
@@ -153,11 +164,20 @@
                 <ul class="divide-y divide-gray-100">
                     @foreach ($familiesHere as $family)
                         <li class="px-5 py-2.5 flex flex-wrap items-center justify-between gap-3">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex items-start gap-3">
+                                @if ($canMove ?? false)
+                                    @if ($family['remote_id'] && ! $family['checking_out'])
+                                        <input type="checkbox" form="move-form" name="families[]" value="{{ $family['key'] }}" class="mt-1 h-4 w-4" aria-label="Tick {{ $family['label'] }} to move" data-move-tick>
+                                    @else
+                                        <span class="w-4 shrink-0" aria-hidden="true"></span>
+                                    @endif
+                                @endif
+                                <div class="min-w-0">
                                 <p class="font-semibold text-sm text-gray-900 truncate">{{ $family['label'] }}</p>
                                 <p class="text-xs text-gray-600">
-                                    {{ $family['here'] !== null ? $family['here'].' here' : 'Added on this device' }}{{ $family['purok'] ? ' · '.$family['purok'] : '' }}
+                                    {{ $family['here'] !== null ? $family['here'].' here' : 'Added on this device; can be moved once it syncs' }}{{ $family['purok'] ? ' · '.$family['purok'] : '' }}
                                 </p>
+                                </div>
                             </div>
                             @if ($family['checking_out'])
                                 <span class="badge badge-warning">Checked out, waiting to sync</span>
