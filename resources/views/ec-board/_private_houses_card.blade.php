@@ -1,0 +1,16 @@
+{{-- Families of this barangay staying with relatives or friends, outside the centers. --}}
+<a href="{{ route('private-houses.index') }}" class="card card-link card-body flex flex-col gap-3" data-private-houses-card>
+    <div class="flex items-start justify-between gap-3">
+        <p class="card-title min-w-0">Private houses</p>
+        <span class="badge badge-neutral shrink-0">Outside centers</span>
+    </div>
+    <p class="flex items-baseline gap-2">
+        <span class="text-2xl font-semibold tabular-nums text-gray-900">{{ \App\Support\Plural::of($privateHouses['family_count'], 'family', 'families') }}</span>
+        <span class="text-sm text-gray-600">{{ \App\Support\Plural::of($privateHouses['person_count'], 'person', 'people') }} with relatives or friends</span>
+    </p>
+    @if ($privateHouses['waiting'] > 0)
+        <p class="text-sm font-medium text-amber-800">{{ \App\Support\Plural::of($privateHouses['waiting'], 'family', 'families') }} waiting to sync</p>
+    @else
+        <p class="text-sm font-medium text-brand-700">Add family or see the list</p>
+    @endif
+</a>

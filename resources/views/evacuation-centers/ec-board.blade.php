@@ -202,6 +202,10 @@
                         <h2 id="add-evacuee-title" class="modal-title">Add evacuee</h2>
                         <p class="text-xs font-medium text-gray-700 mt-0.5">{{ $center->name }} &middot; {{ $events->firstWhere('id', $selectedEventId)?->optionLabel() }}</p>
                         <p class="text-xs text-gray-600">Saved on this device first -- name and birthdate can be added later.</p>
+                        @if ($currentUser->can('evacuees.manage'))
+                            <p class="text-sm mt-1">Staying with relatives or friends, not at a center?
+                                <a href="{{ route('private-houses.create') }}" class="link" data-private-house-link>Add to Private houses</a></p>
+                        @endif
                     </div>
                     <button type="button" class="btn-icon -mr-1.5" data-close-board-modal aria-label="Close">
                         <i class="ti ti-x" style="font-size: 18px;" aria-hidden="true"></i>

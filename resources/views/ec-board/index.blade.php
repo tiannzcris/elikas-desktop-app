@@ -21,6 +21,9 @@
         <div class="card">
             <x-empty icon="ti-building-community" title="No evacuation centers on this device yet." text="Refresh reference data while online to bring your barangay's centers here."><form method="POST" action="{{ route('reference-data.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh reference data</button></form></x-empty>
         </div>
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            @include('ec-board._private_houses_card')
+        </div>
     @else
         {{-- The answer first: how full the barangay's centers are. --}}
         @php
@@ -30,7 +33,7 @@
             $full = $centers->filter(fn ($row) => $row['center']->displayStatus() === 'full')->count();
             $waiting = $centers->sum('pendingCount');
         @endphp
-        <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-6" data-ec-summary>
+        <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-6" data-ec-summary>
             <div class="stat">
                 <p class="stat-label">Centers in use</p>
                 <p class="stat-value">{{ $inUse }} <span class="text-base font-normal text-gray-600">of {{ $centers->count() }}</span></p>
@@ -43,6 +46,11 @@
                 <p class="stat-label">Full</p>
                 <p class="stat-value">{{ $full }}</p>
             </div>
+            <a href="{{ route('private-houses.index') }}" class="stat" data-private-houses-stat>
+                <p class="stat-label">In private houses</p>
+                <p class="stat-value">{{ number_format($privateHouses['person_count']) }}</p>
+                <p class="stat-note">{{ \App\Support\Plural::of($privateHouses['family_count'], 'family', 'families') }}</p>
+            </a>
             <a href="{{ route('sync.index') }}" class="stat {{ $waiting > 0 ? 'stat-pending' : '' }}">
                 <p class="stat-label">Waiting to sync</p>
                 <p class="stat-value">{{ $waiting }}</p>
@@ -53,6 +61,7 @@
             @foreach ($centers as $row)
                 @include('ec-board._center_card', ['center' => $row['center'], 'pending' => $row['pendingCount']])
             @endforeach
+            @include('ec-board._private_houses_card')
         </div>
     @endif
 @endsection

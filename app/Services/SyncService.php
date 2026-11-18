@@ -9,7 +9,9 @@ use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
+use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
+use App\Support\Plural;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -70,10 +72,13 @@ class SyncService
         $returning = PendingReEnrollment::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter'])
             ->get()->map(fn ($m) => ['key' => 'returning:'.$m->id, 'model' => $m, 'kind' => 'returning']);
 
+        $privateHouses = PendingPrivateHouseFamily::whereNull('synced_at')->with('evacuationEvent')
+            ->get()->map(fn ($m) => ['key' => 'private:'.$m->id, 'model' => $m, 'kind' => 'private']);
+
         $checkOuts = PendingCheckOut::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter', 'household'])
             ->get()->map(fn ($m) => ['key' => 'checkout:'.$m->id, 'model' => $m, 'kind' => 'checkout']);
 
-        return $entries->concat($families)->concat($returning)->concat($checkOuts)
+        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)
             ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
             ->values();
     }
@@ -242,6 +247,7 @@ class SyncService
             // Full registrations were removed in 2.0; ones queued before the
             // upgrade are still sent so nothing already entered is lost.
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
+            'private' => 'Private house: '.$model->label().' · '.Plural::of($model->personCount(), 'person', 'people').' (with '.$model->host_name.')',
             'checkout' => 'Check-out: '.$model->family_label.' ('.(PendingCheckOut::STATUSES[$model->status] ?? $model->status).')',
             'returning' => 'Returning family '.$model->family_name.' · '.count($model->members).' '.str('person')->plural(count($model->members)),
             default => $item['key'],
@@ -250,12 +256,19 @@ class SyncService
 
     public function place(array $item): string
     {
-        return $item['model']->evacuationCenter?->name ?? '';
+        return $item['kind'] === 'private' ? 'Private house' : ($item['model']->evacuationCenter?->name ?? '');
     }
 
     private function send(array $item, LocalAuth $auth): void
     {
         $model = $item['model'];
+
+        if ($item['kind'] === 'private') {
+            $data = $this->api->addPrivateHouseFamily($auth->api_token, $model->barangay_remote_id, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
+            $model->update(['remote_family_id' => $data['id'] ?? null, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+            return;
+        }
 
         if ($item['kind'] === 'checkout') {
             $familyId = $model->familyRemoteId();

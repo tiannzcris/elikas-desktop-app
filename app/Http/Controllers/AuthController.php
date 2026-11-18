@@ -216,6 +216,8 @@ class AuthController extends Controller
             if ($auth->can('families.re_enroll')) {
                 $this->prefetchReturningFamilies($api, $token, (int) $auth->barangay_id);
             }
+            // Families in private houses, for the EC Board's card and counts.
+            app(\App\Services\PrivateHouses::class)->refresh($auth);
         }
 
         // CSWD: Monitoring and Final counts, for reading offline.

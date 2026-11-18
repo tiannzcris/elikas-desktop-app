@@ -16,6 +16,12 @@ class EvacuationEvent extends Model
     /** The server's words when no event is open (EventFlow::NO_OPEN_EVENT). */
     public const NO_OPEN_EVENT = 'No open event yet. CSWDO opens an event when a threat is announced.';
 
+    /** The event the user is working on (every event-based screen uses it). */
+    public static function working(): ?self
+    {
+        return app(\App\Services\CityViews::class)->currentEvent();
+    }
+
     /** Whether any event takes arrivals (active, or monitoring: the server switches it to active). */
     public static function anyOpen(): bool
     {

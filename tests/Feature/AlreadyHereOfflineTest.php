@@ -50,6 +50,7 @@ class AlreadyHereOfflineTest extends TestCase
             '*/evacuation-events' => Http::response(['data' => [['id' => 1, 'name' => 'Typhoon', 'event_type' => 'typhoon', 'status' => 'active']]]),
             '*/evacuation-centers?detail=1' => Http::response(['data' => [['id' => 7, 'barangay_id' => 4, 'name' => 'Gym', 'status' => 'active']]]),
             '*/puroks*' => Http::response(['data' => []]),
+            '*/private-house-families*' => Http::response(['data' => ['barangays' => [], 'families' => []]]),
             '*/evacuation-centers/7/families*' => Http::response(['data' => [['id' => 50, 'name' => 'Reyes']]]),
             '*/returning-families*' => Http::response(['data' => ['past_events' => [], 'families' => []]]),
         ]);

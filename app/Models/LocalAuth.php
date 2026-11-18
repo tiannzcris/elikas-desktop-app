@@ -35,10 +35,12 @@ class LocalAuth extends Model
         'barangay_official' => [
             'operations.access', 'page.monitoring', 'puroks.view', 'families.re_enroll',
             'count_submissions.submit', 'box_relief.distribute', 'centers.edit', 'centers.set_status',
+            'evacuees.manage', 'evacuees.transfer', 'transfers.request', 'transfers.receive',
         ],
         'cswd_personnel' => [
             'operations.access', 'scope.all_barangays', 'page.monitoring', 'puroks.view',
-            'families.re_enroll', 'count_submissions.review', 'centers.review', 'centers.set_status',
+            'count_submissions.review', 'count_submissions.submit_on_behalf', 'centers.review', 'centers.set_status',
+            'evacuees.transfer', 'evacuees.request_correction', 'transfers.manage', 'page.dashboard',
         ],
         'administrator' => ['barangays.view', 'users.manage'],
     ];

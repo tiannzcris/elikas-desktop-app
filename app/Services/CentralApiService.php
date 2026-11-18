@@ -194,6 +194,24 @@ class CentralApiService
         return $body['data']['results'][0] ?? [];
     }
 
+    /**
+     * Families in private houses (GET /private-house-families): per-barangay
+     * counts, and with a barangay its families with their hosts.
+     */
+    public function fetchPrivateHouses(string $token, int $eventRemoteId, ?int $barangayRemoteId = null): array
+    {
+        return $this->send('get', 'private-house-families', $token, array_filter([
+            'evacuation_event_id' => $eventRemoteId,
+            'barangay_id' => $barangayRemoteId,
+        ]), 15)['data'] ?? [];
+    }
+
+    /** Adds a family in a private house (POST /barangays/{id}/private-house-families); returns its data. */
+    public function addPrivateHouseFamily(string $token, int $barangayRemoteId, array $payload): array
+    {
+        return $this->send('post', "barangays/{$barangayRemoteId}/private-house-families", $token, $payload)['data'] ?? [];
+    }
+
     /** Sends one fully registered family (POST /families/register); returns its id. */
     public function registerFamily(string $token, array $payload): int
     {

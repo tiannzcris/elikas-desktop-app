@@ -51,6 +51,7 @@ class EvacuationCenterController extends Controller
             'currentUser' => $auth,
             'barangayName' => $auth->barangay_name,
             'centers' => $centers,
+            'privateHouses' => app(\App\Services\PrivateHouses::class)->forEvent(EvacuationEvent::working(), (int) $auth->barangay_id),
         ]);
     }
 

@@ -8,6 +8,7 @@ use App\Models\EcBoardEntry;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
+use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
 use App\Models\ReturningFamilySnapshot;
 use App\Models\ServerSnapshot;
@@ -25,7 +26,8 @@ class LocalData
         return EcBoardEntry::whereNull('synced_at')->count()
             + Family::whereNull('synced_at')->where('created_via_ec_board', false)->count()
             + PendingReEnrollment::whereNull('synced_at')->count()
-            + PendingCheckOut::whereNull('synced_at')->count();
+            + PendingCheckOut::whereNull('synced_at')->count()
+            + PendingPrivateHouseFamily::whereNull('synced_at')->count();
     }
 
     /** @return array{id: int, name: string, email: string}|null */
@@ -62,6 +64,7 @@ class LocalData
         ReturningFamilySnapshot::query()->delete();
         PendingReEnrollment::whereNotNull('synced_at')->delete();
         PendingCheckOut::whereNotNull('synced_at')->delete();
+        PendingPrivateHouseFamily::whereNotNull('synced_at')->delete();
         ServerSnapshot::query()->delete();
     }
 

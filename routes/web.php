@@ -7,6 +7,7 @@ use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EvacuationCenterController;
 use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\PrivateHouseController;
 use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
@@ -57,6 +58,9 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::delete('/ec-board-entries/{entry}', [EcBoardEntryController::class, 'destroy'])->name('ec-board-entries.destroy');
 
     Route::post('/evacuation-centers/{center}/check-outs', [CheckOutController::class, 'store'])->name('check-outs.store');
+    Route::get('/private-houses', [PrivateHouseController::class, 'index'])->name('private-houses.index');
+    Route::get('/private-houses/add', [PrivateHouseController::class, 'create'])->name('private-houses.create');
+    Route::post('/private-houses', [PrivateHouseController::class, 'store'])->name('private-houses.store');
     Route::get('/evacuation-centers/{center}/returning-families', [ReturningFamilyController::class, 'index'])->name('returning-families.index');
     Route::post('/evacuation-centers/{center}/returning-families', [ReturningFamilyController::class, 'store'])->name('returning-families.store');
 });

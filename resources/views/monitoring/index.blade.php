@@ -50,9 +50,15 @@
         </div>
 
         <section data-tab-panel="overview">
-            <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-6">
+            {{-- In centers and in private houses (figures.private_houses, Nov 2026;
+                 an older server sent a bare "outside" count). --}}
+            @php
+                $houses = $figures['private_houses'] ?? ['persons' => $figures['outside'] ?? 0, 'families' => null];
+            @endphp
+            <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-6">
                 <div class="stat"><p class="stat-label">Persons</p><p class="stat-value">{{ $n($figures['persons'] ?? 0) }}</p><p class="stat-note">{{ \App\Support\Plural::of($figures['families'] ?? 0, 'family', 'families') }}</p></div>
-                <div class="stat"><p class="stat-label">Inside centers</p><p class="stat-value">{{ $n($figures['inside'] ?? 0) }}</p><p class="stat-note">{{ $n($figures['outside'] ?? 0) }} outside</p></div>
+                <div class="stat"><p class="stat-label">In centers</p><p class="stat-value">{{ $n($figures['inside'] ?? 0) }}</p>@isset($figures['inside_families'])<p class="stat-note">{{ \App\Support\Plural::of($figures['inside_families'], 'family', 'families') }}</p>@endisset</div>
+                <div class="stat" data-private-houses-figure><p class="stat-label">In private houses</p><p class="stat-value">{{ $n($houses['persons'] ?? 0) }}</p>@if (($houses['families'] ?? null) !== null)<p class="stat-note">{{ \App\Support\Plural::of($houses['families'], 'family', 'families') }}</p>@endif</div>
                 <div class="stat"><p class="stat-label">Arrived in the last hour</p><p class="stat-value">{{ $n($figures['arrived_last_hour'] ?? 0) }}</p></div>
                 <div class="stat"><p class="stat-label">Centers in use</p><p class="stat-value">{{ $n($figures['centers_in_use'] ?? 0) }}</p></div>
             </div>
