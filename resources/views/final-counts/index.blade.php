@@ -43,6 +43,7 @@
     @elseif (! $event)
         <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
     @else
+        @php $canSubmitForBarangay = $currentUser->can('count_submissions.submit_on_behalf') && ($event['status'] ?? 'active') === 'active'; @endphp
         @php $lateTotal = $snapshot->payload['late_entries_total'] ?? $rows->sum(fn ($r) => $r['late_entries']['total'] ?? 0); @endphp
         <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-4">
             @foreach ($states as $key => [$label, $tone])
@@ -91,8 +92,24 @@
                                 </td>
                                 <td>
                                     <span class="badge {{ $tone }}">{{ $label }}</span>
+                                    @if (! empty($submission['submitted_on_behalf']))
+                                        <span class="block text-xs text-gray-600 mt-1">Submitted by CSWD for the barangay</span>
+                                    @endif
                                     @if (! empty($submission['review_note']))
                                         <span class="block text-xs text-gray-600 mt-1">{{ $submission['review_note'] }}</span>
+                                    @endif
+                                    {{-- No official account: CSWD submits the system's count now (online only). --}}
+                                    @if (empty($row['has_official_account']) && $canSubmitForBarangay
+                                        && (in_array($row['state'], ['none', 'returned'], true) || ($row['late_entries']['total'] ?? 0) > 0))
+                                        <form method="POST" action="{{ route('final-counts.submit-on-behalf') }}" class="mt-2"
+                                            data-confirm-title="Submit the final count for {{ $row['barangay']['name'] ?? '' }}?"
+                                            data-confirm="The system's count now: {{ \App\Support\Plural::of($row['computed']['families'] ?? 0, 'family', 'families') }}, {{ \App\Support\Plural::of($row['computed']['persons'] ?? 0, 'person', 'people') }}. It is recorded as submitted by CSWD for the barangay."
+                                            data-confirm-label="Submit for this barangay">
+                                            @csrf
+                                            <input type="hidden" name="barangay_id" value="{{ $row['barangay']['id'] ?? '' }}">
+                                            <input type="hidden" name="barangay_name" value="{{ $row['barangay']['name'] ?? '' }}">
+                                            <button type="submit" class="btn btn-secondary btn-sm" data-online-only data-submit-for-barangay>Submit for this barangay</button>
+                                        </form>
                                     @endif
                                 </td>
                                 <td class="num">{{ $n($submission['families'] ?? null) }}</td>

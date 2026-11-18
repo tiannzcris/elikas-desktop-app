@@ -74,4 +74,5 @@ Route::middleware(CityOnly::class)->group(function () {
     Route::post('/monitoring/refresh', [MonitoringController::class, 'refresh'])->name('monitoring.refresh');
     Route::get('/final-counts', [FinalCountController::class, 'index'])->name('final-counts.index');
     Route::post('/final-counts/refresh', [FinalCountController::class, 'refresh'])->name('final-counts.refresh');
+    Route::post('/final-counts/submit-for-barangay', [FinalCountController::class, 'submitOnBehalf'])->name('final-counts.submit-on-behalf');
 });
