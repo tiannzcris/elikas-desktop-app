@@ -84,7 +84,7 @@
                     </ul>
 
                     <dl class="dl-grid lg:grid-cols-3">
-                        <div><dt>Asked by</dt><dd>{{ $row['requested_by']['name'] ?? '—' }} · {{ $at($row['requested_at'] ?? null) }}</dd></div>
+                        <div><dt>Asked by</dt><dd data-requested-by>{{ \App\Services\Transfers::requestedBy($row) }} · {{ $at($row['requested_at'] ?? null) }}</dd></div>
                         @if (! empty($row['note']))<div><dt>Note</dt><dd>{{ $row['note'] }}</dd></div>@endif
                         @if ($row['status'] === 'pending')
                             <div><dt>Waiting</dt><dd>{{ \App\Support\Plural::of($row['waiting_minutes'] ?? 0, 'minute', 'minutes') }}</dd></div>

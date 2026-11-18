@@ -49,4 +49,10 @@ class Transfers
 
         return (int) ($auth->isCityWide() ? ($counts['pending'] ?? 0) : ($counts['incoming_pending'] ?? 0));
     }
+
+    /** Who asked: a demo request has no requested_by, so the sending barangay's name. */
+    public static function requestedBy(array $row): string
+    {
+        return $row['requested_by']['name'] ?? ($row['from_barangay']['name'] ?? 'Unknown');
+    }
 }
