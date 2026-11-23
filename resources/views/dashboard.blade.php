@@ -60,9 +60,45 @@
         @else
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 @foreach ($centers as $row)
-                    @include('ec-board._center_card', ['center' => $row['center'], 'pending' => $row['pending']])
+                    @include('ec-board._center_card', ['center' => $row['center'], 'pending' => $row['pending'], 'readiness' => $board['readiness'][$row['center']->remote_id] ?? null])
                 @endforeach
             </div>
         @endif
     </section>
+
+    @if ($board['has_copy'])
+        <div class="grid gap-6 xl:grid-cols-2 mt-8">
+            {{-- GET /dashboard/barangay todo[]: done on the web (the desktop has no center editing). --}}
+            <section class="card card-body flex flex-col gap-3" aria-labelledby="todo-title" data-todo>
+                <div class="card-header"><h2 id="todo-title" class="card-title">To do</h2><span class="text-sm text-gray-600">On the web</span></div>
+                @forelse ($board['todo'] as $item)
+                    <div class="flex flex-wrap items-start justify-between gap-3 border-t border-gray-100 pt-3 first:border-t-0 first:pt-0" data-todo-kind="{{ $item['kind'] }}">
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-900">{{ $item['text'] }}</p>
+                            @if (! empty($item['detail']))<p class="text-sm text-gray-600">{{ $item['detail'] }}</p>@endif
+                        </div>
+                        <span class="text-sm text-gray-700 shrink-0">{{ $item['action'] ?? 'Open' }}: <span class="font-medium break-all">{{ $webUrl }}{{ $item['href'] ?? '' }}</span></span>
+                    </div>
+                @empty
+                    <x-empty icon="ti-circle-check" title="Nothing to do for your centers." compact />
+                @endforelse
+            </section>
+            <section class="card card-body flex flex-col gap-3" aria-labelledby="alerts-title" data-alerts>
+                <div class="card-header"><h2 id="alerts-title" class="card-title">Latest alerts</h2></div>
+                @forelse ($board['alerts'] as $alert)
+                    @php $tone = ['mandatory' => 'badge-danger', 'advisory' => 'badge-warning', 'info' => 'badge-info'][$alert['severity'] ?? ''] ?? 'badge-neutral'; @endphp
+                    <div class="flex flex-wrap items-start justify-between gap-2 border-t border-gray-100 pt-3 first:border-t-0 first:pt-0">
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-900">{{ $alert['title'] ?? '' }}</p>
+                            <p class="text-sm text-gray-600">{{ \App\Support\Format::when($alert['date_sent'] ?? null) }}@if ($target = \App\Services\BarangayDashboard::target($alert)) · <span data-alert-target>{{ $target }}</span>@endif</p>
+                        </div>
+                        <span class="badge {{ $tone }}">{{ ['mandatory' => 'Emergency', 'advisory' => 'Advisory', 'info' => 'Info'][$alert['severity'] ?? ''] ?? \Illuminate\Support\Str::headline($alert['severity'] ?? '') }}</span>
+                    </div>
+                @empty
+                    <x-empty icon="ti-bell-off" title="No alerts." compact />
+                @endforelse
+            </section>
+        </div>
+        <p class="text-sm text-gray-600 mt-3">As of {{ \App\Support\Format::when($board['fetched_at']) }}.</p>
+    @endif
 @endsection

@@ -123,6 +123,17 @@ class LayoutCheckSeeder extends Seeder
                 ],
             ]]]);
 
+        ServerSnapshot::keep('barangay_dashboard.79', ['dashboard' => [
+            'centers' => [['id' => 101, 'readiness' => 'ready'], ['id' => 102, 'readiness' => 'below'], ['id' => 103, 'readiness' => 'no_checklist']],
+            'todo' => [
+                ['kind' => 'center_checklist', 'text' => '1 center has no facilities checklist', 'detail' => 'Bacong Barangay Hall. Without it, nobody can tell if the center is ready.', 'href' => '/evacuation-centers/103#facilities', 'action' => 'Fill in checklist'],
+                ['kind' => 'supplies_short', 'center_id' => 102, 'text' => 'Bacong Covered Court: short of the planning standard', 'detail' => '2 toilets for a full center (120 persons).', 'href' => '/facility-requests?request=102', 'action' => 'Request supplies'],
+            ]],
+            'alerts' => [
+                ['id' => 1, 'title' => 'Typhoon signal no. 2', 'severity' => 'advisory', 'date_sent' => now()->subHours(2)->toIso8601String(), 'target_barangay' => null],
+                ['id' => 2, 'title' => 'Prepare to evacuate low-lying puroks', 'severity' => 'mandatory', 'date_sent' => now()->subHour()->toIso8601String(), 'target_barangay' => ['id' => 4, 'name' => 'Bacong']],
+            ]]);
+
         if ($cswd) {
             ServerSnapshot::keep('monitoring.overview', ['evacuation_event' => ['id' => 79, 'name' => 'Typhoon Drill', 'status' => 'active', 'is_demo' => true],
                 'generated_at' => now()->subMinutes(5)->toIso8601String(),

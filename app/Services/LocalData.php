@@ -167,7 +167,7 @@ class LocalData
     private static function snapshotKeys(EvacuationEvent $event): array
     {
         return ["private_houses.{$event->id}", "transfers.{$event->id}",
-            "families_to_evacuate.{$event->remote_id}", "final_count.{$event->remote_id}", "relief.{$event->remote_id}"];
+            "families_to_evacuate.{$event->remote_id}", "final_count.{$event->remote_id}", "relief.{$event->remote_id}", "barangay_dashboard.{$event->remote_id}"];
     }
 
     /** Sent EC Board entries and families, except households a waiting entry still points to. */

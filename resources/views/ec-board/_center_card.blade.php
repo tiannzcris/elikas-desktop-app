@@ -33,6 +33,10 @@
             </div>
         @endunless
     </div>
+    @if ($readiness = $readiness ?? null)
+        @php [$readyLabel, $readyTone] = \App\Services\BarangayDashboard::READINESS[$readiness] ?? [\Illuminate\Support\Str::headline($readiness), 'badge-neutral']; @endphp
+        <p class="text-sm" data-readiness="{{ $readiness }}">Facilities: <span class="badge {{ $readyTone }}">{{ $readyLabel }}</span></p>
+    @endif
     @if (($pending ?? 0) > 0)
         <p class="text-sm font-medium text-amber-800">{{ \App\Support\Plural::of($pending, 'person', 'people') }} waiting to sync</p>
     @endif

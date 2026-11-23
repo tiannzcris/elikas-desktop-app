@@ -270,6 +270,10 @@ class AuthController extends Controller
             if ($auth->can('box_relief.distribute')) {
                 app(\App\Services\BoxRelief::class)->refreshOpen($auth);
             }
+            // The dashboard's to-do, readiness and latest alerts.
+            if ($auth->can('page.barangay_dashboard') || $auth->can('count_submissions.submit')) {
+                app(\App\Services\BarangayDashboard::class)->refreshSelected($auth);
+            }
             // The final count, for reading offline.
             if ($auth->can('count_submissions.submit')) {
                 app(\App\Services\BarangayFinalCount::class)->refreshOpen($auth);

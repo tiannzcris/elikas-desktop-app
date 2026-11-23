@@ -72,7 +72,11 @@ Sign in with email or username. A temporary password must be changed first; a
 locked account and maintenance show the server's message. Every request sends
 `X-Device-Id`, `X-App-Version`, `X-App-Platform`, `X-Sync-Pending`,
 `X-Sync-Failed` and `X-Last-Sync`. System notices show as a banner; Report a
-problem (with an optional screenshot) is in the account menu.
+problem (with an optional screenshot) is in the account menu. The bell opens
+notifications by their `type` (registration open → that event's EC Board,
+final count reminders and counts submitted on behalf → Final count). The
+official's dashboard shows the server's to-do list, each center's facilities
+readiness and the latest alerts with their target (whole city or the barangay).
 
 ## 2.1.0: to confirm with the backend
 

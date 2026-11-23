@@ -57,6 +57,8 @@ class DashboardController extends Controller
             'attention' => $sync->needsAttention()->count(),
             'lastSyncAt' => AppState::get('last_sync_at'),
             'centers' => $centers,
+            'board' => app(\App\Services\BarangayDashboard::class)->forEvent($views->currentEvent()),
+            'webUrl' => app(\App\Services\CentralApiService::class)->webUrl(),
         ]);
     }
 }

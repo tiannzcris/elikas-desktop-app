@@ -152,6 +152,19 @@ switch the internet off (unplug, or turn off Wi-Fi).
 - [ ] Administrator → Devices and sync shows this computer with version 2.1.0, records waiting
       and failed, and last sync. Signing the device out there sends the app to sign-in.
 
+## 10b. Notifications, dashboard, alerts (official)
+
+- [ ] CSWD presses Start evacuation (or records a forced evacuation for your barangay): the bell
+      shows "… registration is now open"; clicking it switches to that event and opens the EC
+      Board, now unlocked.
+- [ ] CSWD submits your final count on your behalf: the bell's notification opens Final count with
+      "Submitted by CSWD on behalf of …".
+- [ ] An answered problem report opens Report a problem; a correction request says it opens on the web.
+- [ ] Dashboard: each center card shows "Facilities: Ready / Below standard / No facilities
+      checklist / No capacity"; "To do" lists the server's items with the web address to open;
+      "Latest alerts" shows each alert with "Whole city" or "Barangay <name>". All of it stays
+      readable offline ("As of …").
+
 ## 11. Layout
 
 - [ ] At 1366x768 and 1920x1080 no page scrolls sideways, and nothing but the page has its own
