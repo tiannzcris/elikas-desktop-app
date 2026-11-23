@@ -35,6 +35,9 @@
                         <i class="ti ti-history" aria-hidden="true"></i> Returning families
                     </a>
                 @endif
+                <a href="{{ route('downloads.index', ['center' => $center->id]) }}" class="menu-item" role="menuitem">
+                    <i class="ti ti-printer" aria-hidden="true"></i> Print and download
+                </a>
                 <form method="POST" action="{{ route('sync.all') }}" data-sync-form data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}">
                     @csrf
                     <input type="hidden" name="return_to_center_id" value="{{ $center->id }}">

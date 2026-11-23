@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarangayFinalCountController;
 use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EventLifecycleController;
 use App\Http\Controllers\FamiliesToEvacuateController;
@@ -75,6 +76,9 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::get('/final-count', [BarangayFinalCountController::class, 'index'])->name('final-count.index');
     Route::post('/final-count/refresh', [BarangayFinalCountController::class, 'refresh'])->name('final-count.refresh');
     Route::post('/final-count/submit', [BarangayFinalCountController::class, 'submit'])->name('final-count.submit');
+    // Print and download: files made on this computer, officials only.
+    Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');
+    Route::post('/downloads', [DownloadController::class, 'save'])->name('downloads.save');
     Route::post('/puroks/{purok}/marks', [FamiliesToEvacuateController::class, 'markPurok'])->name('puroks.mark');
 
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');

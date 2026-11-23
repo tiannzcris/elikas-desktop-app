@@ -163,7 +163,7 @@ class EvacuationCenterController extends Controller
      * the page and both refresh endpoints, so a refresh re-renders the
      * whole sheet from whatever is cached by then.
      */
-    private function boardData(EvacuationCenter $center, ?int $eventId): array
+    public function boardData(EvacuationCenter $center, ?int $eventId): array
     {
         $breakdownBrackets = array_merge(array_keys(EcBoardEntry::AGE_BRACKETS), [self::UNCLASSIFIED_BRACKET]);
 

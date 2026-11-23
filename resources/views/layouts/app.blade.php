@@ -63,6 +63,9 @@
                                 <i class="ti ti-clipboard-check" aria-hidden="true"></i> Final count
                             </a>
                         @endif
+                        <a href="{{ route('downloads.index') }}" class="nav-link @yield('nav-downloads')">
+                            <i class="ti ti-printer" aria-hidden="true"></i> Print and download
+                        </a>
                         <a href="{{ route('sync.index') }}" class="nav-link @yield('nav-sync')">
                             <i class="ti ti-cloud-upload" aria-hidden="true"></i> Sync
                             @if ($pendingTotal > 0)
