@@ -16,6 +16,8 @@ abstract class TestCase extends BaseTestCase
         // Never let a test reach a real central server (a local backend
         // may well be running on this machine).
         Http::preventStrayRequests();
+        // No administrator notices unless a test says otherwise.
+        Http::fake(['*/system-notices*' => Http::response(['data' => []])]);
 
         // A key of its own per test run, never a real one.
         config(['elikas.local_data_key_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'elikas-test-'.getmypid().'.key',

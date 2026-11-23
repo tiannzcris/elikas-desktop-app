@@ -16,7 +16,7 @@ class LocalAuth extends Model
     protected $fillable = [
         'remote_user_id', 'name', 'email', 'role', 'permissions', 'role_display_name', 'status',
         'barangay_id', 'barangay_name', 'api_token', 'logged_in_at', 'identity_checked_at',
-        'password_hash', 'locked_at',
+        'password_hash', 'locked_at', 'username', 'must_change_password',
     ];
 
     protected $hidden = ['api_token', 'password_hash'];
@@ -25,6 +25,7 @@ class LocalAuth extends Model
         'logged_in_at' => 'datetime',
         'identity_checked_at' => 'datetime',
         'locked_at' => 'datetime',
+        'must_change_password' => 'boolean',
         'permissions' => 'array',
         // Encrypted at rest with this computer's key (docs/local-data-protection.md).
         'api_token' => 'encrypted',
@@ -41,12 +42,12 @@ class LocalAuth extends Model
             'operations.access', 'page.monitoring', 'puroks.view', 'families.re_enroll',
             'count_submissions.submit', 'box_relief.distribute', 'centers.edit', 'centers.set_status',
             'evacuees.manage', 'evacuees.transfer', 'transfers.request', 'transfers.receive',
-            'families_to_evacuate.manage', 'centers.set_location',
+            'families_to_evacuate.manage', 'centers.set_location', 'support.report',
         ],
         'cswd_personnel' => [
             'operations.access', 'scope.all_barangays', 'page.monitoring', 'puroks.view',
             'count_submissions.review', 'count_submissions.submit_on_behalf', 'centers.review', 'centers.set_status',
-            'evacuees.transfer', 'evacuees.request_correction', 'transfers.manage', 'page.dashboard',
+            'evacuees.transfer', 'evacuees.request_correction', 'transfers.manage', 'page.dashboard', 'support.report',
         ],
         'administrator' => ['barangays.view', 'users.manage'],
     ];
@@ -106,6 +107,8 @@ class LocalAuth extends Model
             'status' => $user['status'] ?? null,
             'barangay_id' => $user['barangay']['id'] ?? null,
             'barangay_name' => $user['barangay']['name'] ?? null,
+            'username' => $user['username'] ?? null,
+            'must_change_password' => (bool) ($user['must_change_password'] ?? false),
         ];
     }
 }

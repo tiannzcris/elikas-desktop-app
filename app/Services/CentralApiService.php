@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Exceptions\CentralApiAuthenticationException;
 use App\Exceptions\CentralApiException;
+use App\Support\AccountState;
+use App\Support\DeviceHeaders;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -31,7 +33,7 @@ class CentralApiService
      */
     public function send(string $method, string $path, ?string $token = null, array $body = [], int $timeout = 15): array
     {
-        $request = Http::acceptJson()->timeout($timeout);
+        $request = Http::acceptJson()->timeout($timeout)->withHeaders(DeviceHeaders::all());
         if ($token !== null) {
             $request = $request->withToken($token);
         }
@@ -42,6 +44,34 @@ class CentralApiService
             $response = strtolower($method) === 'get'
                 ? $request->get($url, $body)
                 : $request->send(strtoupper($method), $url, ['json' => $body]);
+        } catch (ConnectionException $e) {
+            throw new CentralApiException(self::OFFLINE_MESSAGE, CentralApiException::OFFLINE);
+        }
+
+        if ($response->successful()) {
+            AccountState::serverAnswered();
+
+            return $response->json() ?? [];
+        }
+
+        throw $this->failure($response);
+    }
+
+    /**
+     * A multipart POST (a file with fields), with the same headers and
+     * error handling as send().
+     *
+     * @param  array<string, array{contents: string, filename: string}>  $files
+     */
+    public function sendMultipart(string $path, string $token, array $fields, array $files = [], int $timeout = 30): array
+    {
+        $request = Http::acceptJson()->timeout($timeout)->withHeaders(DeviceHeaders::all())->withToken($token)->asMultipart();
+        foreach ($files as $name => $file) {
+            $request = $request->attach($name, $file['contents'], $file['filename']);
+        }
+
+        try {
+            $response = $request->post($this->baseUrl().'/'.ltrim($path, '/'), $fields);
         } catch (ConnectionException $e) {
             throw new CentralApiException(self::OFFLINE_MESSAGE, CentralApiException::OFFLINE);
         }
@@ -59,6 +89,16 @@ class CentralApiService
 
         if ($status === 401) {
             return new CentralApiAuthenticationException;
+        }
+
+        $code = $response->json('errors.code');
+        // The account is on a temporary password: everything waits for a new one.
+        if ($status === 403 && $code === 'password_change_required') {
+            AccountState::passwordChangeRequired();
+        }
+        // The administrator switched maintenance mode on.
+        if ($status === 503 && $code === 'maintenance') {
+            AccountState::maintenance((string) ($response->json('message') ?? ''));
         }
 
         return new CentralApiException(
@@ -97,7 +137,11 @@ class CentralApiService
                 );
             }
             if ($e->kind === CentralApiException::UNAUTHENTICATED) {
-                throw new CentralApiException('The email or password is incorrect.', CentralApiException::UNAUTHENTICATED, 401);
+                throw new CentralApiException('The email, username or password is incorrect.', CentralApiException::UNAUTHENTICATED, 401);
+            }
+            // 423: locked after 5 failed sign-ins; the server says until when.
+            if ($e->status === 423) {
+                throw new CentralApiException($e->getMessage(), CentralApiException::LOCKED, 423);
             }
             throw $e;
         }
@@ -296,7 +340,7 @@ class CentralApiService
     private function rejectionMessage(Response $response, string $fallback): string
     {
         $message = $response->json('message') ?? $fallback;
-        $extra = collect($response->json('errors') ?? [])->flatten()
+        $extra = collect($response->json('errors') ?? [])->except('code')->flatten()
             ->reject(fn ($error) => ! is_string($error) || $error === $message)
             ->unique();
 

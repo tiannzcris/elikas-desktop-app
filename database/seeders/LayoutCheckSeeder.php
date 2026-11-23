@@ -50,6 +50,7 @@ class LayoutCheckSeeder extends Seeder
             'identity_checked_at' => now(),
         ]);
         AppState::put('device_id', 'layout-check-device');
+        AppState::put('system_notices', [['id' => 1, 'title' => 'New version 2.1.0', 'message' => 'Download it from the E-LIKAS website; your data on this computer is kept.', 'ends_at' => now()->addDays(3)->toIso8601String()]]);
 
         $bacong = Barangay::updateOrCreate(['remote_id' => 4], ['name' => 'Bacong']);
         Barangay::updateOrCreate(['remote_id' => 5], ['name' => 'Bonga']);

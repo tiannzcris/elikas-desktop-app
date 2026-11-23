@@ -145,6 +145,14 @@
                             <i class="ti ti-chevron-down text-gray-500" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>
                         <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-52 card shadow-lg overflow-hidden z-50 py-1" role="menu">
+                            @if ($currentUser->can('support.report'))
+                                <a href="{{ route('support.index', ['from' => request()->path()]) }}" class="menu-item" role="menuitem">
+                                    <i class="ti ti-message-report" aria-hidden="true"></i> Report a problem
+                                </a>
+                            @endif
+                            <a href="{{ route('password.change') }}" class="menu-item" role="menuitem">
+                                <i class="ti ti-key" aria-hidden="true"></i> Change password
+                            </a>
                             <a href="{{ route('data-security.index') }}" class="menu-item" role="menuitem">
                                 <i class="ti ti-shield-lock" aria-hidden="true"></i> Data and security
                             </a>
@@ -164,6 +172,10 @@
             </div>
         </header>
         @if ($currentUser ?? null)
+            {{-- The administrator's notices and the maintenance message (refreshed by app.js). --}}
+            <div data-system-notices data-feed-url="{{ route('system-notices.feed') }}">
+                @include('partials._system_notices', ['notices' => app(\App\Services\SystemNotices::class)->current()])
+            </div>
             {{-- "A new version is available" (app.js, update notice). Hidden until a
                  check finds a newer version on the hosting. --}}
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200 bg-blue-50 px-6 py-2.5 text-sm text-blue-900"

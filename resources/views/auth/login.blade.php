@@ -22,7 +22,18 @@
             <h1 class="text-2xl leading-8 font-semibold tracking-tight text-gray-900">Welcome back</h1>
             <p class="text-sm text-gray-600 mt-1 mb-6">Log in to the E-LIKAS offline companion.</p>
 
-            @if ($errors->any())
+            @if ($errors->has('locked'))
+                {{-- 423: five failed sign-ins in a row; the server says until when. --}}
+                <div class="callout callout-lock flex items-start gap-2 mb-4" role="alert" data-account-locked>
+                    <i class="ti ti-lock shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                    <span><span class="font-semibold block">Account locked</span>{{ $errors->first('locked') }}</span>
+                </div>
+            @elseif ($errors->has('maintenance'))
+                <div class="callout callout-warning flex items-start gap-2 mb-4" role="alert" data-maintenance>
+                    <i class="ti ti-tool shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                    <span><span class="font-semibold block">The server is under maintenance</span>{{ $errors->first('maintenance') }} Try again later.</span>
+                </div>
+            @elseif ($errors->any())
                 <div class="callout callout-danger flex items-start gap-2 mb-4" role="alert">
                     <i class="ti ti-alert-circle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>
                     {{ $errors->first() }}
@@ -32,10 +43,10 @@
             <form method="POST" action="{{ route('login.submit') }}" class="card p-5 flex flex-col gap-4">
                 @csrf
                 <div>
-                    <label for="email" class="label">Email</label>
+                    <label for="email" class="label">Email or username</label>
                     <div class="relative">
-                        <i class="ti ti-mail absolute left-3 top-1/2 text-gray-500" style="font-size: 16px; transform: translateY(-50%);" aria-hidden="true"></i>
-                        <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="username"
+                        <i class="ti ti-user absolute left-3 top-1/2 text-gray-500" style="font-size: 16px; transform: translateY(-50%);" aria-hidden="true"></i>
+                        <input type="text" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="username" spellcheck="false" autocapitalize="off"
                             class="input pl-9 py-2.5">
                     </div>
                 </div>

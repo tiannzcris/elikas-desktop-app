@@ -15,6 +15,7 @@ namespace App\Exceptions;
  *  - conflict:         409, the server needs a decision (data() holds it).
  *  - invalid:          422, the server refused this record (errors()).
  *  - gone:             410, the endpoint was retired.
+ *  - locked:           423 at sign-in, the account is locked for a while.
  *  - server:           anything else (5xx, unexpected).
  */
 class CentralApiException extends \RuntimeException
@@ -35,6 +36,9 @@ class CentralApiException extends \RuntimeException
 
     public const SERVER = 'server';
 
+    /** 423: the account is locked after failed sign-ins. */
+    public const LOCKED = 'locked';
+
     public function __construct(
         string $message,
         public readonly string $kind,
@@ -54,6 +58,7 @@ class CentralApiException extends \RuntimeException
             $status === 409 => self::CONFLICT,
             $status === 410 => self::GONE,
             $status === 422 => self::INVALID,
+            $status === 423 => self::LOCKED,
             default => self::SERVER,
         };
     }

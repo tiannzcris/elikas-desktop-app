@@ -34,13 +34,23 @@ class AuthController extends Controller
 
     public function login(Request $request, CentralApiService $api, LocalData $local)
     {
+        // The email or the username (brgy.<barangay>): never validated as an email.
         $validated = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
-        ]);
+        ], ['email.required' => 'Enter your email or username.']);
+        $validated['email'] = trim($validated['email']);
 
         try {
             $result = $api->login($validated['email'], $validated['password']);
+        } catch (CentralApiException $e) {
+            $key = match (true) {
+                $e->kind === CentralApiException::LOCKED => 'locked',
+                $e->status === 503 => 'maintenance',
+                default => 'login',
+            };
+
+            return back()->withErrors([$key => $e->getMessage()])->withInput(['email' => $validated['email']]);
         } catch (\RuntimeException $e) {
             return back()->withErrors(['login' => $e->getMessage()])->withInput(['email' => $validated['email']]);
         }
@@ -74,6 +84,11 @@ class AuthController extends Controller
         ]);
         // Signing in again after inactivity works offline with this password.
         app(\App\Security\IdleSignOut::class)->signedInOnline($auth, $validated['password']);
+
+        // A temporary password: the server refuses everything else until it is changed.
+        if ($auth->must_change_password) {
+            return redirect()->route('password.change');
+        }
 
         // We know we have internet right now (login just succeeded), so
         // pull current reference data immediately rather than making the
@@ -256,6 +271,9 @@ class AuthController extends Controller
                 app(\App\Services\BarangayFinalCount::class)->refreshOpen($auth);
             }
         }
+
+        // Notices from the administrator (a new version, maintenance tonight).
+        app(\App\Services\SystemNotices::class)->refresh($auth);
 
         // CSWD: Monitoring and Final counts, for reading offline.
         if ($auth?->isCityWide()) {

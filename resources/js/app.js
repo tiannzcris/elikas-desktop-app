@@ -878,3 +878,21 @@ document.addEventListener('keydown', (e) => {
         form.submit();
     }, 15000);
 })();
+// ---------------------------------------------------------------------
+// The administrator's notices (GET /system-notices through this app):
+// shortly after start and every 5 minutes while online; the last ones
+// offline. Never counts as activity (a background request).
+// ---------------------------------------------------------------------
+(function systemNotices() {
+    const box = document.querySelector('[data-system-notices]');
+    if (!box) return;
+    const load = async () => {
+        if (!navigator.onLine) return;
+        try {
+            const r = await fetch(`${box.dataset.feedUrl}?_=${Date.now()}`, { cache: 'no-store', headers: { Accept: 'text/html' } });
+            if (r.ok) box.innerHTML = await r.text();
+        } catch (e) {}
+    };
+    setTimeout(load, 4000);
+    setInterval(load, 5 * 60000);
+})();

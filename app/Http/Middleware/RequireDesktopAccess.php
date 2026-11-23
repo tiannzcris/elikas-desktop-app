@@ -60,6 +60,15 @@ class RequireDesktopAccess
             $idle->touch();
         }
 
+        // On a temporary password: choose a new one before anything else.
+        if ($auth->must_change_password && ! in_array($route, ['password.change', 'password.update', 'system-notices.feed', 'about'], true)) {
+            if ($request->expectsJson() || in_array($route, IdleSignOut::BACKGROUND_ROUTES, true)) {
+                return response()->json(['message' => 'Change your temporary password first.', 'password_change_required' => true], 403);
+            }
+
+            return redirect()->route('password.change');
+        }
+
         return $next($request);
     }
 }

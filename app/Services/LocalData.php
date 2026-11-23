@@ -36,6 +36,17 @@ class LocalData
             + PendingListCheckIn::whereNull('synced_at')->count();
     }
 
+    /** Records the server refused or that wait for a decision (the Sync page's Needs attention). */
+    public function failedCount(): int
+    {
+        return EcBoardEntry::whereNull('synced_at')->whereNotNull('sync_state')->count()
+            + Family::whereNull('synced_at')->where('created_via_ec_board', false)->whereNotNull('sync_state')->count()
+            + PendingReEnrollment::whereNull('synced_at')->whereNotNull('sync_state')->count()
+            + PendingCheckOut::whereNull('synced_at')->whereNotNull('sync_state')->count()
+            + PendingPrivateHouseFamily::whereNull('synced_at')->whereNotNull('sync_state')->count()
+            + PendingListCheckIn::whereNull('synced_at')->whereNotNull('sync_state')->count();
+    }
+
     /** @return array{id: int, name: string, email: string}|null */
     public function queueOwner(): ?array
     {
