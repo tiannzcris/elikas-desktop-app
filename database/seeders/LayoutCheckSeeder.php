@@ -90,6 +90,12 @@ class LayoutCheckSeeder extends Seeder
                 'purok' => ['id' => $r[3], 'name' => 'Purok '.($r[3] - 10)], 'status' => $r[0] === 304 && $eventId === 79 ? 'checked_in' : 'expected', 'from_past_event' => $r[0] === 303])->all()]);
         }
 
+        ServerSnapshot::keep('final_count.79', ['computed' => ['families' => 43, 'persons' => 163, 'families_in_centers' => 40, 'persons_in_centers' => 152,
+            'families_in_private_houses' => 3, 'persons_in_private_houses' => 11, 'late_entries' => ['since' => now()->subHours(5)->toIso8601String(), 'families' => 3, 'persons' => 11, 'total' => 3],
+            'checks' => ['incomplete_families' => 2, 'possible_duplicates' => 0]],
+            'submissions' => [['id' => 41, 'status' => 'validated', 'families' => 40, 'persons' => 152, 'submitted_at' => now()->subHours(5)->toIso8601String(), 'submitted_on_behalf' => true,
+                'note' => 'Submitted by CSWD on behalf of Bacong. Reason: The official could not be reached during the night.']]]);
+
         if ($cswd) {
             ServerSnapshot::keep('monitoring.overview', ['evacuation_event' => ['id' => 79, 'name' => 'Typhoon Drill', 'status' => 'active', 'is_demo' => true],
                 'generated_at' => now()->subMinutes(5)->toIso8601String(),

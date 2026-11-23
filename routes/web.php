@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BarangayFinalCountController;
 use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
@@ -70,6 +71,10 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::post('/families-to-evacuate/refresh', [FamiliesToEvacuateController::class, 'refresh'])->name('families-to-evacuate.refresh');
     Route::delete('/families-to-evacuate/{listedId}', [FamiliesToEvacuateController::class, 'destroy'])->whereNumber('listedId')->name('families-to-evacuate.destroy');
     Route::post('/families-to-evacuate/{listedId}/check-in', [FamiliesToEvacuateController::class, 'checkIn'])->whereNumber('listedId')->name('families-to-evacuate.check-in');
+    // The barangay's final count: read offline, submitted online.
+    Route::get('/final-count', [BarangayFinalCountController::class, 'index'])->name('final-count.index');
+    Route::post('/final-count/refresh', [BarangayFinalCountController::class, 'refresh'])->name('final-count.refresh');
+    Route::post('/final-count/submit', [BarangayFinalCountController::class, 'submit'])->name('final-count.submit');
     Route::post('/puroks/{purok}/marks', [FamiliesToEvacuateController::class, 'markPurok'])->name('puroks.mark');
 
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');

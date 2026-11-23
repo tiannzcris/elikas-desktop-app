@@ -92,8 +92,8 @@
                                 </td>
                                 <td>
                                     <span class="badge {{ $tone }}">{{ $label }}</span>
-                                    @if (! empty($submission['submitted_on_behalf']))
-                                        <span class="block text-xs text-gray-600 mt-1">Submitted by CSWD for the barangay</span>
+                                    @if ($onBehalf = \App\Services\BarangayFinalCount::onBehalfLine(($submission ?? []) + ['barangay' => $row['barangay'] ?? null]))
+                                        <span class="block text-xs text-gray-600 mt-1" data-on-behalf>{{ $onBehalf }}</span>
                                     @endif
                                     @if (! empty($submission['review_note']))
                                         <span class="block text-xs text-gray-600 mt-1">{{ $submission['review_note'] }}</span>

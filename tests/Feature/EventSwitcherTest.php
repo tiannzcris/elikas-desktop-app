@@ -82,6 +82,7 @@ class EventSwitcherTest extends TestCase
             '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
             '*/puroks*' => Http::response(['data' => []]),
             '*/families-to-evacuate*' => Http::response(['data' => ['families' => []]]),
+            '*/count-submissions*' => Http::response(['data' => []]),
             '*/transfer-requests*' => Http::response(['data' => ['requests' => [], 'counts' => ['pending' => 0]]]),
             '*/private-house-families*' => Http::response(['data' => ['barangays' => []]]),
             '*/evacuation-centers/7/families*' => Http::response(['data' => []]),

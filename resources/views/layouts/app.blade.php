@@ -58,6 +58,11 @@
                                 <span class="ml-auto rounded-full bg-white/90 px-2 text-xs font-semibold text-navy">{{ $transfersWaiting }}</span>
                             @endif
                         </a>
+                        @if ($currentUser->can('count_submissions.submit'))
+                            <a href="{{ route('final-count.index') }}" class="nav-link @yield('nav-final-count')">
+                                <i class="ti ti-clipboard-check" aria-hidden="true"></i> Final count
+                            </a>
+                        @endif
                         <a href="{{ route('sync.index') }}" class="nav-link @yield('nav-sync')">
                             <i class="ti ti-cloud-upload" aria-hidden="true"></i> Sync
                             @if ($pendingTotal > 0)

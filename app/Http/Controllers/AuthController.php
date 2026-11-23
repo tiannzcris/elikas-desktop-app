@@ -249,6 +249,10 @@ class AuthController extends Controller
             if ($auth->can('families_to_evacuate.manage')) {
                 app(\App\Services\FamiliesToEvacuate::class)->refreshOpen($auth);
             }
+            // The final count, for reading offline.
+            if ($auth->can('count_submissions.submit')) {
+                app(\App\Services\BarangayFinalCount::class)->refreshOpen($auth);
+            }
         }
 
         // CSWD: Monitoring and Final counts, for reading offline.

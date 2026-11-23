@@ -51,7 +51,7 @@ class SubmitForBarangayTest extends TestCase
             ->assertSessionHas('status', 'Final count submitted for Allang (submitted by CSWD for the barangay).');
 
         Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/barangays/2/count-submissions') && $r['evacuation_event_id'] === 21);
-        $this->get(route('final-counts.index'))->assertSee('Submitted by CSWD for the barangay')->assertDontSee('data-submit-for-barangay', false);
+        $this->get(route('final-counts.index'))->assertSee('Submitted by CSWD on behalf of Allang.')->assertDontSee('data-submit-for-barangay', false);
     }
 
     public function test_offline_nothing_is_submitted(): void

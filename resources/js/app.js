@@ -532,7 +532,7 @@ document.addEventListener('click', (e) => {
 // question, the button names the action. A form with data-confirm asks
 // first; data-confirm-title / -label / -tone="danger" shape the dialog.
 // ---------------------------------------------------------------------
-window.ELIKAS.confirm = function confirmDialog({ title, message = '', confirmLabel = 'Continue', tone = 'primary' }) {
+window.ELIKAS.confirm = function confirmDialog({ title, message = '', confirmLabel = 'Continue', cancelLabel = 'Cancel', tone = 'primary' }) {
     return new Promise((resolve) => {
         const backdrop = document.createElement('div');
         backdrop.className = 'board-modal-backdrop';
@@ -540,15 +540,16 @@ window.ELIKAS.confirm = function confirmDialog({ title, message = '', confirmLab
         backdrop.innerHTML = `
             <div class="modal modal-pop max-w-md" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
                 <div class="modal-header"><h2 id="confirm-title" class="modal-title"></h2></div>
-                <p class="px-6 pt-4 text-gray-700" data-confirm-message></p>
+                <p class="px-6 pt-4 text-gray-700 whitespace-pre-line" data-confirm-message></p>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-confirm-cancel>Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-confirm-cancel></button>
                     <button type="button" class="btn ${tone === 'danger' ? 'btn-danger' : 'btn-primary'}" data-confirm-ok></button>
                 </div>
             </div>`;
         backdrop.querySelector('#confirm-title').textContent = title;
         backdrop.querySelector('[data-confirm-message]').textContent = message;
         backdrop.querySelector('[data-confirm-ok]').textContent = confirmLabel;
+        backdrop.querySelector('[data-confirm-cancel]').textContent = cancelLabel;
         const done = (answer) => {
             backdrop.remove();
             document.removeEventListener('keydown', onKey);
@@ -574,6 +575,7 @@ document.addEventListener('submit', async (e) => {
         title: form.dataset.confirmTitle || form.dataset.confirm,
         message: form.dataset.confirmTitle ? form.dataset.confirm : '',
         confirmLabel: form.dataset.confirmLabel || 'Continue',
+        cancelLabel: form.dataset.confirmCancel || 'Cancel',
         tone: form.dataset.confirmTone || 'primary',
     });
     if (!ok) return;
