@@ -37,16 +37,16 @@
         </div>
         <a href="{{ route('sync.index') }}" class="stat {{ $waiting > 0 ? 'stat-pending' : '' }}">
             <p class="stat-label">Waiting to send</p>
-            <p class="stat-value">{{ $waiting }}</p>
+            <p class="stat-value">{{ number_format($waiting) }}</p>
         </a>
         <a href="{{ route('sync.index') }}" class="stat {{ $attention > 0 ? 'stat-alert' : '' }}">
             <p class="stat-label">Needs attention</p>
-            <p class="stat-value">{{ $attention }}</p>
+            <p class="stat-value">{{ number_format($attention) }}</p>
         </a>
         <div class="stat">
             <p class="stat-label">Last sent</p>
             <p class="stat-value text-base leading-8">
-                {{ $lastSyncAt ? \Illuminate\Support\Carbon::parse($lastSyncAt)->timezone('Asia/Manila')->format('M j, g:i A') : 'Not yet' }}
+                {{ $lastSyncAt ? \App\Support\Format::when($lastSyncAt) : 'Not yet' }}
             </p>
         </div>
     </div>

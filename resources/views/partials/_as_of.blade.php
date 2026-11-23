@@ -5,7 +5,7 @@
     <span class="text-sm text-gray-700">
         As of
         @if ($at)
-            <time datetime="{{ $at }}">{{ \Illuminate\Support\Carbon::parse($at)->timezone('Asia/Manila')->format('M j, Y g:i A') }}</time>
+            <time datetime="{{ $at }}">{{ \App\Support\Format::when($at) }}</time>
         @else
             never fetched
         @endif

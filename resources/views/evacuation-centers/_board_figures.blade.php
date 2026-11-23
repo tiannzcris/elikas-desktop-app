@@ -20,7 +20,7 @@
 <p class="ecb-asof">
     As of:
     @if ($fetchedAt)
-        <time datetime="{{ $fetchedAt->toIso8601String() }}" data-local-time>{{ $fetchedAt->format('M j, Y g:i A') }} UTC</time>
+        <time datetime="{{ $fetchedAt->toIso8601String() }}" data-local-time>{{ \App\Support\Format::when($fetchedAt) }}</time>
     @else
         <span class="text-gray-600">not yet fetched from the central server -- connect to the internet to load this board.</span>
     @endif

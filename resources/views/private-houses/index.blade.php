@@ -28,7 +28,7 @@
         <div class="stat-strip grid-cols-2 lg:grid-cols-3 mb-6">
             <div class="stat">
                 <p class="stat-label">Families</p>
-                <p class="stat-value">{{ $summary['family_count'] }}</p>
+                <p class="stat-value">{{ number_format($summary['family_count']) }}</p>
             </div>
             <div class="stat">
                 <p class="stat-label">People</p>
@@ -36,14 +36,14 @@
             </div>
             <a href="{{ route('sync.index') }}" class="stat {{ $summary['waiting'] > 0 ? 'stat-pending' : '' }}">
                 <p class="stat-label">Waiting to sync</p>
-                <p class="stat-value">{{ $summary['waiting'] }}</p>
+                <p class="stat-value">{{ number_format($summary['waiting']) }}</p>
             </a>
         </div>
 
         <section class="card" aria-labelledby="ph-title">
             <div class="flex flex-wrap items-center justify-between gap-2 px-6 py-4 border-b border-gray-100">
                 <h2 id="ph-title" class="card-title">{{ $event->name }}</h2>
-                <span class="text-sm text-gray-600" data-as-of>As of {{ $summary['fetched_at'] ? $summary['fetched_at']->timezone('Asia/Manila')->format('M j, g:i A') : 'never fetched' }}</span>
+                <span class="text-sm text-gray-600" data-as-of>As of {{ $summary['fetched_at'] ? \App\Support\Format::when($summary['fetched_at']) : 'never fetched' }}</span>
             </div>
             @if ($summary['families']->isEmpty())
                 <x-empty icon="ti-home" title="No families in private houses yet." text="Add a family staying with relatives or friends instead of a center.">
@@ -59,7 +59,7 @@
                             <tr>
                                 <td class="font-medium text-gray-900">{{ $family['label'] }}</td>
                                 <td>{{ $family['host'] }}</td>
-                                <td class="num">{{ $family['persons'] }}</td>
+                                <td class="num">{{ number_format($family['persons']) }}</td>
                                 <td>
                                     @if ($family['waiting'])
                                         <span class="badge badge-warning">Waiting to sync</span>

@@ -10,9 +10,6 @@
             @if ($event)
                 <p class="page-subtitle flex items-center gap-2">
                     {{ $event['name'] }}
-                    @if (! empty($event['is_demo']))
-                        <span class="badge badge-warning" data-demo-badge>DEMO</span>
-                    @endif
                 </p>
             @endif
         </div>
@@ -51,8 +48,8 @@
             <button type="button" class="tab" role="tab" data-tab="overview">Overview</button>
             <button type="button" class="tab" role="tab" data-tab="centers">Centers</button>
             <button type="button" class="tab" role="tab" data-tab="vulnerable">Vulnerable</button>
-            <button type="button" class="tab" role="tab" data-tab="orders">Evacuation orders ({{ $orders->count() }})</button>
-            <button type="button" class="tab" role="tab" data-tab="requests">Waiting for CSWD ({{ count($requests) }})</button>
+            <button type="button" class="tab" role="tab" data-tab="orders">Evacuation orders ({{ number_format($orders->count()) }})</button>
+            <button type="button" class="tab" role="tab" data-tab="requests">Waiting for CSWD ({{ number_format(count($requests)) }})</button>
         </div>
 
         <section data-tab-panel="overview">
@@ -156,7 +153,7 @@
                 @else
                     @php
                         $tone = ['watch' => 'badge-warning', 'flooding_reported' => 'badge-warning', 'preemptive_evacuation' => 'badge-danger', 'forced_evacuation' => 'badge-dark'];
-                        $at = fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t)->timezone('Asia/Manila')->format('M j, g:i A') : '';
+                        $at = fn ($t) => \App\Support\Format::when($t);
                     @endphp
                     <table class="data-table" data-orders>
                         <thead><tr><th>Barangay</th><th>Status</th><th>Ordered by</th><th>Time</th><th>Recorded</th></tr></thead>
@@ -194,9 +191,15 @@
                                 @php $minutes = (int) ($r['waited_minutes'] ?? 0); @endphp
                                 <tr>
                                     <td><span class="badge {{ $minutes >= 120 ? 'badge-danger' : 'badge-warning' }}">{{ $r['kind_label'] }}</span></td>
-                                    <td class="text-gray-900">{{ $r['what'] }}</td>
+                                    <td class="text-gray-900">{{ $r['what'] }}
+                                        @if (! empty($r['status']))
+                                            @php [$statusLabel, $statusTone] = \App\Support\FacilityRequestStatus::of($r['status']); @endphp
+                                            <span class="badge {{ $statusTone }} ml-1" data-request-status>{{ $statusLabel }}</span>
+                                        @endif
+                                        @if ($approvedOf = \App\Support\FacilityRequestStatus::approvedOf($r))<span class="text-sm text-gray-600 ml-1">{{ $approvedOf }}</span>@endif
+                                    </td>
                                     <td>{{ $r['where'] }}</td>
-                                    <td class="num">{{ $minutes >= 60 ? intdiv($minutes, 60).' h '.($minutes % 60).' min' : $minutes.' min' }}</td>
+                                    <td class="num">{{ \App\Support\Format::duration($minutes) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

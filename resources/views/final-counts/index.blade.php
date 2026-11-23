@@ -20,9 +20,6 @@
             @if ($event)
                 <p class="page-subtitle flex items-center gap-2">
                     {{ $event['name'] }}
-                    @if (! empty($event['is_demo']))
-                        <span class="badge badge-warning" data-demo-badge>DEMO</span>
-                    @endif
                 </p>
             @endif
         </div>
@@ -49,12 +46,12 @@
             @foreach ($states as $key => [$label, $tone])
                 <div class="stat {{ $key === 'pending' && ($counts[$key] ?? 0) > 0 ? 'stat-alert' : '' }}">
                     <p class="stat-label">{{ $label }}</p>
-                    <p class="stat-value">{{ $counts[$key] ?? 0 }}</p>
+                    <p class="stat-value">{{ number_format($counts[$key] ?? 0) }}</p>
                 </div>
             @endforeach
             <div class="stat {{ $lateTotal > 0 ? 'stat-pending' : '' }}" data-late-entries-total>
                 <p class="stat-label">Late entries</p>
-                <p class="stat-value">{{ $lateTotal }}</p>
+                <p class="stat-value">{{ number_format($lateTotal) }}</p>
                 <p class="stat-note">not yet in a final count</p>
             </div>
         </div>

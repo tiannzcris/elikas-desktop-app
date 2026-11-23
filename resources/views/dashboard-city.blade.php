@@ -12,9 +12,6 @@
             @if ($event)
                 <p class="page-subtitle flex items-center gap-2">
                     {{ $event['name'] }}
-                    @if (! empty($event['is_demo']))
-                        <span class="badge badge-warning" data-demo-badge>DEMO</span>
-                    @endif
                 </p>
             @endif
         </div>
@@ -49,16 +46,16 @@
             </a>
             <a href="{{ route('final-counts.index') }}" class="stat {{ $waitingValidation > 0 ? 'stat-alert' : '' }}">
                 <p class="stat-label">Final counts to validate</p>
-                <p class="stat-value">{{ $waitingValidation }}</p>
+                <p class="stat-value">{{ number_format($waitingValidation) }}</p>
                 <p class="stat-note">{{ $notSubmitted }} not submitted</p>
             </a>
             <a href="{{ route('transfers.index') }}" class="stat {{ $transfersPending > 0 ? 'stat-alert' : '' }}" data-transfers-pending>
                 <p class="stat-label">Transfer requests waiting</p>
-                <p class="stat-value">{{ $transfersPending }}</p>
+                <p class="stat-value">{{ number_format($transfersPending) }}</p>
             </a>
             <a href="{{ route('monitoring.index') }}#requests" class="stat {{ $waitingForCswd > 0 ? 'stat-alert' : '' }}">
                 <p class="stat-label">Waiting for CSWD</p>
-                <p class="stat-value">{{ $waitingForCswd }}</p>
+                <p class="stat-value">{{ number_format($waitingForCswd) }}</p>
             </a>
         </div>
         @if ($capacityCounts)

@@ -39,14 +39,17 @@ class DemoEventTest extends TestCase
         $this->assertSame('2026-11-10', $event->start_date->toDateString());
     }
 
-    public function test_the_ec_board_marks_a_demo_event(): void
+    public function test_a_practice_event_looks_like_any_other_event(): void
     {
         $this->signIn();
         Barangay::create(['remote_id' => 4, 'name' => 'Bacong']);
         $center = EvacuationCenter::create(['remote_id' => 1, 'barangay_remote_id' => 4, 'name' => 'Bacong Gym', 'status' => 'active']);
-        $demo = EvacuationEvent::create(['remote_id' => 9, 'name' => 'DEMO - Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true]);
+        $demo = EvacuationEvent::create(['remote_id' => 9, 'name' => 'Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true]);
+        $this->selectEvent($demo);
 
-        $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $demo->id]))
-            ->assertOk()->assertSee('data-demo-badge', false);
+        // No DEMO badge, label or prefix anywhere: board, switcher, Saves to.
+        $this->get(route('evacuation-centers.ec-board', ['center' => $center]))
+            ->assertOk()->assertSee('Typhoon Drill')->assertDontSee('data-demo-badge', false)->assertDontSee('DEMO');
+        $this->assertSame('Typhoon Drill', $demo->optionLabel());
     }
 }

@@ -32,10 +32,13 @@ class EvacuationEvent extends Model
 
     protected $casts = ['is_demo' => 'boolean', 'start_date' => 'date'];
 
-    /** The name as shown in a select, where a badge cannot go. */
+    /**
+     * The name as shown in a select. A practice event (is_demo) is named and
+     * shown like a real one; is_demo is for internal logic only.
+     */
     public function optionLabel(): string
     {
-        return $this->is_demo && ! str_starts_with($this->name, 'DEMO') ? "DEMO - {$this->name}" : $this->name;
+        return $this->name;
     }
 
     public function isClosed(): bool

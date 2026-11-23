@@ -39,7 +39,7 @@
                 <input id="rf-search" type="search" class="input" placeholder="Family or member name" autofocus data-rf-search>
             </div>
             <p class="text-sm text-gray-600 ml-auto">As of
-                <time datetime="{{ $snapshot->fetched_at->toIso8601String() }}">{{ $snapshot->fetched_at->timezone('Asia/Manila')->format('M j, g:i A') }}</time>
+                <time datetime="{{ $snapshot->fetched_at->toIso8601String() }}">{{ \App\Support\Format::when($snapshot->fetched_at) }}</time>
             </p>
         </div>
 
@@ -100,7 +100,7 @@
                                 </div>
                             @endforeach
                             @if (($family['unnamed_member_count'] ?? 0) > 0)
-                                <p class="help">{{ $family['unnamed_member_count'] }} without a name cannot be brought back; add them with Add evacuee.</p>
+                                <p class="help">{{ \App\Support\Plural::of($family['unnamed_member_count'], 'person', 'people') }} without a name cannot be brought back; add them with Add evacuee.</p>
                             @endif
                             <div class="flex justify-end">
                                 <button type="submit" class="btn btn-primary">Add to this center</button>

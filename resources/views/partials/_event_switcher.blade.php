@@ -10,7 +10,6 @@
         <i class="ti ti-calendar-event" aria-hidden="true"></i>
         <span class="text-gray-600 font-medium">Event:</span>
         <span class="truncate" data-working-event>{{ $working?->name ?? 'None open' }}</span>
-        @if ($working?->is_demo)<span class="badge badge-warning" data-demo-badge>DEMO</span>@endif
         @if ($working?->isClosed())<span class="badge badge-dark">Closed</span>@endif
         <i class="ti ti-chevron-down text-gray-500" aria-hidden="true"></i>
     </button>

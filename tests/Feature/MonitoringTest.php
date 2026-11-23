@@ -23,13 +23,13 @@ class MonitoringTest extends TestCase
 
     private function section(array $data): array
     {
-        return ['data' => ['evacuation_event' => ['id' => 9, 'name' => 'DEMO - Typhoon Drill', 'status' => 'active', 'is_demo' => true],
+        return ['data' => ['evacuation_event' => ['id' => 9, 'name' => 'Typhoon Drill', 'status' => 'active', 'is_demo' => true],
             'scope' => ['barangay' => null], 'generated_at' => '2026-11-16T05:00:00+00:00', 'data' => $data]];
     }
 
     private function fakeServer(): void
     {
-        EvacuationEvent::create(['remote_id' => 9, 'name' => 'DEMO - Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true]);
+        EvacuationEvent::create(['remote_id' => 9, 'name' => 'Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true]);
         Http::fake([
             '*/monitoring/overview' => Http::response($this->section(['figures' => ['persons' => 1234, 'families' => 300, 'inside' => 1000,
                 'outside' => 234, 'arrived_last_hour' => 12, 'centers_in_use' => 7], 'attention' => [['kind' => 'center', 'level' => 'danger', 'text' => 'Gym is at 95% of capacity.']]])),
@@ -47,7 +47,7 @@ class MonitoringTest extends TestCase
                 'by_barangay' => [['barangay' => ['name' => 'Bacong'], 'persons' => 50, 'infants' => 4]]])),
             '*/monitoring/requests' => Http::response($this->section(['requests' => [['kind_label' => 'Final count', 'what' => 'Bacong final count',
                 'where' => 'Bacong', 'waited_minutes' => 150]]])),
-            '*/count-submissions/barangays*' => Http::response(['data' => ['evacuation_event' => ['id' => 9, 'name' => 'DEMO - Typhoon Drill'], 'barangays' => []]]),
+            '*/count-submissions/barangays*' => Http::response(['data' => ['evacuation_event' => ['id' => 9, 'name' => 'Typhoon Drill'], 'barangays' => []]]),
             '*/count-submissions?*' => Http::response(['data' => ['data' => [], 'meta' => []]]),
         ]);
     }
@@ -62,9 +62,9 @@ class MonitoringTest extends TestCase
         Http::fake(fn () => throw new ConnectionException('down'));
         $this->get(route('monitoring.index'))->assertOk()
             ->assertSee('1,234')->assertSee('Gym is at 95% of capacity.')->assertSee('Bacong Gym')
-            ->assertSee('Bacong final count')->assertSee('2 h 30 min')
+            ->assertSee('Bacong final count')->assertSee('2 hours 30 minutes')
             ->assertSee('Read-only')->assertSee('As of')->assertSee('Validate on the web')
-            ->assertSee('data-demo-badge', false)
+            ->assertDontSee('data-demo-badge', false)->assertDontSee('DEMO')
             // Evacuation orders: who ordered and when (Asia/Manila), read-only.
             ->assertSee('Evacuation orders (1)')
             ->assertSeeInOrder(['Bonga', 'Forced evacuation', 'The City Mayor', 'Nov 17, 3:00 PM', 'Forced evacuation ordered by the City Mayor at 3:00 PM, recorded by Ana Cruz'])

@@ -11,6 +11,7 @@ use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
+use App\Support\EventLock;
 use App\Support\Plural;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -47,6 +48,13 @@ class SyncService
     public const EVENT_CLOSED = 'event_closed';
 
     public const NO_OPEN_EVENT = EvacuationEvent::NO_OPEN_EVENT;
+
+    /**
+     * The server refused because the event is being monitored: the action
+     * opens when CSWD starts the evacuation. Goes again by itself once this
+     * device sees the event active.
+     */
+    public const EVENT_LOCKED = 'event_locked';
 
     public const EMPTY = 'empty';
 
@@ -115,14 +123,23 @@ class SyncService
      */
     public static function isEventClosedAnswer(CentralApiException $e): bool
     {
-        if ($e->kind !== CentralApiException::INVALID) {
-            return false;
-        }
-        $message = $e->getMessage();
+        return in_array(EventLock::fromException($e), [EventLock::CLOSED, EventLock::NO_OPEN_EVENT], true);
+    }
 
-        return str_starts_with($message, self::NO_OPEN_EVENT)
-            || str_contains($message, 'A closed event is read-only.')
-            || str_starts_with($message, EvacuationEvent::CLOSED_TO_ARRIVALS);
+    /** "<event> is being monitored. <What> opens when CSWD starts the evacuation." */
+    public static function isMonitoringAnswer(CentralApiException $e): bool
+    {
+        return EventLock::fromException($e) === EventLock::MONITORING;
+    }
+
+    /** Records held back while their event was monitored go again once it is active. */
+    public function releaseUnlocked(): void
+    {
+        foreach ($this->unsent() as $item) {
+            if ($item['model']->sync_state === self::EVENT_LOCKED && $item['model']->evacuationEvent?->status === 'active') {
+                $item['model']->update(['sync_state' => null]);
+            }
+        }
     }
 
     /** The record this one has to wait for, if any (not yet accepted). */
@@ -155,6 +172,7 @@ class SyncService
      */
     public function step(LocalAuth $auth): array
     {
+        $this->releaseUnlocked();
         $item = $this->waiting()->first(fn ($candidate) => $this->blockedBy($candidate) === null);
         if (! $item) {
             return ['status' => self::EMPTY, 'remaining' => 0];
@@ -166,11 +184,6 @@ class SyncService
         try {
             $this->send($item, $auth);
             AppState::put('last_sync_at', now()->toIso8601String());
-            // The first arrival switches a monitoring event to active on the
-            // server (EventFlow); show the same here at once.
-            if ($item['kind'] !== 'checkout' && $model->evacuationEvent?->status === 'monitoring') {
-                $model->evacuationEvent->update(['status' => 'active']);
-            }
 
             return ['status' => self::SENT, 'key' => $item['key'], 'label' => $label, 'remaining' => $this->remaining()];
         } catch (CentralApiException $e) {
@@ -186,6 +199,7 @@ class SyncService
             $state = match (true) {
                 $e->kind === CentralApiException::CONFLICT => self::DECISION,
                 self::isEventClosedAnswer($e) => self::EVENT_CLOSED,
+                self::isMonitoringAnswer($e) => self::EVENT_LOCKED,
                 default => self::FAILED,
             };
             $model->update(['sync_state' => $state, 'sync_error' => $e->getMessage()]);
@@ -193,6 +207,10 @@ class SyncService
             // device now knows too, so the board turns read-only for it.
             if ($state === self::EVENT_CLOSED && $model->evacuationEvent) {
                 $model->evacuationEvent->update(['status' => 'closed']);
+            }
+            // Monitored on the server: this device waits for Start evacuation too.
+            if ($state === self::EVENT_LOCKED && $model->evacuationEvent) {
+                $model->evacuationEvent->update(['status' => 'monitoring']);
             }
 
             return ['status' => $state, 'key' => $item['key'], 'label' => $label, 'message' => $e->getMessage(), 'remaining' => $this->remaining()];
@@ -219,7 +237,7 @@ class SyncService
             $result = $this->step($auth);
             match ($result['status']) {
                 self::SENT => $summary['sent']++,
-                self::FAILED, self::DECISION, self::EVENT_CLOSED => $summary['failed']++,
+                self::FAILED, self::DECISION, self::EVENT_CLOSED, self::EVENT_LOCKED => $summary['failed']++,
                 default => null,
             };
             if (in_array($result['status'], [self::EMPTY, self::STOPPED], true)) {
@@ -249,7 +267,7 @@ class SyncService
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
             'private' => 'Private house: '.$model->label().' · '.Plural::of($model->personCount(), 'person', 'people').' (with '.$model->host_name.')',
             'checkout' => 'Check-out: '.$model->family_label.' ('.(PendingCheckOut::STATUSES[$model->status] ?? $model->status).')',
-            'returning' => 'Returning family '.$model->family_name.' · '.count($model->members).' '.str('person')->plural(count($model->members)),
+            'returning' => 'Returning family '.$model->family_name.' · '.Plural::of(count($model->members), 'person', 'people'),
             default => $item['key'],
         };
     }

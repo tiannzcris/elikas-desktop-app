@@ -20,13 +20,13 @@ class DashboardTest extends TestCase
         LocalAuth::create(['remote_user_id' => 1, 'name' => 'T', 'email' => 't@x', 'role' => 'barangay_official',
             'barangay_id' => 4, 'barangay_name' => 'Bacong', 'api_token' => 't', 'logged_in_at' => now()]);
         Barangay::create(['remote_id' => 4, 'name' => 'Bacong']);
-        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'DEMO - Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true]);
+        $event = EvacuationEvent::create(['remote_id' => 1, 'name' => 'Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true]);
         $center = EvacuationCenter::create(['remote_id' => 7, 'barangay_remote_id' => 4, 'name' => 'Bacong Gym', 'status' => 'active']);
         EcBoardEntry::create(['evacuation_center_id' => $center->id, 'evacuation_event_id' => $event->id, 'sex' => 'male', 'age_bracket' => 'adult']);
 
         $this->get(route('dashboard'))->assertOk()
-            ->assertSeeInOrder(['Current event', 'DEMO - Typhoon Drill', 'Waiting to send', '1', 'Your centers', 'Bacong Gym', '1 person waiting to sync'])
-            ->assertSee('data-demo-badge', false)
+            ->assertSeeInOrder(['Current event', 'Typhoon Drill', 'Waiting to send', '1', 'Your centers', 'Bacong Gym', '1 person waiting to sync'])
+            ->assertDontSee('data-demo-badge', false)->assertDontSee('DEMO')
             ->assertDontSee('Welcome back');
     }
 

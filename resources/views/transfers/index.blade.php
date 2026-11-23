@@ -7,7 +7,7 @@
     @php
         $requests = collect($list['requests']);
         $pending = $requests->where('status', 'pending');
-        $at = fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t)->timezone('Asia/Manila')->format('M j, g:i A') : '';
+        $at = fn ($t) => \App\Support\Format::when($t);
         $statusTone = ['pending' => 'badge-warning', 'accepted' => 'badge-success', 'declined' => 'badge-neutral'];
     @endphp
 
@@ -33,7 +33,7 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6" data-as-of>
-        <span class="text-sm text-gray-700">As of {{ $list['fetched_at'] ? $list['fetched_at']->timezone('Asia/Manila')->format('M j, Y g:i A') : 'never fetched' }}</span>
+        <span class="text-sm text-gray-700">As of {{ $list['fetched_at'] ? \App\Support\Format::when($list['fetched_at']) : 'never fetched' }}</span>
         <span class="text-sm text-gray-600" data-offline-note hidden>Offline: Accept and Decline come back when the connection does.</span>
     </div>
 
@@ -87,7 +87,7 @@
                         <div><dt>Asked by</dt><dd data-requested-by>{{ \App\Services\Transfers::requestedBy($row) }} · {{ $at($row['requested_at'] ?? null) }}</dd></div>
                         @if (! empty($row['note']))<div><dt>Note</dt><dd>{{ $row['note'] }}</dd></div>@endif
                         @if ($row['status'] === 'pending')
-                            <div><dt>Waiting</dt><dd>{{ \App\Support\Plural::of($row['waiting_minutes'] ?? 0, 'minute', 'minutes') }}</dd></div>
+                            <div><dt>Waiting</dt><dd>{{ \App\Support\Format::duration($row['waiting_minutes'] ?? 0) }}</dd></div>
                         @else
                             <div><dt>{{ ucfirst($row['status']) }} by</dt><dd>{{ $row['decided_by']['name'] ?? '—' }}{{ ($row['decided_as'] ?? '') === 'cswd' ? ' (CSWD)' : '' }} · {{ $at($row['decided_at'] ?? null) }}</dd></div>
                             @if (! empty($row['decline_reason']))<div><dt>Reason</dt><dd>{{ $row['decline_reason'] }}</dd></div>@endif

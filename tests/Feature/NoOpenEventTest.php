@@ -47,17 +47,30 @@ class NoOpenEventTest extends TestCase
         $this->add($closed)->assertSessionHasErrors(['evacuation_event_id' => self::MESSAGE]);
     }
 
-    public function test_an_event_in_monitoring_takes_evacuees_and_turns_active_once_sent(): void
+    public function test_a_monitoring_lock_answer_waits_and_goes_by_itself_once_the_event_is_active(): void
     {
-        $monitoring = EvacuationEvent::create(['remote_id' => 2, 'name' => 'Typhoon watch', 'event_type' => 'typhoon', 'status' => 'monitoring']);
+        // Saved while this device still thought the event was active.
+        $event = EvacuationEvent::create(['remote_id' => 2, 'name' => 'Typhoon watch', 'event_type' => 'typhoon', 'status' => 'active']);
+        $this->add($event)->assertSessionHasNoErrors();
 
-        $this->get(route('evacuation-centers.ec-board', $this->center))->assertDontSee(self::MESSAGE)->assertSee('class="btn btn-primary" data-open-board-modal', false);
-        $this->add($monitoring)->assertSessionHasNoErrors();
+        $lock = '"Typhoon watch" is being monitored. Registering evacuees opens when CSWD starts the evacuation.';
+        Http::fake(['*/evacuees' => Http::sequence()
+            ->push(['message' => $lock, 'errors' => ['evacuation_event_id' => [$lock]]], 422)
+            ->push(['data' => ['id' => 50], 'evacuee_id' => 900], 201)]);
 
-        Http::fake(['*/evacuees' => Http::response(['data' => ['id' => 50], 'evacuee_id' => 900], 201)]);
+        $this->postJson(route('sync.step'))->assertJson(['status' => 'event_locked']);
+        $this->assertSame('event_locked', EcBoardEntry::first()->sync_state);
+        $this->assertSame('monitoring', $event->fresh()->status);
+        $this->get(route('sync.index'))->assertSee('Waiting for the evacuation')->assertSee($lock)
+            ->assertSee('It goes by itself once CSWD starts the evacuation.');
+
+        // Nothing goes while the event is still monitored...
+        $this->postJson(route('sync.step'))->assertJson(['status' => 'empty']);
+        // ...and it goes by itself once the event is active (CSWD started the evacuation).
+        $event->refresh()->update(['status' => 'active']);
         $this->postJson(route('sync.step'))->assertJson(['status' => 'sent']);
-
-        $this->assertSame('active', $monitoring->fresh()->status);
         $this->assertNotNull(EcBoardEntry::first()->synced_at);
+        // A sent arrival never switches an event's status here any more.
+        $this->assertSame('active', $event->fresh()->status);
     }
 }

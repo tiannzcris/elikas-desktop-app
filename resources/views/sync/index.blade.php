@@ -16,17 +16,17 @@
     <div class="stat-strip grid-cols-3 mb-6">
         <div class="stat">
             <p class="stat-label">Waiting to send</p>
-            <p class="stat-value" data-sync-waiting>{{ $waiting->count() }}</p>
+            <p class="stat-value" data-sync-waiting>{{ number_format($waiting->count()) }}</p>
         </div>
         <div class="stat {{ $attention->isNotEmpty() ? 'stat-alert' : '' }}">
             <p class="stat-label">Needs attention</p>
-            <p class="stat-value">{{ $attention->count() }}</p>
+            <p class="stat-value">{{ number_format($attention->count()) }}</p>
         </div>
         <div class="stat">
             <p class="stat-label">Last sent</p>
             <p class="stat-value text-base leading-8">
                 @if ($lastSyncAt)
-                    <time datetime="{{ $lastSyncAt }}" data-local-time>{{ \Illuminate\Support\Carbon::parse($lastSyncAt)->timezone('Asia/Manila')->format('M j, g:i A') }}</time>
+                    <time datetime="{{ $lastSyncAt }}" data-local-time>{{ \App\Support\Format::when($lastSyncAt) }}</time>
                 @else
                     Not yet
                 @endif
@@ -51,12 +51,16 @@
                                     @php
                                         [$stateLabel, $stateTone] = match ($item['model']->sync_state) {
                                             'decision' => ['Decide', 'badge-warning'],
-                                            'event_closed' => ['Event closed', 'badge-neutral'],
+                                            'event_closed' => ['Event closed', 'badge-lock'],
+                                            'event_locked' => ['Waiting for the evacuation', 'badge-lock'],
                                             default => ['Refused', 'badge-danger'],
                                         };
                                     @endphp
-                                    <span class="badge {{ $stateTone }}" data-sync-state="{{ $item['model']->sync_state }}">{{ $stateLabel }}</span>
+                                    <span class="badge {{ $stateTone }}" data-sync-state="{{ $item['model']->sync_state }}">@if ($stateTone === 'badge-lock')<i class="ti ti-lock" aria-hidden="true"></i> @endif{{ $stateLabel }}</span>
                                     <span class="text-sm text-gray-700">{{ $item['model']->sync_error }}</span>
+                                    @if ($item['model']->sync_state === 'event_locked')
+                                        <p class="text-sm text-gray-600 mt-1">Kept on this computer. It goes by itself once CSWD starts the evacuation.</p>
+                                    @endif
                                     @if ($item['kind'] === 'returning' && $item['model']->sync_state === 'decision')
                                         {{-- The server's possible duplicates: the same family, or a different one? --}}
                                         <div class="mt-3 flex flex-col gap-2" data-duplicate-choices>

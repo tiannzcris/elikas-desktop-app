@@ -196,7 +196,13 @@
                 <div class="callout callout-success mb-4" role="status">{{ session('status') }}</div>
             @endif
             @if ($errors->any())
-                <div class="callout callout-danger mb-4" role="alert">{{ $errors->first() }}</div>
+                {{-- A refusal because of the event's state (closed, being monitored)
+                     is a lock, not an error: the one lock design. --}}
+                @if (\App\Support\EventLock::isLockMessage($errors->first()))
+                    <x-lock-notice :message="$errors->first()" class="mb-4" />
+                @else
+                    <div class="callout callout-danger mb-4" role="alert">{{ $errors->first() }}</div>
+                @endif
             @endif
 
             @yield('content')

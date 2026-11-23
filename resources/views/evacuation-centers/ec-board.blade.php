@@ -73,7 +73,7 @@
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
                 <h2 class="card-title">Pending entries for this event</h2>
                 @if ($pendingEntries->isNotEmpty())
-                    <span class="section-count section-count-pending">{{ $pendingEntries->count() }}</span>
+                    <span class="section-count section-count-pending">{{ number_format($pendingEntries->count()) }}</span>
                 @endif
             </div>
             @if ($pendingEntries->isEmpty())
@@ -88,7 +88,7 @@
                                     <p class="text-xs text-gray-600">
                                         {{ \Illuminate\Support\Str::headline($entry->sex) }} &middot;
                                         {{ $ageBrackets[$entry->age_bracket] ?? $entry->age_bracket }} &middot;
-                                        added {{ $entry->created_at->format('M j, g:i A') }}
+                                        added {{ \App\Support\Format::when($entry->created_at) }}
                                     </p>
                                 </div>
                                 <div class="flex items-center gap-1 shrink-0">
@@ -139,10 +139,10 @@
         {{-- Families here: check a whole family out (sent with the next sync). --}}
         <section class="card mb-5" aria-labelledby="families-here-title" data-families-here>
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <h2 id="families-here-title" class="card-title">Families here <span class="section-count ml-1">{{ $familiesHere->count() }}</span></h2>
+                <h2 id="families-here-title" class="card-title">Families here <span class="section-count ml-1">{{ number_format($familiesHere->count()) }}</span></h2>
                 @php $hereAsOf = ($selectedEvent = $events->firstWhere('id', $selectedEventId)) ? \App\Models\CenterFamilySnapshot::for($center, $selectedEvent)?->fetched_at : null; @endphp
                 <div class="flex flex-wrap items-center gap-3">
-                    <span class="text-sm text-gray-600" data-as-of>As of {{ $hereAsOf ? $hereAsOf->timezone('Asia/Manila')->format('M j, g:i A') : 'never fetched' }}</span>
+                    <span class="text-sm text-gray-600" data-as-of>As of {{ $hereAsOf ? \App\Support\Format::when($hereAsOf) : 'never fetched' }}</span>
                     @php $canMove = ! $selectedEventClosed && $currentUser->can('evacuees.transfer') && $familiesHere->contains(fn ($f) => $f['remote_id'] && ! $f['checking_out']); @endphp
                     @if ($canMove)
                         {{-- Ticked families of this center move together (online only). --}}

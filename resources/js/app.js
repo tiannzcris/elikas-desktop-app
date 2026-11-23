@@ -10,21 +10,26 @@ window.ELIKAS = window.ELIKAS || {};
 // ---------------------------------------------------------------------
 function describeAge(ms) {
     const minutes = Math.round(ms / 60000);
+    const words = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
     if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 60) return `${words(minutes, 'minute', 'minutes')} ago`;
     const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
-    const days = Math.round(hours / 24);
-    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    if (hours < 24) return `${words(hours, 'hour', 'hours')} ago`;
+    return `${words(Math.round(hours / 24), 'day', 'days')} ago`;
 }
+
+// "Nov 19, 1:44 AM" (the year only when it is not this year), as everywhere in the app.
+window.ELIKAS.formatWhen = function formatWhen(when) {
+    const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+    if (when.getFullYear() !== new Date().getFullYear()) options.year = 'numeric';
+    return when.toLocaleString('en-US', options);
+};
 
 window.ELIKAS.localizeTimes = function localizeTimes(root = document) {
     root.querySelectorAll('time[data-local-time]').forEach((el) => {
         const when = new Date(el.getAttribute('datetime'));
         if (Number.isNaN(when.getTime())) return;
-        el.textContent = when.toLocaleString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-        });
+        el.textContent = window.ELIKAS.formatWhen(when);
         let age = el.nextElementSibling;
         if (!age || !age.classList.contains('local-time-age')) {
             age = document.createElement('span');
@@ -36,7 +41,7 @@ window.ELIKAS.localizeTimes = function localizeTimes(root = document) {
 };
 
 document.addEventListener('DOMContentLoaded', () => window.ELIKAS.localizeTimes());
-// A board left open offline keeps aging -- "(5 min ago)" must not freeze.
+// A board left open offline keeps aging -- "(5 minutes ago)" must not freeze.
 setInterval(() => window.ELIKAS.localizeTimes(), 60000);
 
 // ---------------------------------------------------------------------
@@ -58,9 +63,7 @@ function updateConnectionBadge() {
 function updateClock() {
     const el = document.getElementById('live-clock');
     if (!el) return;
-    const formatted = new Date().toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-    });
+    const formatted = window.ELIKAS.formatWhen(new Date());
     el.innerHTML = '<i class="ti ti-calendar" style="font-size: 15px;" aria-hidden="true"></i> ' + formatted;
 }
 
@@ -663,7 +666,7 @@ document.querySelectorAll('[data-sync-form]').forEach((form) => {
     const chip = document.getElementById('sync-chip');
     if (!form || !chip) return;
 
-    const plural = (n) => `${n} ${n === 1 ? 'record' : 'records'}`;
+    const plural = (n) => `${Number(n).toLocaleString('en-US')} ${n === 1 ? 'record' : 'records'}`;
     let state = null; // null: idle; else 'sending' | 'auth' | 'attention' | 'unreachable'
     const setChip = (text, tone) => {
         chip.textContent = text;

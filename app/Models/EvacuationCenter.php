@@ -50,10 +50,11 @@ class EvacuationCenter extends Model
     /** At this share of capacity a center with people inside shows as full (server: FULL_AT_PERCENT). */
     public const FULL_AT_PERCENT = 90;
 
-    /** Status labels and chip tones, as on the web (active green, standby blue, full red, closed dark gray). */
+    /** Status labels and chip tones, as on the web (active green, nearly full amber, standby blue, full red, closed dark gray). */
     public const STATUSES = [
         'active' => ['Active', 'badge-success'],
         'on_standby' => ['On standby', 'badge-info'],
+        'nearly_full' => ['Nearly full', 'badge-warning'],
         'full' => ['Full', 'badge-danger'],
         'closed' => ['Closed', 'badge-dark'],
     ];
@@ -72,8 +73,9 @@ class EvacuationCenter extends Model
 
     /**
      * The status shown, by the server's rule (EvacuationCenter::effectiveStatusOf):
-     * people inside make a center active, or full from 90% of capacity; an
-     * empty center shows its stored status (what officials set).
+     * people inside make a center active, nearly full when the server says
+     * so, or full from 90% of capacity; an empty center shows its stored
+     * status (what officials set).
      */
     public function displayStatus(): string
     {
@@ -83,7 +85,25 @@ class EvacuationCenter extends Model
             return 'full';
         }
 
+        // Nearly full is the server's call (effective_status); a center with
+        // an unknown capacity is never nearly full either.
+        if ($inside > 0 && ! $this->capacityUnknown() && $this->effective_status === 'nearly_full') {
+            return 'nearly_full';
+        }
+
         return $inside > 0 ? 'active' : ($this->status ?: 'on_standby');
+    }
+
+    /** In use: people inside (active, nearly full or full). */
+    public function inUse(): bool
+    {
+        return in_array($this->displayStatus(), ['active', 'nearly_full', 'full'], true);
+    }
+
+    /** At or above 90% of a known capacity: time to ask another center for space. */
+    public function needsSpace(): bool
+    {
+        return ! $this->capacityUnknown() && $this->occupancyHere() * 100 >= self::FULL_AT_PERCENT * $this->capacity_persons;
     }
 
     /** Added by the barangay and not yet approved by CSWD. Usable by its own barangay. */

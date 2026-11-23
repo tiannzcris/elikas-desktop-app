@@ -19,7 +19,7 @@ Screens follow the permissions from `/auth/login` and `/auth/me`, never the role
 ## Offline and sync
 
 - Copies kept on the device (refreshed at login, with "Refresh reference data",
-  and on reconnect): barangays, events (with DEMO), own centers (with approval
+  and on reconnect): barangays, events, own centers (with approval
   state), puroks, families checked in per center and event, returning families
   per open event, and for CSWD the Monitoring and Final counts pages.
 - Work queued on the device: EC Board entries, returning families, check-outs.

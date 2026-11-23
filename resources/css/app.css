@@ -19,6 +19,9 @@
     /* Web design system 3: root 16px, body and inputs 15/24. */
     body { @apply font-sans text-base text-gray-800 bg-gray-50 antialiased; }
     ::placeholder { color: #6B7280; opacity: 1; }
+    /* The hidden attribute always hides, even on an element with a display
+       utility such as flex (the update banner showed on every page in 2.0.2). */
+    [hidden] { display: none !important; }
     input[type="checkbox"], input[type="radio"] { accent-color: #2563EB; }
     :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }
     #sidebar :focus-visible { outline-color: #FFFFFF; }
@@ -111,6 +114,10 @@
     .callout-warning { @apply bg-amber-50 border-amber-200 text-amber-900; }
     .callout-info { @apply bg-blue-50 border-blue-200 text-blue-900; }
     .callout-success { @apply bg-green-50 border-green-200 text-green-900; }
+    /* One lock design for everything an event's state holds back (closed,
+       being monitored, no open event): slate, a lock, the server's words. */
+    .callout-lock { @apply bg-slate-50 border-slate-300 text-slate-900; }
+    .badge-lock { @apply bg-slate-100 text-slate-800 ring-slate-500/30; }
 
     .empty-state { @apply flex flex-col items-center justify-center gap-2 px-6 py-12 text-center; }
     .empty-state > i { font-size: 32px; @apply text-gray-400; }

@@ -31,14 +31,14 @@
             $capacity = $centers->reject(fn ($row) => $row['center']->capacityUnknown())->sum(fn ($row) => (int) $row['center']->capacity_persons);
             $unknownCapacity = $centers->filter(fn ($row) => $row['center']->capacityUnknown())->count();
             $estimated = $centers->contains(fn ($row) => $row['center']->capacityEstimated());
-            $inUse = $centers->filter(fn ($row) => in_array($row['center']->displayStatus(), ['active', 'full'], true))->count();
+            $inUse = $centers->filter(fn ($row) => $row['center']->inUse())->count();
             $full = $centers->filter(fn ($row) => $row['center']->displayStatus() === 'full')->count();
             $waiting = $centers->sum('pendingCount') + $privateHouses['waiting'];
         @endphp
         <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-6" data-ec-summary>
             <div class="stat">
                 <p class="stat-label">Centers in use</p>
-                <p class="stat-value">{{ $inUse }} <span class="text-base font-normal text-gray-600">of {{ $centers->count() }}</span></p>
+                <p class="stat-value">{{ number_format($inUse) }} <span class="text-base font-normal text-gray-600">of {{ number_format($centers->count()) }}</span></p>
             </div>
             <div class="stat">
                 <p class="stat-label">People inside</p>
@@ -49,7 +49,7 @@
             </div>
             <div class="stat {{ $full > 0 ? 'stat-alert' : '' }}">
                 <p class="stat-label">Full</p>
-                <p class="stat-value">{{ $full }}</p>
+                <p class="stat-value">{{ number_format($full) }}</p>
             </div>
             <a href="{{ route('private-houses.index') }}" class="stat" data-private-houses-stat>
                 <p class="stat-label">In private houses</p>
@@ -58,7 +58,7 @@
             </a>
             <a href="{{ route('sync.index') }}" class="stat {{ $waiting > 0 ? 'stat-pending' : '' }}">
                 <p class="stat-label">Waiting to sync</p>
-                <p class="stat-value">{{ $waiting }}</p>
+                <p class="stat-value">{{ number_format($waiting) }}</p>
             </a>
         </div>
 
