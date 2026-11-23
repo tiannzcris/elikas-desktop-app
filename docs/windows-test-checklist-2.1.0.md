@@ -64,8 +64,9 @@ switch the internet off (unplug, or turn off Wi-Fi).
 
 - [ ] Sidebar → Final count shows the count, late entries, and the checks.
 - [ ] Submit: the dialog lists the figures and has **Review first** / **Submit**. Submitting
-      works online and the status becomes "Waiting for CSWD". **Note whether the server accepts
-      it** (the submit path needs confirming, see the release notes).
+      works online and the status becomes "Waiting for CSWD" with "Final count sent to CSWD for
+      validation." Submitting again with nothing new says "This count is already waiting for CSWD,
+      and nothing has changed since it was submitted."
 - [ ] When CSWD submits for the barangay on the web, the page shows "Submitted by CSWD on
       behalf of …. Reason: …".
 - [ ] On Incoming Typhoon the page shows the lock and no Submit.

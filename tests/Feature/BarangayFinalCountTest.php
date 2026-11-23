@@ -103,4 +103,33 @@ class BarangayFinalCountTest extends TestCase
         $this->post(route('final-count.submit'))->assertSessionHasErrors(['evacuation_event_id' => '"Typhoon Drill" is being monitored. Final counts opens when CSWD starts the evacuation.']);
         Http::assertNothingSent();
     }
+    /** The answer of docs/backend/apps-api-2026-11-24.md 2, as the server sends it. */
+    public function test_the_documented_submit_is_sent_and_its_answer_shows_even_if_the_refresh_fails(): void
+    {
+        $this->copy(['families' => 1, 'persons' => 1]);
+        Http::fake([
+            '*/count-submissions/computed*' => Http::response(['message' => 'Server error'], 500),
+            '*/count-submissions' => Http::response(['success' => true, 'message' => 'Final count sent to CSWD for validation.', 'data' => [
+                'id' => 1, 'version' => 1, 'is_current' => true, 'evacuation_event' => ['id' => 79, 'name' => 'Typhoon Drill', 'status' => 'active'],
+                'barangay' => ['id' => 4, 'name' => 'Bacong'], 'families' => 1, 'families_inside_ec' => 1, 'families_outside_ec' => 0,
+                'persons' => 1, 'persons_inside_ec' => 1, 'persons_outside_ec' => 0, 'note' => 'All centers counted.',
+                'submitted_by' => ['id' => 2, 'name' => 'Official One'], 'submitted_at' => '2026-11-23T16:29:30+00:00', 'submitted_on_behalf' => false,
+                'paper_ec_board_entry_id' => null, 'status' => 'pending', 'validated_families' => null, 'validated_persons' => null,
+                'reviewed_by' => null, 'reviewed_at' => null, 'review_note' => null,
+            ]], 201),
+        ]);
+
+        $this->post(route('final-count.submit'), ['note' => 'All centers counted.'])->assertSessionHas('status', 'Final count sent to CSWD for validation.');
+        Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/api/v1/count-submissions')
+            && $r->data() === ['evacuation_event_id' => 79, 'note' => 'All centers counted.']);
+        $this->get(route('final-count.index'))->assertSee('Waiting for CSWD')->assertSeeInOrder(['submitted Nov 24, 12:29 AM', 'by Official One']);
+    }
+
+    public function test_an_unchanged_count_already_waiting_says_so(): void
+    {
+        $this->copy(['families' => 1, 'persons' => 1]);
+        Http::fake(['*/count-submissions' => Http::response(['success' => false, 'message' => 'This count is already waiting for CSWD, and nothing has changed since it was submitted.', 'errors' => null], 422)]);
+
+        $this->post(route('final-count.submit'))->assertSessionHasErrors(['submit' => 'This count is already waiting for CSWD, and nothing has changed since it was submitted.']);
+    }
 }

@@ -13,9 +13,11 @@ use App\Models\ServerSnapshot;
  * system checks), and the barangay's submissions (GET /count-submissions).
  * Copied for reading offline; submitting is online only.
  *
- * Submitting uses POST /count-submissions {evacuation_event_id, note?}, the
- * same resource the list is read from. The copied API notes describe the
- * barangay's submit dialog but not its path (see the 2.1.0 report).
+ * Submitting: POST /count-submissions {evacuation_event_id, note?}
+ * (docs/backend/apps-api-2026-11-24.md 2). The server counts the barangay
+ * at that moment; the numbers are never sent. Safe to retry without
+ * client_ref: an identical second submission answers 422 "This count is
+ * already waiting for CSWD, and nothing has changed since it was submitted."
  */
 class BarangayFinalCount
 {
@@ -105,6 +107,16 @@ class BarangayFinalCount
         }
 
         return null;
+    }
+
+    /** Puts a submission the server just answered at the top of the copy (the refresh may fail). */
+    public function remember(EvacuationEvent $event, array $submission): void
+    {
+        $snapshot = ServerSnapshot::named(self::key($event));
+        $payload = $snapshot?->payload ?? ['computed' => [], 'submissions' => []];
+        $payload['submissions'] = array_values(array_merge([$submission], array_filter($payload['submissions'] ?? [], fn ($s) => ($s['id'] ?? null) !== ($submission['id'] ?? null))));
+        unset($payload['computed']['current_submission']);
+        ServerSnapshot::keep(self::key($event), $payload);
     }
 
     /** POST /count-submissions: the barangay's count now, for CSWD to validate. */

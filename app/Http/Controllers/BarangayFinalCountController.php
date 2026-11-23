@@ -62,10 +62,13 @@ class BarangayFinalCountController extends Controller
             return back()->withInput()->withErrors(['submit' => $e->isOffline() ? 'Needs a connection. Nothing was submitted.' : $e->getMessage()]);
         }
 
+        if (! empty($body['data']['id'])) {
+            $this->finalCount->remember($event, $body['data']);
+        }
         try {
             $this->finalCount->refresh($auth, $event);
         } catch (CentralApiException $e) {
-            // Submitted; the page catches up at the next refresh.
+            // Submitted; the copy already shows it, the rest catches up at the next refresh.
         }
 
         return back()->with('status', ($body['message'] ?? '') ?: 'Final count submitted. CSWD validates it; new evacuees from now on are late entries.');

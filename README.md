@@ -82,9 +82,7 @@ problem (with an optional screenshot) is in the account menu.
 - The official EC Information Board from the server needs its endpoint.
 - Downloads are recorded on the computer only; reporting them to the server
   needs an endpoint.
-- The official's final count is submitted with `POST /count-submissions
-  {evacuation_event_id, note?}`; the API notes describe the dialog but not the
-  path, so confirm it against the backend.
+
 - Adding families to evacuate is online only: `POST /families-to-evacuate`
   takes no `client_ref`, so it cannot be queued safely (check-ins can).
 
