@@ -62,6 +62,8 @@ class EcBoardEntry extends Model
         'head_is_self' => 'boolean',
         'originated_household' => 'boolean',
         'synced_at' => 'datetime',
+        // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+        'new_household_head_name' => 'encrypted',
         // Nullable booleans: null ("not recorded") survives the cast as null.
         'is_pwd' => 'boolean',
         'is_pregnant' => 'boolean',

@@ -13,7 +13,8 @@ class ReturningFamilySnapshot extends Model
 {
     protected $fillable = ['evacuation_event_id', 'past_events', 'families_by_event', 'fetched_at'];
 
-    protected $casts = ['past_events' => 'array', 'families_by_event' => 'array', 'fetched_at' => 'datetime'];
+    // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+    protected $casts = ['past_events' => 'array', 'families_by_event' => 'encrypted:array', 'fetched_at' => 'datetime'];
 
     /** @return list<array> the families of one past event */
     public function familiesOf(int $sourceEventRemoteId): array

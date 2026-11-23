@@ -17,7 +17,8 @@ class PendingReEnrollment extends Model
         'remote_family_id', 'synced_at', 'sync_error', 'sync_state',
     ];
 
-    protected $casts = ['members' => 'array', 'possible_duplicates' => 'array', 'synced_at' => 'datetime'];
+    // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+    protected $casts = ['family_name' => 'encrypted', 'members' => 'encrypted:array', 'possible_duplicates' => 'encrypted:array', 'synced_at' => 'datetime'];
 
     public function evacuationCenter(): BelongsTo
     {

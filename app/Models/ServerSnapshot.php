@@ -9,7 +9,8 @@ class ServerSnapshot extends Model
 {
     protected $fillable = ['key', 'payload', 'fetched_at'];
 
-    protected $casts = ['payload' => 'array', 'fetched_at' => 'datetime'];
+    // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+    protected $casts = ['payload' => 'encrypted:array', 'fetched_at' => 'datetime'];
 
     public static function keep(string $key, array $payload): self
     {

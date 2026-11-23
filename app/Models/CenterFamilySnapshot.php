@@ -10,7 +10,8 @@ class CenterFamilySnapshot extends Model
 {
     protected $fillable = ['evacuation_center_id', 'evacuation_event_id', 'families', 'fetched_at'];
 
-    protected $casts = ['families' => 'array', 'fetched_at' => 'datetime'];
+    // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+    protected $casts = ['families' => 'encrypted:array', 'fetched_at' => 'datetime'];
 
     public static function for(EvacuationCenter $center, EvacuationEvent $event): ?self
     {

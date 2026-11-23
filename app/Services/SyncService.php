@@ -179,6 +179,11 @@ class SyncService
         $this->releaseUnlocked();
         $item = $this->waiting()->first(fn ($candidate) => $this->blockedBy($candidate) === null);
         if (! $item) {
+            // Everything is in: closed events' data can leave this computer.
+            if ($this->needsAttention()->isEmpty()) {
+                app(LocalData::class)->pruneClosedEvents();
+            }
+
             return ['status' => self::EMPTY, 'remaining' => 0];
         }
 

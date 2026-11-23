@@ -89,7 +89,8 @@ class EcBoardHouseholdHeadTest extends TestCase
         $this->assertSame('male', $family->headSex());
         $this->assertTrue($family->isChildHeaded(), 'A teenage head is a minor -- child-headed.');
         // A head member row, so the household reads by its head's name.
-        $this->assertDatabaseHas('evacuees', ['family_id' => $family->id, 'first_name' => 'Maria', 'last_name' => 'Santos', 'sex' => 'male', 'is_head_of_family' => true]);
+        $this->assertTrue(\App\Models\Evacuee::where('family_id', $family->id)->where('sex', 'male')->where('is_head_of_family', true)->get()
+            ->contains(fn ($e) => $e->first_name === 'Maria' && $e->last_name === 'Santos'));
 
         $payload = $entry->fresh()->toSyncPayload();
         $this->assertSame('new', $payload['household_mode']);

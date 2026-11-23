@@ -21,7 +21,9 @@ class PendingListCheckIn extends Model
         'registered_family_id', 'synced_at', 'sync_error', 'sync_state',
     ];
 
-    protected $casts = ['synced_at' => 'datetime', 'members_count' => 'integer'];
+    // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+    protected $casts = ['synced_at' => 'datetime', 'members_count' => 'integer',
+        'family_label' => 'encrypted', 'host_name' => 'encrypted', 'host_address' => 'encrypted'];
 
     public function evacuationEvent(): BelongsTo
     {

@@ -16,14 +16,19 @@ class LocalAuth extends Model
     protected $fillable = [
         'remote_user_id', 'name', 'email', 'role', 'permissions', 'role_display_name', 'status',
         'barangay_id', 'barangay_name', 'api_token', 'logged_in_at', 'identity_checked_at',
+        'password_hash', 'locked_at',
     ];
 
-    protected $hidden = ['api_token'];
+    protected $hidden = ['api_token', 'password_hash'];
 
     protected $casts = [
         'logged_in_at' => 'datetime',
         'identity_checked_at' => 'datetime',
+        'locked_at' => 'datetime',
         'permissions' => 'array',
+        // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+        'api_token' => 'encrypted',
+        'password_hash' => 'encrypted',
     ];
 
     /**

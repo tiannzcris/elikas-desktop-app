@@ -854,3 +854,27 @@ document.addEventListener('keydown', (e) => {
     setTimeout(check, 4000);
     setInterval(() => { if (navigator.onLine) check(); }, 6 * 60 * 60 * 1000);
 })();
+
+// ---------------------------------------------------------------------
+// Signing out after inactivity (Data and security): no key, click, scroll
+// or mouse movement for the set time signs the person out of the screen.
+// The server checks too, so a computer left asleep is signed out as well.
+// ---------------------------------------------------------------------
+(function idleSignOut() {
+    const meta = document.querySelector('meta[name="idle-timeout"]');
+    if (!meta) return;
+    const limitMs = Number(meta.content) * 1000;
+    if (!limitMs) return;
+    let last = Date.now();
+    const seen = () => { last = Date.now(); };
+    ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach((type) => document.addEventListener(type, seen, { passive: true, capture: true }));
+    setInterval(() => {
+        if (Date.now() - last < limitMs) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = meta.dataset.lockUrl;
+        form.innerHTML = `<input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]').content}">`;
+        document.body.appendChild(form);
+        form.submit();
+    }, 15000);
+})();

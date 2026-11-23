@@ -38,6 +38,11 @@ return [
     'version_check_url' => env('ELIKAS_VERSION_CHECK_URL', 'https://e-likasligao.online/downloads/desktop-version.json'),
     'download_page_url' => 'https://e-likasligao.online/downloads/E-LIKAS-Setup.exe',
 
+    // This computer's data key and backups (docs/local-data-protection.md).
+    // Empty: storage/app/local-data.key and storage/app/backups.
+    'local_data_key_path' => env('ELIKAS_LOCAL_DATA_KEY_PATH'),
+    'local_backups_path' => env('ELIKAS_LOCAL_BACKUPS_PATH'),
+
     'central_api_url' => (function () {
         $overrideFile = storage_path('app/dev-api-target.txt');
 

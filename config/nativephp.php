@@ -67,6 +67,10 @@ return [
         // ApiTargetCommand) -- never allowed to ship, even if a developer
         // forgets to clear it before building.
         'storage/app/dev-api-target.txt',
+        // This computer's data key and backups (docs/local-data-protection.md).
+        'storage/app/local-data.key',
+        'storage/app/backups',
+        'storage/app/exports',
     ],
 
     /**

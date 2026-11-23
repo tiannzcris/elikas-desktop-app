@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @if (($currentUser ?? null) && \Illuminate\Support\Facades\Schema::hasColumn('local_auth', 'locked_at'))
+        {{-- Signed out after this many seconds without activity (Data and security). --}}
+        <meta name="idle-timeout" content="{{ app(\App\Security\IdleSignOut::class)->minutes() * 60 }}" data-lock-url="{{ route('lock') }}">
+    @endif
     <title>@yield('title', 'E-LIKAS Offline Companion')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -141,6 +145,9 @@
                             <i class="ti ti-chevron-down text-gray-500" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>
                         <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-52 card shadow-lg overflow-hidden z-50 py-1" role="menu">
+                            <a href="{{ route('data-security.index') }}" class="menu-item" role="menuitem">
+                                <i class="ti ti-shield-lock" aria-hidden="true"></i> Data and security
+                            </a>
                             <a href="{{ route('about') }}" class="menu-item" role="menuitem">
                                 <i class="ti ti-info-circle" aria-hidden="true"></i> About E-LIKAS
                             </a>

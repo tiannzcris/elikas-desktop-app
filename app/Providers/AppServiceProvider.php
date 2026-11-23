@@ -11,11 +11,15 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Security\LocalDataKey::class);
     }
 
     public function boot(): void
     {
+        // Personal data is encrypted at rest with this computer's own key,
+        // never APP_KEY (the same in every installer).
+        \Illuminate\Database\Eloquent\Model::encryptUsing(new \App\Security\LazyLocalEncrypter);
+
         // The shell's "waiting to be sent" figure (top bar, logout warning).
         View::composer('layouts.app', function ($view) {
             $view->with('pendingTotal', Schema::hasTable('app_state') ? app(LocalData::class)->pendingCount() : 0);

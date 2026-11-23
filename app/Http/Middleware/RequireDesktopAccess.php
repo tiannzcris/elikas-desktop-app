@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\LocalAuth;
+use App\Security\IdleSignOut;
 use App\Services\CentralApiService;
 use Closure;
 use Illuminate\Http\Request;
@@ -34,6 +35,29 @@ class RequireDesktopAccess
             LocalAuth::query()->delete();
 
             return redirect()->route('use-web');
+        }
+
+        // Signed out after inactivity: nothing shows until they sign in again.
+        $idle = app(IdleSignOut::class);
+        $route = $request->route()?->getName();
+        if (in_array($route, IdleSignOut::OPEN_ROUTES, true)) {
+            return $next($request);
+        }
+        if (! $auth->locked_at && $idle->expired()) {
+            $idle->lock($auth);
+        }
+        if ($auth->locked_at) {
+            if ($request->expectsJson() || in_array($route, IdleSignOut::BACKGROUND_ROUTES, true)) {
+                return response()->json(['message' => 'Signed out after inactivity.', 'signed_out' => true], 423);
+            }
+            if ($request->isMethod('get')) {
+                redirect()->setIntendedUrl($request->fullUrl());
+            }
+
+            return redirect()->route('unlock');
+        }
+        if (! in_array($route, IdleSignOut::BACKGROUND_ROUTES, true)) {
+            $idle->touch();
         }
 
         return $next($request);

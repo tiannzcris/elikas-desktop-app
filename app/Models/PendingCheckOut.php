@@ -23,7 +23,8 @@ class PendingCheckOut extends Model
         'family_label', 'status', 'people_checked_out', 'synced_at', 'sync_error', 'sync_state',
     ];
 
-    protected $casts = ['synced_at' => 'datetime'];
+    // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+    protected $casts = ['synced_at' => 'datetime', 'family_label' => 'encrypted'];
 
     public function evacuationCenter(): BelongsTo
     {

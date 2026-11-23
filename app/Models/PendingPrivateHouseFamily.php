@@ -17,7 +17,9 @@ class PendingPrivateHouseFamily extends Model
     ];
 
     protected $casts = [
-        'head' => 'array', 'members' => 'array', 'is_4ps_beneficiary' => 'boolean', 'synced_at' => 'datetime',
+        // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+        'head' => 'encrypted:array', 'members' => 'encrypted:array', 'host_name' => 'encrypted', 'host_address' => 'encrypted',
+        'is_4ps_beneficiary' => 'boolean', 'synced_at' => 'datetime',
     ];
 
     public function evacuationEvent(): BelongsTo

@@ -64,14 +64,9 @@ class EcBoardEntryManagementTest extends TestCase
             'new_household_head_name' => null,
             'synced_at' => null,
         ]);
-        $this->assertDatabaseHas('evacuees', [
-            'family_id' => $family->id,
-            'first_name' => 'Juan',
-            'last_name' => 'Dela Cruz',
-            'sex' => 'male',
-            'is_head_of_family' => true,
-            'date_of_birth' => null,
-        ]);
+        // Names are encrypted at rest: read through the model.
+        $this->assertTrue(\App\Models\Evacuee::where('family_id', $family->id)->where('sex', 'male')->where('is_head_of_family', true)->get()
+            ->contains(fn ($e) => $e->first_name === 'Juan' && $e->last_name === 'Dela Cruz' && $e->date_of_birth === null));
 
         // The page itself makes no live network call at all (see
         // EvacuationCenterController::ecBoard()'s own docblock for why --
@@ -501,8 +496,8 @@ class EcBoardEntryManagementTest extends TestCase
         ]);
         // Head is someone else (box not ticked): the household is labelled
         // by its recorded name -- no head member is invented with a guessed sex.
-        $this->assertDatabaseHas('families', ['name' => 'Rosa Santos', 'created_via_ec_board' => true, 'head_ec_board_entry_id' => null]);
-        $this->assertDatabaseMissing('evacuees', ['first_name' => 'Rosa', 'last_name' => 'Santos']);
+        $this->assertTrue(\App\Models\Family::where('created_via_ec_board', true)->whereNull('head_ec_board_entry_id')->get()->contains('name', 'Rosa Santos'));
+        $this->assertFalse(\App\Models\Evacuee::all()->contains(fn ($e) => $e->first_name === 'Rosa' && $e->last_name === 'Santos'));
 
         $afterAdd = $this->get(route('evacuation-centers.ec-board', ['center' => $center, 'event' => $event->id]));
         $afterAdd->assertSee('Rosa Santos');

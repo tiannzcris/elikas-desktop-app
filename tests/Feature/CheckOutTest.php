@@ -79,7 +79,7 @@ class CheckOutTest extends TestCase
             'evacuation_event_id' => $this->event->id, 'sex' => 'female', 'age_bracket' => 'adult', 'household_type' => 'new',
             'new_household_barangay_id' => $this->barangay->id, 'new_household_head_name' => 'Santos',
         ])->assertSessionHasNoErrors();
-        $local = Family::firstWhere('name', 'Santos');
+        $local = Family::all()->firstWhere('name', 'Santos');
         $this->checkOut('local-'.$local->id)->assertSessionHasNoErrors();
 
         Http::fake([

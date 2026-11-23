@@ -15,7 +15,13 @@ class Evacuee extends Model
         'remote_id', 'synced_at',
     ];
     protected $casts = [
-        'date_of_birth' => 'date',
+        // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+        'date_of_birth' => \App\Casts\EncryptedDate::class,
+        'first_name' => 'encrypted',
+        'middle_name' => 'encrypted',
+        'last_name' => 'encrypted',
+        'suffix' => 'encrypted',
+        'contact_number' => 'encrypted',
         'is_pwd' => 'boolean',
         'is_pregnant' => 'boolean',
         'is_lactating' => 'boolean',

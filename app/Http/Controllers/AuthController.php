@@ -67,11 +67,13 @@ class AuthController extends Controller
         // The selected event goes back to the default at every login (the
         // server does the same); an older choice made here is not sent.
         app(SelectedEvent::class)->reset();
-        LocalAuth::create(LocalAuth::attributesFromUser($result['user']) + [
+        $auth = LocalAuth::create(LocalAuth::attributesFromUser($result['user']) + [
             'api_token' => $result['token'],
             'logged_in_at' => now(),
             'identity_checked_at' => now(),
         ]);
+        // Signing in again after inactivity works offline with this password.
+        app(\App\Security\IdleSignOut::class)->signedInOnline($auth, $validated['password']);
 
         // We know we have internet right now (login just succeeded), so
         // pull current reference data immediately rather than making the
@@ -270,6 +272,9 @@ class AuthController extends Controller
                 }
             }
         }
+
+        // Closed events with nothing left to send leave this computer.
+        app(LocalData::class)->pruneClosedEvents();
 
         // The EC Board's "as of last sync" breakdown is deliberately NOT
         // refreshed here -- the real central endpoint (quick-count) is

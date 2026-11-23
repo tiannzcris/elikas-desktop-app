@@ -24,6 +24,9 @@ class Family extends Model
         'head_is_minor' => 'boolean',
         'created_via_ec_board' => 'boolean',
         'synced_at' => 'datetime',
+        // Encrypted at rest with this computer's key (docs/local-data-protection.md).
+        'name' => 'encrypted',
+        'home_address' => 'encrypted',
     ];
 
     /**

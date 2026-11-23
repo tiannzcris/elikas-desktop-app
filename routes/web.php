@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BarangayFinalCountController;
 use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataSecurityController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EventLifecycleController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\SelectedEventController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Controllers\TransferController;
+use App\Http\Controllers\UnlockController;
 use App\Http\Middleware\CityOnly;
 use App\Http\Middleware\OfficialOnly;
 use Illuminate\Support\Facades\Route;
@@ -35,10 +37,18 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/use-the-web', [AuthController::class, 'useWeb'])->name('use-web');
 
+// Signed out after inactivity (RequireDesktopAccess lets these through).
+Route::get('/signed-out', [UnlockController::class, 'show'])->name('unlock');
+Route::post('/signed-out', [UnlockController::class, 'unlock'])->name('unlock.submit');
+Route::post('/sign-out-idle', [UnlockController::class, 'lock'])->name('lock');
+
 // Every route below needs a signed-in CSWD or barangay official account
 // (RequireDesktopAccess, on the whole web group).
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::view('/about', 'about')->name('about');
+Route::get('/data-security', [DataSecurityController::class, 'index'])->name('data-security.index');
+Route::post('/data-security/timeout', [DataSecurityController::class, 'timeout'])->name('data-security.timeout');
+Route::post('/data-security/prune-closed', [DataSecurityController::class, 'pruneClosed'])->name('data-security.prune');
 Route::get('/app-version', [AppVersionController::class, 'check'])->name('app-version.check');
 Route::get('/app-version/download', [AppVersionController::class, 'download'])->name('app-version.download');
 Route::post('/selected-event', [SelectedEventController::class, 'update'])->name('selected-event.update');
