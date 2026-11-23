@@ -18,7 +18,7 @@ class PendingListCheckIn extends Model
     protected $fillable = [
         'client_ref', 'evacuation_event_id', 'listed_family_remote_id', 'family_label', 'members_count',
         'evacuation_center_id', 'host_name', 'host_purok_remote_id', 'host_address',
-        'registered_family_id', 'synced_at', 'sync_error', 'sync_state',
+        'registered_family_id', 'synced_at', 'sync_error', 'sync_state', 'pending_list_addition_id',
     ];
 
     // Encrypted at rest with this computer's key (docs/local-data-protection.md).
@@ -28,6 +28,12 @@ class PendingListCheckIn extends Model
     public function evacuationEvent(): BelongsTo
     {
         return $this->belongsTo(EvacuationEvent::class);
+    }
+
+    /** The family added on this computer that this check-in waits for, if any. */
+    public function addition(): BelongsTo
+    {
+        return $this->belongsTo(PendingListAddition::class, 'pending_list_addition_id');
     }
 
     public function evacuationCenter(): BelongsTo

@@ -46,6 +46,10 @@ switch the internet off (unplug, or turn off Wi-Fi).
 
 - [ ] Sidebar → Families to evacuate. Add 5 families **with the keyboard only**: Tab between
       fields, Enter adds, the purok stays selected and the cursor is back in First name.
+- [ ] **Offline**: add 3 families. Each shows "Added here, waiting to sync" and the counts go up.
+      Remove one of them (it goes at once). On Typhoon Drill, check one of the others in, still
+      offline. Back online and sync: the web lists each family once, and the checked-in one is an
+      evacuee at that center. Unplug in the middle of a sync and sync again: still once.
 - [ ] Search past events, add one: head and members come from the old record.
 - [ ] Tick Flood on a purok, Save marks: it moves to the top with "High risk: Flood".
 - [ ] On Incoming Typhoon: listing works, Check in is not offered (the lock says so).

@@ -11,6 +11,7 @@ use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
 use App\Models\PendingHandout;
+use App\Models\PendingListAddition;
 use App\Models\PendingListCheckIn;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
@@ -89,7 +90,10 @@ class SyncService
         $checkOuts = PendingCheckOut::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter', 'household'])
             ->get()->map(fn ($m) => ['key' => 'checkout:'.$m->id, 'model' => $m, 'kind' => 'checkout']);
 
-        $checkIns = PendingListCheckIn::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter'])
+        $additions = PendingListAddition::whereNull('synced_at')->with('evacuationEvent')
+            ->get()->map(fn ($m) => ['key' => 'listadd:'.$m->id, 'model' => $m, 'kind' => 'listadd']);
+
+        $checkIns = PendingListCheckIn::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter', 'addition'])
             ->get()->map(fn ($m) => ['key' => 'checkin:'.$m->id, 'model' => $m, 'kind' => 'checkin']);
 
         $handouts = PendingHandout::whereNull('synced_at')->with('evacuationEvent')
@@ -98,7 +102,7 @@ class SyncService
         // Files saved here, for the server's activity log.
         $downloads = DownloadLog::whereNull('reported_at')->get()->map(fn ($m) => ['key' => 'download:'.$m->id, 'model' => $m, 'kind' => 'download']);
 
-        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)->concat($checkIns)->concat($handouts)->concat($downloads)
+        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)->concat($additions)->concat($checkIns)->concat($handouts)->concat($downloads)
             ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
             ->values();
     }
@@ -161,6 +165,14 @@ class SyncService
             $household = $item['model']->household;
             if ($household && ! $household->isSynced()) {
                 return $household;
+            }
+        }
+
+        // A check-in of a family added here waits for that family to be sent.
+        if ($item['kind'] === 'checkin' && $item['model']->pending_list_addition_id) {
+            $addition = $item['model']->addition;
+            if ($addition && ! $addition->synced_at) {
+                return $addition;
             }
         }
 
@@ -284,6 +296,7 @@ class SyncService
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
             'private' => 'Private house: '.$model->label().' · '.Plural::of($model->personCount(), 'person', 'people').' (with '.$model->host_name.')',
             'download' => 'File '.($model->action ?: 'saved').': '.$model->file_name,
+            'listadd' => 'Families to evacuate: '.$model->label.' · '.Plural::of($model->members_count, 'member', 'members'),
             'handout' => 'Relief box: '.$model->family_label.($model->round_number ? ' (Round '.$model->round_number.')' : ''),
             'checkin' => 'Check-in: '.$model->family_label.' · '.Plural::of($model->members_count, 'person', 'people').' (listed family)',
             'checkout' => 'Check-out: '.$model->family_label.' ('.(PendingCheckOut::STATUSES[$model->status] ?? $model->status).')',
@@ -298,6 +311,7 @@ class SyncService
             'private' => 'Private house',
             'checkin' => $item['model']->destination(),
             'handout' => 'Relief boxes',
+            'listadd' => 'Families to evacuate',
             'download' => 'Activity log',
             default => $item['model']->evacuationCenter?->name ?? '',
         };
@@ -317,6 +331,14 @@ class SyncService
         if ($item['kind'] === 'download') {
             $this->api->send('post', 'file-downloads', $auth->api_token, $model->toSyncPayload());
             $model->update(['reported_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+            return;
+        }
+
+        if ($item['kind'] === 'listadd') {
+            $listedId = app(FamiliesToEvacuate::class)->sendAddition($auth, $model);
+            $model->update(['listed_family_remote_id' => $listedId, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+            PendingListCheckIn::where('pending_list_addition_id', $model->id)->update(['listed_family_remote_id' => $listedId]);
 
             return;
         }

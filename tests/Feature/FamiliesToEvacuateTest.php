@@ -6,6 +6,7 @@ use App\Models\Barangay;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
+use App\Models\PendingListAddition;
 use App\Models\PendingListCheckIn;
 use App\Models\Purok;
 use App\Models\ServerSnapshot;
@@ -53,40 +54,85 @@ class FamiliesToEvacuateTest extends TestCase
             ->assertDontSee('gap-2" data-check-in-form', false);
     }
 
-    public function test_adding_a_family_goes_to_the_server_and_keeps_the_purok_for_the_next(): void
+    public function test_adding_a_family_works_offline_and_is_sent_once_with_its_client_ref(): void
     {
-        Http::fake([
-            '*/families-to-evacuate' => Http::response(['data' => ['id' => 303, 'head' => 'Ana Cruz']], 201),
-            '*/families-to-evacuate?*' => Http::response(['data' => ['families' => []]]),
-        ]);
+        $online = false;
+        Http::fake(function ($request) use (&$online) {
+            if (! $online) {
+                throw new ConnectionException('down');
+            }
+
+            return Http::response(['success' => true, 'message' => 'Added to your list.', 'data' => ['id' => 303, 'head' => 'Ana Cruz', 'members_count' => 5, 'status' => 'expected']], 201,
+                ['Idempotent-Replayed' => 'true']);
+        });
 
         $this->post(route('families-to-evacuate.store'), [
-            'purok_id' => $this->riverside->id, 'head_first_name' => 'Ana', 'head_last_name' => 'Cruz', 'head_sex' => 'female', 'members_count' => 5,
+            'purok_id' => $this->riverside->id, 'head_first_name' => 'Ana', 'head_last_name' => 'Cruz', 'head_sex' => 'female', 'members_count' => 5, 'note' => 'Near the river',
         ])->assertRedirect(route('families-to-evacuate.index', ['purok' => $this->riverside->id]))
-            ->assertSessionHas('status', 'Ana Cruz added to the list (Purok 3).');
+            ->assertSessionHas('status', 'Ana Cruz added to the list (Purok 3). It is sent with the next sync.');
 
-        Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/families-to-evacuate')
-            && $r['evacuation_event_id'] === 80 && $r['purok_id'] === 13 && $r['members_count'] === 5 && $r['head_first_name'] === 'Ana');
+        $addition = PendingListAddition::sole();
+        $this->assertSame(1, app(LocalData::class)->pendingCount());
+        $this->get(route('families-to-evacuate.index'))->assertSeeInOrder(['Purok 3', 'Ana Cruz', 'Added here, waiting to sync'])
+            ->assertSeeInOrder(['Families listed', '3', 'Persons listed', '12']);
+
+        $this->postJson(route('sync.step'))->assertJson(['status' => 'stopped', 'stop' => 'offline']);
+        $online = true;
+        $this->postJson(route('sync.step'))->assertJson(['status' => 'sent']);
+        Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/families-to-evacuate') && $r['client_ref'] === $addition->client_ref
+            && $r['evacuation_event_id'] === 80 && $r['purok_id'] === 13 && $r['members_count'] === 5 && $r['head_first_name'] === 'Ana' && $r['note'] === 'Near the river');
+        $this->assertSame(303, (int) $addition->fresh()->listed_family_remote_id);
     }
 
     public function test_a_past_family_is_added_by_its_source_id(): void
     {
-        Http::fake([
-            '*/families-to-evacuate/past-families*' => Http::response(['data' => [['id' => 90, 'head' => 'Pedro Bautista', 'members_count' => 6]]]),
-            '*/families-to-evacuate' => Http::response(['data' => ['id' => 304, 'head' => 'Pedro Bautista']], 201),
-            '*/families-to-evacuate?*' => Http::response(['data' => ['families' => []]]),
-        ]);
+        Http::fake(['*/families-to-evacuate/past-families*' => Http::response(['data' => [['id' => 90, 'head' => 'Pedro Bautista', 'members_count' => 6]]])]);
 
         $this->get(route('families-to-evacuate.index', ['search' => 'Pedro']))->assertSee('Pedro Bautista')->assertSee('6 members');
-        $this->post(route('families-to-evacuate.store'), ['source_family_id' => 90, 'purok_id' => $this->riverside->id])->assertSessionHasNoErrors();
-        Http::assertSent(fn ($r) => $r->method() === 'POST' && str_ends_with($r->url(), '/families-to-evacuate') && $r['source_family_id'] === 90 && ! isset($r['head_first_name']));
+        $this->post(route('families-to-evacuate.store'), ['source_family_id' => 90, 'label' => 'Pedro Bautista', 'members_count' => 6, 'purok_id' => $this->riverside->id])->assertSessionHasNoErrors();
+
+        $payload = PendingListAddition::sole()->toSyncPayload();
+        $this->assertSame(90, $payload['source_family_id']);
+        $this->assertArrayNotHasKey('head_first_name', $payload);
+        $this->assertArrayNotHasKey('members_count', $payload, 'A past family\'s members come from its record.');
     }
 
-    public function test_adding_offline_says_it_needs_a_connection(): void
+    public function test_a_family_added_offline_can_be_checked_in_and_the_check_in_waits_for_it(): void
     {
-        Http::fake(fn () => throw new ConnectionException('down'));
-        $this->post(route('families-to-evacuate.store'), ['head_first_name' => 'Ana', 'head_last_name' => 'Cruz', 'members_count' => 2])
-            ->assertSessionHasErrors('list');
+        $this->event->update(['status' => 'active']);
+        $online = false;
+        Http::fake(function ($request) use (&$online) {
+            if (! $online) {
+                throw new ConnectionException('down');
+            }
+
+            return str_ends_with($request->url(), '/check-in')
+                ? Http::response(['data' => ['registered_family_id' => 77]], 201)
+                : Http::response(['data' => ['id' => 304, 'head' => 'Ana Cruz']], 201);
+        });
+
+        $this->post(route('families-to-evacuate.store'), ['head_first_name' => 'Ana', 'head_last_name' => 'Cruz', 'members_count' => 2]);
+        $local = 'local-'.PendingListAddition::sole()->id;
+        $this->post(route('families-to-evacuate.check-in', $local), ['destination' => 'center-'.$this->center->id])->assertSessionHasNoErrors();
+        $this->get(route('families-to-evacuate.index'))->assertSee('Checked in at Bacong Gym, waiting to sync');
+
+        $online = true;
+        $this->post(route('sync.all'));
+        $this->assertSame(0, app(LocalData::class)->pendingCount());
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/families-to-evacuate/304/check-in') && $r['evacuation_center_id'] === 7);
+        $this->assertSame(304, (int) PendingListCheckIn::sole()->listed_family_remote_id);
+    }
+
+    public function test_removing_a_family_added_here_and_a_retried_delete(): void
+    {
+        $this->post(route('families-to-evacuate.store'), ['head_first_name' => 'Ana', 'head_last_name' => 'Cruz', 'members_count' => 2]);
+        $this->delete(route('families-to-evacuate.destroy', 'local-'.PendingListAddition::sole()->id))->assertSessionHas('status', 'Removed from the list.');
+        $this->assertSame(0, PendingListAddition::count());
+        Http::assertNothingSent();
+
+        // Already removed on the server (a retry): treated as done.
+        Http::fake(['*/families-to-evacuate/301' => Http::response(['message' => 'Not found.'], 404), '*/families-to-evacuate?*' => Http::response(['data' => ['families' => []]])]);
+        $this->delete(route('families-to-evacuate.destroy', 301))->assertSessionHas('status', 'Removed from the list.');
     }
 
     public function test_marking_a_purok_high_risk(): void

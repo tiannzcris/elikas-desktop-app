@@ -6,6 +6,7 @@ use App\Exceptions\CentralApiException;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
+use App\Models\PendingListAddition;
 use App\Models\PendingListCheckIn;
 use App\Models\Purok;
 use App\Services\FamiliesToEvacuate;
@@ -22,7 +23,7 @@ use Illuminate\Validation\ValidationException;
  */
 class FamiliesToEvacuateController extends Controller
 {
-    private const OFFLINE = 'Needs a connection. Adding to the list, removing and the high-risk marks go to the server at once; checking in works offline.';
+    private const OFFLINE = 'Needs a connection. Removing and the high-risk marks go to the server at once; adding and checking in work offline.';
 
     public function __construct(private FamiliesToEvacuate $list) {}
 
@@ -85,8 +86,9 @@ class FamiliesToEvacuateController extends Controller
         $purokRule = ['nullable', 'integer', Rule::exists('puroks', 'id')->where('barangay_remote_id', $auth->barangay_id)];
 
         if ($request->filled('source_family_id')) {
-            $validated = $request->validate(['source_family_id' => ['required', 'integer'], 'purok_id' => $purokRule, 'label' => ['nullable', 'string', 'max:200']]);
-            $fields = ['source_family_id' => (int) $validated['source_family_id']];
+            $validated = $request->validate(['source_family_id' => ['required', 'integer'], 'purok_id' => $purokRule, 'label' => ['nullable', 'string', 'max:200'],
+                'members_count' => ['nullable', 'integer', 'min:1', 'max:30']]);
+            $fields = ['source_family_id' => (int) $validated['source_family_id'], 'members_count' => (int) ($validated['members_count'] ?? 1)];
         } else {
             $validated = $request->validate([
                 'head_first_name' => ['required', 'string', 'max:100'],
@@ -95,34 +97,47 @@ class FamiliesToEvacuateController extends Controller
                 'members_count' => ['required', 'integer', 'min:1', 'max:30'],
                 'purok_id' => $purokRule,
                 'contact_number' => ['nullable', 'string', 'max:30'],
-                'note' => ['nullable', 'string', 'max:500'],
+                'note' => ['nullable', 'string', 'max:255'],
             ], [
                 'members_count.max' => 'A family can have at most 30 members on the list.',
             ]);
             $fields = collect($validated)->except('purok_id')->all();
         }
         $purok = ! empty($validated['purok_id']) ? Purok::find($validated['purok_id']) : null;
-        $fields['purok_id'] = $purok?->remote_id;
+        $name = trim(($validated['head_first_name'] ?? '').' '.($validated['head_last_name'] ?? '')) ?: ($validated['label'] ?? 'A family from a past event');
 
-        try {
-            $row = $this->list->add($auth, $event, $fields);
-        } catch (CentralApiException $e) {
-            return back()->withInput()->withErrors(['list' => $e->isOffline() ? self::OFFLINE : $e->getMessage()]);
-        }
-        $this->reload($auth, $event);
-
-        $name = $row['head'] ?? trim(($validated['head_first_name'] ?? '').' '.($validated['head_last_name'] ?? '')) ?: ($validated['label'] ?? 'The family');
+        // Saved here first, sent by Sync with its client_ref (offline too).
+        PendingListAddition::create($fields + [
+            'evacuation_event_id' => $event->id,
+            'purok_remote_id' => $purok?->remote_id,
+            'label' => $name,
+        ]);
 
         // Back to the same purok, ready for the next family.
         return redirect()->route('families-to-evacuate.index', array_filter(['purok' => $purok?->id]))
-            ->with('status', "{$name} added to the list".($purok ? " ({$purok->name})" : '').'.')
+            ->with('status', "{$name} added to the list".($purok ? " ({$purok->name})" : '').'. It is sent with the next sync.')
             ->with('listAdded', true);
     }
 
-    public function destroy(int $listedId)
+    public function destroy(string $listedId)
     {
         $auth = LocalAuth::current();
         $event = $this->editableEvent();
+
+        // Added here and not sent yet: only this computer has it.
+        if (str_starts_with($listedId, 'local-')) {
+            $addition = PendingListAddition::findOrFail((int) substr($listedId, 6));
+            if ($addition->synced_at === null) {
+                if (PendingListCheckIn::where('pending_list_addition_id', $addition->id)->exists()) {
+                    return back()->withErrors(['list' => 'This family is already checked in on this computer.']);
+                }
+                $addition->delete();
+
+                return back()->with('status', 'Removed from the list.');
+            }
+            $listedId = (string) $addition->listed_family_remote_id;
+        }
+        $listedId = (int) $listedId;
         try {
             $this->list->remove($auth, $listedId);
         } catch (CentralApiException $e) {
@@ -155,7 +170,7 @@ class FamiliesToEvacuateController extends Controller
      * client_ref and sent by Sync. At one of the barangay's own centers, or in
      * a private house (host name, plus a purok or an address).
      */
-    public function checkIn(Request $request, int $listedId)
+    public function checkIn(Request $request, string $listedId)
     {
         $auth = LocalAuth::current();
         abort_unless($auth->can('families_to_evacuate.manage'), 403);
@@ -171,7 +186,8 @@ class FamiliesToEvacuateController extends Controller
             'host_name.required_if' => 'Say who the family is staying with.',
         ]);
 
-        $row = collect($this->list->forEvent($event, (int) $auth->barangay_id)['groups'])->flatMap(fn ($g) => $g['families'])->firstWhere('id', $listedId);
+        $key = str_starts_with($listedId, 'local-') ? $listedId : (int) $listedId;
+        $row = collect($this->list->forEvent($event, (int) $auth->barangay_id)['groups'])->flatMap(fn ($g) => $g['families'])->firstWhere('id', $key);
         if (! $row) {
             throw ValidationException::withMessages(['destination' => 'This family is not on the list on this device. Refresh the list.']);
         }
@@ -194,7 +210,9 @@ class FamiliesToEvacuateController extends Controller
 
         PendingListCheckIn::create([
             'evacuation_event_id' => $event->id,
-            'listed_family_remote_id' => $listedId,
+            // A family added here and not sent yet: the check-in waits for it.
+            'listed_family_remote_id' => is_int($key) ? $key : $row['added_here']->listed_family_remote_id,
+            'pending_list_addition_id' => is_int($key) ? null : $row['added_here']->id,
             'family_label' => $row['head'] ?? 'Family #'.$listedId,
             'members_count' => max(1, (int) $row['members_count']),
             'evacuation_center_id' => $center?->id,

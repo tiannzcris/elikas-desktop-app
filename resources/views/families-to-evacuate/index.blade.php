@@ -51,7 +51,7 @@
             <div class="card-body">
                 <div class="card-header">
                     <h2 id="add-title" class="card-title">Add a family</h2>
-                    <span class="text-sm text-gray-600">Enter adds it. The purok stays for the next family. Needs a connection.</span>
+                    <span class="text-sm text-gray-600">Enter adds it. The purok stays for the next family. Works offline.</span>
                 </div>
                 <form method="POST" action="{{ route('families-to-evacuate.store') }}" class="grid gap-3 grid-cols-2 lg:grid-cols-12 items-end">
                     @csrf
@@ -89,7 +89,7 @@
                         <input id="fte-contact" name="contact_number" value="{{ old('contact_number') }}" class="input" autocomplete="off" inputmode="tel">
                     </div>
                     <div class="col-span-2 lg:col-span-2">
-                        <button type="submit" class="btn btn-primary w-full" data-online-only><i class="ti ti-plus" aria-hidden="true"></i> Add to list</button>
+                        <button type="submit" class="btn btn-primary w-full"><i class="ti ti-plus" aria-hidden="true"></i> Add to list</button>
                     </div>
                 </form>
 
@@ -128,7 +128,8 @@
                                             <input type="hidden" name="source_family_id" value="{{ $pf['id'] }}">
                                             <input type="hidden" name="label" value="{{ $pfName }}">
                                             <input type="hidden" name="purok_id" value="{{ $selectedPurok }}">
-                                            <button type="submit" class="btn btn-secondary btn-sm" data-online-only>Add to list</button>
+                                            <input type="hidden" name="members_count" value="{{ max(1, min(30, (int) ($pf['members_count'] ?? $pf['member_count'] ?? 1))) }}">
+                                            <button type="submit" class="btn btn-secondary btn-sm">Add to list</button>
                                         </form>
                                     @endif
                                 </li>
@@ -166,6 +167,7 @@
                         <div class="min-w-0">
                             <p class="font-semibold text-sm text-gray-900">{{ $f['head'] ?? 'Family #'.$f['id'] }}
                                 @if (! empty($f['from_past_event']))<span class="badge badge-neutral ml-1">From a past event</span>@endif
+                                @if ($f['waiting_add'])<span class="badge badge-warning ml-1" data-added-waiting>Added here, waiting to sync</span>@endif
                             </p>
                             <p class="text-xs text-gray-600">
                                 {{ \App\Support\Plural::of($f['members_count'], 'member', 'members') }}{{ ! empty($f['contact_number']) ? ' · '.$f['contact_number'] : '' }}{{ ! empty($f['note']) ? ' · '.$f['note'] : '' }}

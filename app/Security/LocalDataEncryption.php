@@ -35,6 +35,7 @@ class LocalDataEncryption
         'pending_private_house_families' => ['head' => 'json', 'members' => 'json', 'host_name' => 'string', 'host_address' => 'string'],
         'pending_list_check_ins' => ['family_label' => 'string', 'host_name' => 'string', 'host_address' => 'string'],
         'pending_handouts' => ['family_label' => 'string'],
+        'pending_list_additions' => ['head_first_name' => 'string', 'head_last_name' => 'string', 'contact_number' => 'string', 'note' => 'string', 'label' => 'string'],
         'server_snapshots' => ['payload' => 'json'],
     ];
 

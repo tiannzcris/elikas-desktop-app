@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\CentralApiException;
 use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
+use App\Models\PendingListAddition;
 use App\Models\PendingListCheckIn;
 use App\Models\Purok;
 use App\Models\ServerSnapshot;
@@ -16,9 +17,10 @@ use Illuminate\Support\Collection;
  * family is never an evacuee, never in a total, until it is checked in.
  *
  * The list is copied for reading and checking in offline (refreshed at
- * login, with Refresh, and after every change). Adding, removing and the
- * high-risk marks are online only: the server takes no client_ref for them.
- * A check-in is queued with its client_ref and sent by Sync.
+ * login, with Refresh, and after every change). Adding a family and
+ * checking one in are queued with their client_ref and sent by Sync (a
+ * family added here can be checked in before it is sent; the check-in waits
+ * for it). Removing and the high-risk marks are online only.
  */
 class FamiliesToEvacuate
 {
@@ -63,11 +65,30 @@ class FamiliesToEvacuate
         $pending = $event ? PendingListCheckIn::where('evacuation_event_id', $event->id)->get()->keyBy('listed_family_remote_id') : collect();
         $puroks = Purok::where('barangay_remote_id', $barangayRemoteId)->get()->keyBy('remote_id');
 
-        $families = collect($snapshot?->payload['families'] ?? [])->map(function (array $f) use ($pending, $puroks) {
-            $local = $pending->get($f['id']);
+        // Families added here that the copy does not have yet.
+        $known = collect($snapshot?->payload['families'] ?? [])->pluck('id')->all();
+        $added = $event ? PendingListAddition::where('evacuation_event_id', $event->id)->get()
+            ->reject(fn (PendingListAddition $a) => $a->listed_family_remote_id && in_array($a->listed_family_remote_id, $known, true)) : collect();
+        $localCheckIns = $event ? PendingListCheckIn::where('evacuation_event_id', $event->id)->whereNotNull('pending_list_addition_id')->get()->keyBy('pending_list_addition_id') : collect();
+        $addedRows = $added->map(function (PendingListAddition $a) use ($puroks, $localCheckIns) {
+            $purok = $puroks->get($a->purok_remote_id);
+            $checkIn = $localCheckIns->get($a->id) ?? ($a->listed_family_remote_id ? PendingListCheckIn::where('listed_family_remote_id', $a->listed_family_remote_id)->first() : null);
+
+            return [
+                'id' => 'local-'.$a->id, 'head' => $a->label, 'members_count' => (int) $a->members_count,
+                'purok' => $purok ? ['id' => $purok->remote_id, 'name' => $purok->name] : null,
+                'contact_number' => $a->contact_number, 'note' => $a->note, 'from_past_event' => $a->source_family_id ? ['family_id' => $a->source_family_id] : null,
+                'status' => 'expected', 'added_here' => $a, 'waiting_add' => ! $a->synced_at,
+            ];
+        });
+
+        $families = collect($snapshot?->payload['families'] ?? [])->concat($addedRows)->map(function (array $f) use ($pending, $puroks, $localCheckIns) {
+            $local = isset($f['added_here']) ? $localCheckIns->get($f['added_here']->id) : $pending->get($f['id']);
             $purok = $puroks->get($f['purok']['id'] ?? null);
 
             return $f + [
+                'added_here' => null,
+                'waiting_add' => false,
                 'members_count' => (int) ($f['members_count'] ?? 0),
                 'waiting_check_in' => $local && ! $local->synced_at ? $local : null,
                 'is_checked_in' => ($f['status'] ?? 'expected') === 'checked_in' || $local !== null,
@@ -104,17 +125,24 @@ class FamiliesToEvacuate
         ];
     }
 
-    /** POST /families-to-evacuate: a new family, or a past event's family by source_family_id. */
-    public function add(LocalAuth $auth, EvacuationEvent $event, array $fields): array
+    /** Sends one queued addition (POST /families-to-evacuate with client_ref); returns the listed family's id. */
+    public function sendAddition(LocalAuth $auth, PendingListAddition $addition): ?int
     {
-        $body = $this->api->send('post', 'families-to-evacuate', $auth->api_token, ['evacuation_event_id' => $event->remote_id] + array_filter($fields, fn ($v) => $v !== null && $v !== ''));
+        $body = $this->api->send('post', 'families-to-evacuate', $auth->api_token, $addition->toSyncPayload());
 
-        return $body['data'] ?? [];
+        return isset($body['data']['id']) ? (int) $body['data']['id'] : null;
     }
 
+    /** DELETE /families-to-evacuate/{id}; a 404 (already removed, a retry) counts as done. */
     public function remove(LocalAuth $auth, int $listedId): void
     {
-        $this->api->send('delete', "families-to-evacuate/{$listedId}", $auth->api_token);
+        try {
+            $this->api->send('delete', "families-to-evacuate/{$listedId}", $auth->api_token);
+        } catch (CentralApiException $e) {
+            if ($e->kind !== CentralApiException::NOT_FOUND) {
+                throw $e;
+            }
+        }
     }
 
     /** GET /families-to-evacuate/past-families?search=: one per household, from closed events. */
@@ -141,7 +169,11 @@ class FamiliesToEvacuate
     /** Sends one queued check-in; returns the registered family's id. */
     public function sendCheckIn(LocalAuth $auth, PendingListCheckIn $checkIn): ?int
     {
-        $body = $this->api->send('post', "families-to-evacuate/{$checkIn->listed_family_remote_id}/check-in", $auth->api_token, $checkIn->toSyncPayload());
+        $listedId = $checkIn->listed_family_remote_id ?? $checkIn->addition?->listed_family_remote_id;
+        if (! $listedId) {
+            throw new \RuntimeException('The family this check-in is for is not on the server yet.');
+        }
+        $body = $this->api->send('post', "families-to-evacuate/{$listedId}/check-in", $auth->api_token, $checkIn->toSyncPayload());
         $id = $body['data']['registered_family_id'] ?? $body['registered_family_id'] ?? $body['data']['family_id'] ?? null;
 
         return $id !== null ? (int) $id : null;

@@ -12,6 +12,7 @@ use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
 use App\Models\PendingHandout;
+use App\Models\PendingListAddition;
 use App\Models\PendingListCheckIn;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
@@ -104,7 +105,11 @@ class WaitingRecordsTransfer
                     'user_remote_id', 'user_name', 'saved_to', 'generated_offline', 'file_type', 'action', 'report_remote_id'])->all()],
                 'handout' => ['attributes' => ['round_remote_id' => $m->round_remote_id, 'round_number' => $m->round_number, 'family_remote_id' => $m->family_remote_id,
                     'family_label' => $m->family_label, 'higher_priority_waiting' => $m->higher_priority_waiting]],
+                'listadd' => ['attributes' => ['purok_remote_id' => $m->purok_remote_id, 'source_family_id' => $m->source_family_id, 'head_first_name' => $m->head_first_name,
+                    'head_last_name' => $m->head_last_name, 'head_sex' => $m->head_sex, 'members_count' => $m->members_count, 'contact_number' => $m->contact_number,
+                    'note' => $m->note, 'label' => $m->label]],
                 'checkin' => ['center_remote_id' => $m->evacuation_center_id ? ($centers[$m->evacuation_center_id] ?? null) : null,
+                    'addition_client_ref' => $m->addition?->client_ref,
                     'attributes' => ['listed_family_remote_id' => $m->listed_family_remote_id, 'family_label' => $m->family_label, 'members_count' => $m->members_count,
                         'host_name' => $m->host_name, 'host_purok_remote_id' => $m->host_purok_remote_id, 'host_address' => $m->host_address]],
             };
@@ -215,7 +220,7 @@ class WaitingRecordsTransfer
             foreach ($payload['records'] as $r) {
                 $model = match ($r['kind']) {
                     'entry' => EcBoardEntry::class, 'family' => Family::class, 'returning' => PendingReEnrollment::class,
-                    'private' => PendingPrivateHouseFamily::class, 'checkout' => PendingCheckOut::class, 'checkin' => PendingListCheckIn::class, 'handout' => PendingHandout::class, 'download' => DownloadLog::class,
+                    'private' => PendingPrivateHouseFamily::class, 'checkout' => PendingCheckOut::class, 'checkin' => PendingListCheckIn::class, 'handout' => PendingHandout::class, 'download' => DownloadLog::class, 'listadd' => PendingListAddition::class,
                     default => null,
                 };
                 if ($model === null) {
@@ -237,6 +242,9 @@ class WaitingRecordsTransfer
                 ];
                 if (array_key_exists('center_remote_id', $r)) {
                     $attributes['evacuation_center_id'] = $r['center_remote_id'] ? $centers[$r['center_remote_id']] : null;
+                }
+                if (! empty($r['addition_client_ref'])) {
+                    $attributes['pending_list_addition_id'] = PendingListAddition::where('client_ref', $r['addition_client_ref'])->value('id');
                 }
                 if (! empty($r['household_client_ref'])) {
                     $attributes['household_family_local_id'] = $familyIds[$r['household_client_ref']] ?? null;

@@ -90,8 +90,8 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::get('/families-to-evacuate', [FamiliesToEvacuateController::class, 'index'])->name('families-to-evacuate.index');
     Route::post('/families-to-evacuate', [FamiliesToEvacuateController::class, 'store'])->name('families-to-evacuate.store');
     Route::post('/families-to-evacuate/refresh', [FamiliesToEvacuateController::class, 'refresh'])->name('families-to-evacuate.refresh');
-    Route::delete('/families-to-evacuate/{listedId}', [FamiliesToEvacuateController::class, 'destroy'])->whereNumber('listedId')->name('families-to-evacuate.destroy');
-    Route::post('/families-to-evacuate/{listedId}/check-in', [FamiliesToEvacuateController::class, 'checkIn'])->whereNumber('listedId')->name('families-to-evacuate.check-in');
+    Route::delete('/families-to-evacuate/{listedId}', [FamiliesToEvacuateController::class, 'destroy'])->where('listedId', '(local-)?[0-9]+')->name('families-to-evacuate.destroy');
+    Route::post('/families-to-evacuate/{listedId}/check-in', [FamiliesToEvacuateController::class, 'checkIn'])->where('listedId', '(local-)?[0-9]+')->name('families-to-evacuate.check-in');
     // The barangay's final count: read offline, submitted online.
     Route::get('/final-count', [BarangayFinalCountController::class, 'index'])->name('final-count.index');
     Route::post('/final-count/refresh', [BarangayFinalCountController::class, 'refresh'])->name('final-count.refresh');

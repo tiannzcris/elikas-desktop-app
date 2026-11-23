@@ -13,6 +13,7 @@ use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
 use App\Models\PendingHandout;
+use App\Models\PendingListAddition;
 use App\Models\PendingListCheckIn;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
@@ -38,7 +39,7 @@ class LocalData
     public static function queueModels(): array
     {
         return [PendingCheckOut::class, PendingReEnrollment::class, PendingPrivateHouseFamily::class,
-            PendingListCheckIn::class, PendingHandout::class];
+            PendingListCheckIn::class, PendingListAddition::class, PendingHandout::class];
     }
 
     /** Records on this device not yet accepted by the central server. */

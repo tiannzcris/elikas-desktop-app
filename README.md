@@ -14,7 +14,7 @@ The desktop app is the barangay's offline encoding station; CSWD reads
 
 | Account | On the desktop |
 | --- | --- |
-| Barangay official | EC Board for the own barangay's centers: Add evacuee (new or existing family, purok), Private houses (families with relatives or friends), Returning families, Check out and Transfer per family, "Ask another center for space" at 90%. Families to evacuate per purok (fast keyboard entry, high-risk puroks, Check in offline). Final count (submit online, late entries). Print and download (EC Information Board, family list, relief distribution sheet, families to evacuate, made offline; the official EC Information Board from the server, online); every saved file is reported to the server's activity log (queued offline). Works offline; Sync sends everything when the server answers. Transfers (online): move families to another own center, or ask another barangay's center; accept or decline requests to the barangay. |
+| Barangay official | EC Board for the own barangay's centers: Add evacuee (new or existing family, purok), Private houses (families with relatives or friends), Returning families, Check out and Transfer per family, "Ask another center for space" at 90%. Families to evacuate per purok (fast keyboard entry, high-risk puroks; adding and Check in work offline). Relief boxes (priority, Next in line, Give box offline). Final count (submit online, late entries). Print and download (EC Information Board, family list, relief distribution sheet, families to evacuate, made offline; the official EC Information Board from the server, online); every saved file is reported to the server's activity log (queued offline). Works offline; Sync sends everything when the server answers. Transfers (online): move families to another own center, or ask another barangay's center; accept or decline requests to the barangay. |
 | CSWD personnel | Read-only Monitoring (with evacuation orders) and Final counts (with late entries), kept for offline reading, marked "As of ...". Online: Submit for a barangay with no official account, the Transfers screen, and Move a family with a reason. |
 | Administrator | "Use the web" screen. Nothing is kept. |
 
@@ -74,15 +74,12 @@ locked account and maintenance show the server's message. Every request sends
 `X-Sync-Failed` and `X-Last-Sync`. System notices show as a banner; Report a
 problem (with an optional screenshot) is in the account menu.
 
-## 2.1.0: waiting for the server
+## 2.1.0: to confirm with the backend
 
-- Relief boxes per family (Priority, Next in line, handouts queued with
-  `client_ref`) are not in 2.1.0: the API notes in `docs/backend/` do not
-  describe the handout endpoints yet.
-
-
-- Adding families to evacuate is online only: `POST /families-to-evacuate`
-  takes no `client_ref`, so it cannot be queued safely (check-ins can).
+- Relief rounds are read from `GET /box-relief/barangay` (`rounds`, `round`,
+  `current_round` or `latest_round`, each with `id` and `round_number`). The
+  November 24 notes document the family list and the give by round id, not
+  where an official's app finds the ids.
 
 ## Develop and test
 
