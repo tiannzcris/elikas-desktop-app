@@ -33,6 +33,7 @@ class DataSecurityController extends Controller
             'closedWithData' => EvacuationEvent::where('status', 'closed')->get()
                 ->filter(fn ($e) => $local->holdsDataFor($e))
                 ->map(fn ($e) => ['event' => $e, 'unsent' => $local->unsentFor($e)])->values(),
+            'waiting' => $local->pendingCount(),
         ]);
     }
 

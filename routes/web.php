@@ -21,6 +21,7 @@ use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\UnlockController;
+use App\Http\Controllers\WaitingRecordsController;
 use App\Http\Middleware\CityOnly;
 use App\Http\Middleware\OfficialOnly;
 use Illuminate\Support\Facades\Route;
@@ -86,6 +87,10 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::get('/final-count', [BarangayFinalCountController::class, 'index'])->name('final-count.index');
     Route::post('/final-count/refresh', [BarangayFinalCountController::class, 'refresh'])->name('final-count.refresh');
     Route::post('/final-count/submit', [BarangayFinalCountController::class, 'submit'])->name('final-count.submit');
+    // Waiting records to another computer (an encrypted file, e.g. on a USB drive).
+    Route::post('/waiting-records/export', [WaitingRecordsController::class, 'export'])->name('waiting-records.export');
+    Route::post('/waiting-records/import', [WaitingRecordsController::class, 'import'])->name('waiting-records.import');
+
     // Print and download: files made on this computer, officials only.
     Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');
     Route::post('/downloads', [DownloadController::class, 'save'])->name('downloads.save');
