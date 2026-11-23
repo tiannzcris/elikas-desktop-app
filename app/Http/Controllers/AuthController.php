@@ -64,6 +64,9 @@ class AuthController extends Controller
         }
 
         LocalAuth::query()->delete();
+        // The selected event goes back to the default at every login (the
+        // server does the same); an older choice made here is not sent.
+        app(SelectedEvent::class)->reset();
         LocalAuth::create(LocalAuth::attributesFromUser($result['user']) + [
             'api_token' => $result['token'],
             'logged_in_at' => now(),

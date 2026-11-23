@@ -23,14 +23,14 @@
         </div>
         <div class="page-actions items-end">
 
-            @if ($events->isNotEmpty() && ! $selectedEventClosed)
+            @if ($events->isNotEmpty() && ! $registrationLock)
                 <button type="button" class="btn btn-primary" data-open-board-modal="add-evacuee-modal" aria-haspopup="dialog">
                     <i class="ti ti-user-plus" style="font-size: 16px;" aria-hidden="true"></i> Add evacuee
                 </button>
             @endif
             {{-- The one primary button above; the rest in "..." (web design system 5). --}}
             <x-row-menu label="More actions for this center">
-                @if ($events->isNotEmpty() && ! $selectedEventClosed && $currentUser->can('families.re_enroll'))
+                @if ($events->isNotEmpty() && ! $registrationLock && $currentUser->can('families.re_enroll'))
                     <a href="{{ route('returning-families.index', ['center' => $center, 'event' => $selectedEventId]) }}" class="menu-item" role="menuitem">
                         <i class="ti ti-history" aria-hidden="true"></i> Returning families
                     </a>
@@ -48,7 +48,9 @@
     </div>
 
     @if (! $events->contains(fn ($e) => ! $e->isClosed()))
-        <div class="callout callout-info mb-6" role="status" data-no-open-event>{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}</div>
+        <x-lock-notice :message="\App\Models\EvacuationEvent::NO_OPEN_EVENT" class="mb-6" data-no-open-event />
+    @elseif ($registrationLock)
+        @include('partials._event_state', ['event' => $events->first(), 'what' => \App\Support\EventLock::REGISTERING, 'arriving' => true])
     @endif
     @if ($events->isNotEmpty())
             <section class="card ecb-sheet mb-5" aria-label="EC Information Board">
@@ -143,7 +145,7 @@
                 @php $hereAsOf = ($selectedEvent = $events->firstWhere('id', $selectedEventId)) ? \App\Models\CenterFamilySnapshot::for($center, $selectedEvent)?->fetched_at : null; @endphp
                 <div class="flex flex-wrap items-center gap-3">
                     <span class="text-sm text-gray-600" data-as-of>As of {{ $hereAsOf ? \App\Support\Format::when($hereAsOf) : 'never fetched' }}</span>
-                    @php $canMove = ! $selectedEventClosed && $currentUser->can('evacuees.transfer') && $familiesHere->contains(fn ($f) => $f['remote_id'] && ! $f['checking_out']); @endphp
+                    @php $canMove = $working?->isActive() && $currentUser->can('evacuees.transfer') && $familiesHere->contains(fn ($f) => $f['remote_id'] && ! $f['checking_out']); @endphp
                     @if ($canMove)
                         {{-- Ticked families of this center move together (online only). --}}
                         <form id="move-form" method="GET" action="{{ route('transfers.move', $center) }}">
@@ -156,7 +158,7 @@
             </div>
             @if ($familiesHere->isEmpty())
                 <x-empty icon="ti-users" title="No families checked in here yet." text="Families added here, or listed by the server at the last refresh, show here." compact>
-                    @if ($events->isNotEmpty() && ! $selectedEventClosed)
+                    @if ($events->isNotEmpty() && ! $registrationLock)
                         <button type="button" class="btn btn-secondary" data-open-board-modal="add-evacuee-modal"><i class="ti ti-user-plus" aria-hidden="true"></i> Add evacuee</button>
                     @endif
                 </x-empty>
@@ -207,7 +209,7 @@
              device first, exactly as before; after a save the page reloads
              and the pop-up opens again, ready for the next person (see
              EcBoardEntryController::store()'s ecBoardEntryAdded flash). --}}
-        @unless ($selectedEventClosed)
+        @unless ($registrationLock)
         <div id="add-evacuee-modal" class="board-modal-backdrop" style="display: none;">
             <div class="modal modal-pop max-w-lg max-h-[90vh] flex flex-col overflow-hidden" data-ec-board-entry-form
                 role="dialog" aria-modal="true" aria-labelledby="add-evacuee-title">

@@ -9,6 +9,7 @@ use App\Models\LocalAuth;
 use App\Models\PendingReEnrollment;
 use App\Models\ReturningFamilySnapshot;
 use App\Support\Plural;
+use App\Support\EventLock;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -45,9 +46,7 @@ class ReturningFamilyController extends Controller
     public function store(Request $request, EvacuationCenter $center)
     {
         $event = EvacuationEvent::findOrFail($request->integer('evacuation_event_id'));
-        if ($event->isClosed()) {
-            throw ValidationException::withMessages(['evacuation_event_id' => EvacuationEvent::anyOpen() ? EvacuationEvent::CLOSED_TO_ARRIVALS : EvacuationEvent::NO_OPEN_EVENT]);
-        }
+        EventLock::guard($event, EventLock::RETURNING);
 
         $sourceEventId = $request->integer('source_event_id');
         $snapshot = ReturningFamilySnapshot::where('evacuation_event_id', $event->id)->firstOrFail();

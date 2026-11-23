@@ -249,6 +249,12 @@ class CentralApiService
         ]))['data'] ?? [];
     }
 
+    /** Tells CSWD that families are arriving while the event is monitored (POST /evacuation-events/{id}/families-arriving). */
+    public function familiesArriving(string $token, int $eventRemoteId, ?string $note = null): array
+    {
+        return $this->send('post', "evacuation-events/{$eventRemoteId}/families-arriving", $token, array_filter(['note' => $note]));
+    }
+
     /** The account's in-app notifications (GET /notifications): {unread, notifications[]}. */
     public function notifications(string $token): array
     {

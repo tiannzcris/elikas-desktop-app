@@ -24,6 +24,8 @@
         </div>
     </div>
 
+    @include('partials._event_state', ['event' => $event, 'what' => \App\Support\EventLock::REGISTERING, 'showOpen' => true, 'arriving' => true])
+
     <div class="stat-strip grid-cols-2 lg:grid-cols-4 mb-8">
         <div class="stat">
             <p class="stat-label">Current event</p>

@@ -14,7 +14,9 @@
     </div>
 
     @unless (\App\Models\EvacuationEvent::anyOpen())
-        <div class="callout callout-info mb-6" role="status" data-no-open-event>{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}</div>
+        <x-lock-notice :message="\App\Models\EvacuationEvent::NO_OPEN_EVENT" class="mb-6" data-no-open-event />
+    @else
+        @include('partials._event_state', ['what' => \App\Support\EventLock::REGISTERING, 'showOpen' => true, 'arriving' => true])
     @endunless
 
     @if ($centers->isEmpty())

@@ -15,9 +15,11 @@ use Illuminate\Support\Collection;
  * screen works offline; a choice made offline is sent when the server
  * answers again.
  *
- * With nothing chosen, the server's own rule picks: the only open event,
- * else a real event before a demo one, an active one before one in
- * monitoring, the newest.
+ * With nothing chosen, the server's own rule picks (Nov 22): an active
+ * event, else a monitored one, then the newest start date, then the
+ * highest id. A practice event is not set apart (is_demo is internal).
+ * The server resets the choice to this default at every login, and so
+ * does this device.
  */
 class SelectedEvent
 {
@@ -45,7 +47,6 @@ class SelectedEvent
     public function pick(): ?EvacuationEvent
     {
         return EvacuationEvent::where('status', '!=', 'closed')->get()->sortBy(fn (EvacuationEvent $e) => [
-            $e->is_demo ? 1 : 0,
             $e->status === 'active' ? 0 : 1,
             -($e->start_date?->getTimestamp() ?? 0),
             -$e->remote_id,
@@ -70,6 +71,12 @@ class SelectedEvent
         if ($auth) {
             $this->push($auth);
         }
+    }
+
+    /** Back to the server's default (at every login: a choice made before is not kept). */
+    public function reset(): void
+    {
+        AppState::forget(self::KEY);
     }
 
     /** Sends a choice made on this device (offline earlier) to the server. */

@@ -64,9 +64,8 @@ class CityViews
     }
 
     /**
-     * The event Final counts follows: the newest active one, else the
-     * newest monitored one; a real event before a demo one (the server's
-     * own rule for "the current event").
+     * The event Final counts follows: the selected event (an active one
+     * first, else a monitored one, by the server's rule).
      */
     public function currentEvent(): ?EvacuationEvent
     {

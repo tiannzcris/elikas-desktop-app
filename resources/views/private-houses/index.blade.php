@@ -13,7 +13,7 @@
             <h1 class="page-title">Private houses</h1>
             <p class="page-subtitle">Families of Barangay {{ $currentUser->barangay_name }} staying with relatives or friends, outside the centers</p>
         </div>
-        @if ($event && ! $event->isClosed())
+        @if ($event && $event->isActive())
             <div class="page-actions">
                 <a href="{{ route('private-houses.create') }}" class="btn btn-primary">
                     <i class="ti ti-home-plus" style="font-size: 16px;" aria-hidden="true"></i> Add family
@@ -22,9 +22,8 @@
         @endif
     </div>
 
-    @if (! $event)
-        <div class="callout callout-info mb-6" role="status" data-no-open-event>{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}</div>
-    @else
+    @include('partials._event_state', ['event' => $event, 'what' => \App\Support\EventLock::PRIVATE_HOUSES])
+    @if ($event)
         <div class="stat-strip grid-cols-2 lg:grid-cols-3 mb-6">
             <div class="stat">
                 <p class="stat-label">Families</p>
@@ -47,9 +46,9 @@
             </div>
             @if ($summary['families']->isEmpty())
                 <x-empty icon="ti-home" title="No families in private houses yet." text="Add a family staying with relatives or friends instead of a center.">
-                    @unless ($event->isClosed())
+                    @if ($event->isActive())
                         <a href="{{ route('private-houses.create') }}" class="btn btn-secondary"><i class="ti ti-home-plus" aria-hidden="true"></i> Add family</a>
-                    @endunless
+                    @endif
                 </x-empty>
             @else
                 <table class="data-table">

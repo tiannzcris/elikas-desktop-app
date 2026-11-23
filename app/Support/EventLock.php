@@ -62,6 +62,26 @@ final class EventLock
         };
     }
 
+    /**
+     * Refuses, in the server's words, when this action is locked for the
+     * event (closed, monitored, or none open). A closed event keeps the
+     * server's arrivals wording for registrations.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public static function guard(?EvacuationEvent $event, string $what): void
+    {
+        $reason = self::reason($event, $what);
+        if ($reason === null) {
+            return;
+        }
+        if ($event?->status === 'closed' && in_array($what, [self::REGISTERING, self::RETURNING, self::PRIVATE_HOUSES], true)) {
+            $reason = EvacuationEvent::anyOpen() ? EvacuationEvent::CLOSED_TO_ARRIVALS : EvacuationEvent::NO_OPEN_EVENT;
+        }
+
+        throw \Illuminate\Validation\ValidationException::withMessages(['evacuation_event_id' => $reason]);
+    }
+
     /** Which lock a message is (closed, monitoring, no open event), or null for any other message. */
     public static function kindOf(?string $message): ?string
     {

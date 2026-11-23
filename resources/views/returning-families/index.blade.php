@@ -15,7 +15,9 @@
         </div>
     </div>
 
-    @if (! $snapshot || $pastEvents->isEmpty())
+    @if (\App\Support\EventLock::reason($event, \App\Support\EventLock::RETURNING))
+        @include('partials._event_state', ['event' => $event, 'what' => \App\Support\EventLock::RETURNING])
+    @elseif (! $snapshot || $pastEvents->isEmpty())
         <div class="card">
             @if ($snapshot)
                 <x-empty icon="ti-history" title="No families from past events to bring back." text="Use Add evacuee for families coming for the first time." />

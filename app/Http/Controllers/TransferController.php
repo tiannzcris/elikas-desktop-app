@@ -10,6 +10,7 @@ use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
 use App\Services\CentralApiService;
 use App\Services\Transfers;
+use App\Support\EventLock;
 use App\Support\Plural;
 use Illuminate\Http\Request;
 
@@ -50,6 +51,9 @@ class TransferController extends Controller
 
     public function decide(Request $request, int $requestId, CentralApiService $api, Transfers $transfers)
     {
+        if ($lock = EventLock::reason(EvacuationEvent::working(), EventLock::TRANSFERS)) {
+            return redirect()->route('transfers.index')->withErrors(['decide' => $lock]);
+        }
         $accept = $request->input('decision') === 'accept';
         $validated = $request->validate([
             'decision' => ['required', 'in:accept,decline'],
@@ -73,6 +77,9 @@ class TransferController extends Controller
     {
         $auth = LocalAuth::current();
         $event = EvacuationEvent::working();
+        if ($lock = EventLock::reason($event, EventLock::TRANSFERS)) {
+            return redirect()->route('evacuation-centers.ec-board', $center)->withErrors(['move' => $lock]);
+        }
         $families = $this->ticked($center, $event, (array) $request->query('families', []));
         $persons = (int) collect($families)->sum('here');
 
@@ -105,6 +112,7 @@ class TransferController extends Controller
     {
         $auth = LocalAuth::current();
         $event = EvacuationEvent::working();
+        EventLock::guard($event, EventLock::TRANSFERS);
         $validated = $request->validate([
             'families' => ['required', 'array', 'min:1'],
             'to_center_id' => ['required', 'integer', 'exists:evacuation_centers,id'],
@@ -137,6 +145,7 @@ class TransferController extends Controller
     {
         $auth = LocalAuth::current();
         $event = EvacuationEvent::working();
+        EventLock::guard($event, EventLock::TRANSFERS);
         $validated = $request->validate([
             'families' => ['required', 'array', 'min:1', 'max:100'],
             'to_center_remote_id' => ['required', 'integer'],
@@ -168,6 +177,9 @@ class TransferController extends Controller
     {
         $auth = LocalAuth::current();
         $event = EvacuationEvent::working();
+        if ($lock = EventLock::reason($event, EventLock::TRANSFERS)) {
+            return redirect()->route('transfers.index')->withErrors(['move' => $lock]);
+        }
         $from = $request->filled('from') ? EvacuationCenter::find($request->integer('from')) : null;
 
         $families = null;
@@ -195,6 +207,7 @@ class TransferController extends Controller
     {
         $auth = LocalAuth::current();
         abort_unless($auth->isCityWide() && $auth->can('evacuees.transfer'), 403);
+        EventLock::guard(EvacuationEvent::working(), EventLock::TRANSFERS);
         $validated = $request->validate([
             'from_center_id' => ['required', 'integer', 'exists:evacuation_centers,id'],
             'family_remote_id' => ['required', 'integer'],

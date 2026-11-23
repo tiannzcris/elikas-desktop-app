@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
+use App\Http\Controllers\EventLifecycleController;
 use App\Http\Controllers\EvacuationCenterController;
 use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
@@ -60,6 +61,7 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::delete('/sync/returning/{returning}', [SyncController::class, 'forgetReturning'])->name('sync.forget-returning');
 
     Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardIndex'])->name('ec-board.index');
+    Route::post('/events/families-arriving', [EventLifecycleController::class, 'familiesArriving'])->name('events.families-arriving');
 
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');
     // Fetched by the page after it renders, never during: the local server

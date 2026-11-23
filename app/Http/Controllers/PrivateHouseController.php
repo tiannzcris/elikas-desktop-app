@@ -7,6 +7,7 @@ use App\Models\LocalAuth;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\Purok;
 use App\Services\PrivateHouses;
+use App\Support\EventLock;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -45,9 +46,7 @@ class PrivateHouseController extends Controller
     {
         $auth = LocalAuth::current();
         $event = EvacuationEvent::working();
-        if (! $event || $event->isClosed()) {
-            throw ValidationException::withMessages(['evacuation_event_id' => EvacuationEvent::anyOpen() ? EvacuationEvent::CLOSED_TO_ARRIVALS : EvacuationEvent::NO_OPEN_EVENT]);
-        }
+        EventLock::guard($event, EventLock::PRIVATE_HOUSES);
 
         // The server's rules (PrivateHouseController::store on the backend).
         $person = fn (string $prefix) => [

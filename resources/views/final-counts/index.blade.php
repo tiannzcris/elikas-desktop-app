@@ -34,13 +34,16 @@
     </div>
 
     @include('partials._as_of', ['at' => $snapshot?->fetched_at?->toIso8601String()])
+    @if (($working = \App\Models\EvacuationEvent::working()) && $working->isMonitoring())
+        @include('partials._event_state', ['event' => $working, 'what' => \App\Support\EventLock::FINAL_COUNTS])
+    @endif
 
     @if (! $snapshot)
         <div class="card"><x-empty icon="ti-cloud-download" title="Final counts are not on this device yet." text="Refresh while online; the copy stays readable offline."><form method="POST" action="{{ route('final-counts.refresh') }}">@csrf<button type="submit" class="btn btn-secondary" data-online-only><i class="ti ti-refresh" aria-hidden="true"></i> Refresh now</button></form></x-empty></div>
     @elseif (! $event)
         <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
     @else
-        @php $canSubmitForBarangay = $currentUser->can('count_submissions.submit_on_behalf') && ($event['status'] ?? 'active') === 'active'; @endphp
+        @php $canSubmitForBarangay = ($currentUser->can('count_submissions.submit_on_behalf') && ($event['status'] ?? 'active') === 'active') && ! \App\Support\EventLock::reason(\App\Models\EvacuationEvent::working(), \App\Support\EventLock::FINAL_COUNTS); @endphp
         @php $lateTotal = $snapshot->payload['late_entries_total'] ?? $rows->sum(fn ($r) => $r['late_entries']['total'] ?? 0); @endphp
         <div class="stat-strip grid-cols-2 lg:grid-cols-5 mb-4">
             @foreach ($states as $key => [$label, $tone])

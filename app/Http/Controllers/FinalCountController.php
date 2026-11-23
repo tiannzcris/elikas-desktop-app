@@ -52,8 +52,8 @@ class FinalCountController extends Controller
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
         $event = EvacuationEvent::working();
-        if (! $event || $event->status !== 'active') {
-            return back()->withErrors(['submit' => 'A final count can be submitted only for an active event.']);
+        if ($lock = \App\Support\EventLock::reason($event, \App\Support\EventLock::FINAL_COUNTS)) {
+            return back()->withErrors(['submit' => $lock]);
         }
 
         try {

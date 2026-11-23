@@ -37,6 +37,9 @@
         <span class="text-sm text-gray-600" data-offline-note hidden>Offline: Accept and Decline come back when the connection does.</span>
     </div>
 
+    @if ($event && ! $event->isActive())
+        @include('partials._event_state', ['event' => $event, 'what' => \App\Support\EventLock::TRANSFERS])
+    @endif
     @if (! $event)
         <div class="card"><x-empty icon="ti-calendar-off" title="No event is open." text="{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}" /></div>
     @elseif ($requests->isEmpty())

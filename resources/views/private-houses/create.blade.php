@@ -18,8 +18,8 @@
         </div>
     </div>
 
-    @if (! $event || $event->isClosed())
-        <div class="callout callout-info" role="status" data-no-open-event>{{ \App\Models\EvacuationEvent::NO_OPEN_EVENT }}</div>
+    @if (\App\Support\EventLock::reason($event, \App\Support\EventLock::PRIVATE_HOUSES))
+        @include('partials._event_state', ['event' => $event, 'what' => \App\Support\EventLock::PRIVATE_HOUSES])
     @else
         <form method="POST" action="{{ route('private-houses.store') }}" class="card card-body max-w-3xl flex flex-col gap-8" data-private-house-form>
             @csrf

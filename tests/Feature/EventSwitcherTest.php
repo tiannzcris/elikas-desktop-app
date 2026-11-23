@@ -52,7 +52,8 @@ class EventSwitcherTest extends TestCase
             ->assertRedirect(route('dashboard'))->assertSessionHas('status', 'Now working on "Incoming Storm".');
 
         Http::assertSent(fn ($r) => $r->method() === 'PUT' && $r['evacuation_event_id'] === 80);
-        $this->get(route('evacuation-centers.ec-board', $this->center))->assertSee('Saves to: Incoming Storm', false);
+        $this->get(route('evacuation-centers.ec-board', $this->center))->assertSee('&quot;Incoming Storm&quot; is being monitored. Registering evacuees opens when CSWD starts the evacuation.', false)
+            ->assertDontSee('Saves to:');
     }
 
     public function test_a_choice_made_offline_is_sent_when_the_server_answers(): void

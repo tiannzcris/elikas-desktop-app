@@ -129,6 +129,9 @@ class EvacuationCenterController extends Controller
             'events' => $events,
             'selectedEventId' => $selectedEventId,
             'selectedEventClosed' => (bool) $events->firstWhere('id', $selectedEventId)?->isClosed(),
+            // Registering waits while the event is monitored, and stops once it is closed.
+            'registrationLock' => $working && ! $working->isActive(),
+            'working' => $working,
             'pendingEntries' => $pendingEntries,
             'familiesHere' => ($selected = $events->firstWhere('id', $selectedEventId)) ? CheckOutController::familiesHere($center, $selected) : collect(),
             'checkOutStatuses' => \App\Models\PendingCheckOut::STATUSES,
