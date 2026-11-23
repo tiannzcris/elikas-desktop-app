@@ -14,12 +14,29 @@
 
     <div class="page-header">
         <div class="min-w-0">
-            <h1 class="page-title">Move {{ $summary }}</h1>
+            <h1 class="page-title">{{ $families ? 'Move '.$summary : ($asking ? 'Ask another center for space' : 'Move families') }}</h1>
             <p class="page-subtitle">From {{ $center->name }} · Needs a connection</p>
         </div>
     </div>
 
-    @if (! $families)
+    @if (! $families && $pickFrom->isNotEmpty())
+        {{-- Which families go: then the centers with room for them. --}}
+        <form method="GET" action="{{ route('transfers.move', $center) }}" class="card card-body flex flex-col gap-4 max-w-3xl" data-family-picker>
+            <h2 class="section-title">{{ $asking ? 'Which families should move to make space?' : 'Choose the families to move' }}</h2>
+            <p class="text-sm text-gray-700">{{ $center->name }}: {{ $center->occupancyLabel() }} people inside. Families still waiting to sync can't be moved until they are sent.</p>
+            <fieldset class="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                <legend class="sr-only">Families here</legend>
+                @foreach ($pickFrom as $f)
+                    <label class="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
+                        <input type="checkbox" name="families[]" value="{{ $f['key'] }}" class="h-4 w-4">
+                        <span class="font-medium text-gray-900">{{ $f['label'] }}</span>
+                        <span class="text-sm text-gray-600">{{ $f['here'] !== null ? \App\Support\Plural::of($f['here'], 'person', 'people').' here' : '' }}{{ $f['purok'] ? ' · '.$f['purok'] : '' }}</span>
+                    </label>
+                @endforeach
+            </fieldset>
+            <div class="flex justify-end"><button type="submit" class="btn btn-primary" data-online-only>Find centers with room</button></div>
+        </form>
+    @elseif (! $families)
         <div class="card"><x-empty icon="ti-users" title="No family chosen." text="Tick families under Families here on the board. Families still waiting to sync can't be moved until they are sent.">
             <a href="{{ route('evacuation-centers.ec-board', $center) }}" class="btn btn-secondary">Back to the board</a>
         </x-empty></div>

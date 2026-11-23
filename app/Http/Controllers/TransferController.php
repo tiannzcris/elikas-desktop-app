@@ -104,6 +104,10 @@ class TransferController extends Controller
                 ->where('status', '!=', 'closed')->where('approval_status', '!=', 'rejected')->orderBy('name')->get(),
             'suggestions' => $suggestions,
             'suggestionError' => $suggestionError,
+            // "Ask another center for space" with nothing ticked yet: choose here.
+            'pickFrom' => $families || ! $event ? collect() : CheckOutController::familiesHere($center, $event)
+                ->filter(fn ($f) => $f['remote_id'] && ! $f['checking_out'])->values(),
+            'asking' => $request->boolean('ask'),
         ]);
     }
 

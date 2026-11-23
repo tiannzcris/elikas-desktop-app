@@ -52,6 +52,19 @@
     @elseif ($registrationLock)
         @include('partials._event_state', ['event' => $events->first(), 'what' => \App\Support\EventLock::REGISTERING, 'arriving' => true])
     @endif
+    @if ($working?->isActive() && $center->needsSpace() && $currentUser->can('evacuees.transfer'))
+        {{-- At 90% of a known capacity the server counts the center as full. --}}
+        <div class="callout callout-warning flex flex-wrap items-center justify-between gap-3 mb-6" role="status" data-needs-space>
+            <span class="flex items-start gap-2">
+                <i class="ti ti-users-group shrink-0 mt-0.5" style="font-size: 18px;" aria-hidden="true"></i>
+                <span><span class="font-semibold">{{ $center->name }} is at {{ (int) floor($center->occupancyHere() * 100 / $center->capacity_persons) }}% of its capacity</span> ({{ $center->occupancyLabel() }}). Move some families to another center before it overflows.</span>
+            </span>
+            <form method="GET" action="{{ route('transfers.move', $center) }}">
+                <input type="hidden" name="ask" value="1">
+                <button type="submit" class="btn btn-attention" data-online-only data-ask-for-space><i class="ti ti-arrows-exchange" aria-hidden="true"></i> Ask another center for space</button>
+            </form>
+        </div>
+    @endif
     @if ($events->isNotEmpty())
             <section class="card ecb-sheet mb-5" aria-label="EC Information Board">
 
@@ -184,6 +197,14 @@
                             @if ($family['checking_out'])
                                 <span class="badge badge-warning">Checked out, waiting to sync</span>
                             @elseif (! $selectedEventClosed)
+                                <div class="flex flex-wrap items-center gap-2">
+                                @if ($canMove && $family['remote_id'])
+                                    {{-- One family to another center (online only). --}}
+                                    <form method="GET" action="{{ route('transfers.move', $center) }}">
+                                        <input type="hidden" name="families[]" value="{{ $family['key'] }}">
+                                        <button type="submit" class="btn btn-secondary btn-sm" data-online-only data-transfer-family>Transfer</button>
+                                    </form>
+                                @endif
                                 <form method="POST" action="{{ route('check-outs.store', $center) }}" class="flex items-center gap-2"
                                     data-confirm-title="Check out {{ $family['label'] }}?" data-confirm="Everyone in this family leaves this center." data-confirm-label="Check out family">
                                     @csrf
@@ -196,6 +217,7 @@
                                     </select>
                                     <button type="submit" class="btn btn-neutral btn-sm">Check out</button>
                                 </form>
+                                </div>
                             @endif
                         </li>
                     @endforeach
