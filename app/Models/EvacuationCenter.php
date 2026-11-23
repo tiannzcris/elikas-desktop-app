@@ -68,7 +68,10 @@ class EvacuationCenter extends Model
             ->whereHas('evacuationEvent', fn ($q) => $q->where('status', '!=', 'closed'))->get()
             ->sum(fn (PendingReEnrollment $r) => count($r->members));
 
-        return (int) $this->current_occupancy + $pending + $returning;
+        $listed = PendingListCheckIn::where('evacuation_center_id', $this->id)->whereNull('synced_at')
+            ->whereHas('evacuationEvent', fn ($q) => $q->where('status', '!=', 'closed'))->sum('members_count');
+
+        return (int) $this->current_occupancy + $pending + $returning + (int) $listed;
     }
 
     /**

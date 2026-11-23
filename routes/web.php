@@ -6,6 +6,7 @@ use App\Http\Controllers\CheckOutController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EcBoardEntryController;
 use App\Http\Controllers\EventLifecycleController;
+use App\Http\Controllers\FamiliesToEvacuateController;
 use App\Http\Controllers\EvacuationCenterController;
 use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
@@ -62,6 +63,14 @@ Route::middleware(OfficialOnly::class)->group(function () {
 
     Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardIndex'])->name('ec-board.index');
     Route::post('/events/families-arriving', [EventLifecycleController::class, 'familiesArriving'])->name('events.families-arriving');
+
+    // Families to evacuate: the list per purok (online), check-in queued (offline too).
+    Route::get('/families-to-evacuate', [FamiliesToEvacuateController::class, 'index'])->name('families-to-evacuate.index');
+    Route::post('/families-to-evacuate', [FamiliesToEvacuateController::class, 'store'])->name('families-to-evacuate.store');
+    Route::post('/families-to-evacuate/refresh', [FamiliesToEvacuateController::class, 'refresh'])->name('families-to-evacuate.refresh');
+    Route::delete('/families-to-evacuate/{listedId}', [FamiliesToEvacuateController::class, 'destroy'])->whereNumber('listedId')->name('families-to-evacuate.destroy');
+    Route::post('/families-to-evacuate/{listedId}/check-in', [FamiliesToEvacuateController::class, 'checkIn'])->whereNumber('listedId')->name('families-to-evacuate.check-in');
+    Route::post('/puroks/{purok}/marks', [FamiliesToEvacuateController::class, 'markPurok'])->name('puroks.mark');
 
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');
     // Fetched by the page after it renders, never during: the local server

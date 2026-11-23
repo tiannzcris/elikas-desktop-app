@@ -9,6 +9,7 @@ use App\Models\EvacuationEvent;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
+use App\Models\PendingListCheckIn;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
 use App\Support\EventLock;
@@ -86,7 +87,10 @@ class SyncService
         $checkOuts = PendingCheckOut::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter', 'household'])
             ->get()->map(fn ($m) => ['key' => 'checkout:'.$m->id, 'model' => $m, 'kind' => 'checkout']);
 
-        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)
+        $checkIns = PendingListCheckIn::whereNull('synced_at')->with(['evacuationEvent', 'evacuationCenter'])
+            ->get()->map(fn ($m) => ['key' => 'checkin:'.$m->id, 'model' => $m, 'kind' => 'checkin']);
+
+        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)->concat($checkIns)
             ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
             ->values();
     }
@@ -266,6 +270,7 @@ class SyncService
             // upgrade are still sent so nothing already entered is lost.
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
             'private' => 'Private house: '.$model->label().' · '.Plural::of($model->personCount(), 'person', 'people').' (with '.$model->host_name.')',
+            'checkin' => 'Check-in: '.$model->family_label.' · '.Plural::of($model->members_count, 'person', 'people').' (listed family)',
             'checkout' => 'Check-out: '.$model->family_label.' ('.(PendingCheckOut::STATUSES[$model->status] ?? $model->status).')',
             'returning' => 'Returning family '.$model->family_name.' · '.Plural::of(count($model->members), 'person', 'people'),
             default => $item['key'],
@@ -274,7 +279,11 @@ class SyncService
 
     public function place(array $item): string
     {
-        return $item['kind'] === 'private' ? 'Private house' : ($item['model']->evacuationCenter?->name ?? '');
+        return match ($item['kind']) {
+            'private' => 'Private house',
+            'checkin' => $item['model']->destination(),
+            default => $item['model']->evacuationCenter?->name ?? '',
+        };
     }
 
     private function send(array $item, LocalAuth $auth): void
@@ -284,6 +293,13 @@ class SyncService
         if ($item['kind'] === 'private') {
             $data = $this->api->addPrivateHouseFamily($auth->api_token, $model->barangay_remote_id, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
             $model->update(['remote_family_id' => $data['id'] ?? null, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+            return;
+        }
+
+        if ($item['kind'] === 'checkin') {
+            $registered = app(FamiliesToEvacuate::class)->sendCheckIn($auth, $model);
+            $model->update(['registered_family_id' => $registered, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
 
             return;
         }

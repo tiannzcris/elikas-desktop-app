@@ -235,7 +235,7 @@ class AuthController extends Controller
         if ($auth?->isBarangayOfficial() && $auth->barangay_id && $auth->can('puroks.view')) {
             $puroks = $api->fetchPuroks($token, (int) $auth->barangay_id);
             foreach ($puroks as $p) {
-                Purok::updateOrCreate(['remote_id' => $p['id']], ['barangay_remote_id' => $p['barangay_id'], 'name' => $p['name']]);
+                Purok::updateOrCreate(['remote_id' => $p['id']], Purok::attributesFromServer($p));
             }
             Purok::whereNotIn('remote_id', array_column($puroks, 'id'))->delete();
 
@@ -245,6 +245,10 @@ class AuthController extends Controller
             }
             // Families in private houses, for the EC Board's card and counts.
             app(\App\Services\PrivateHouses::class)->refresh($auth);
+            // Families to evacuate, for reading and checking in offline.
+            if ($auth->can('families_to_evacuate.manage')) {
+                app(\App\Services\FamiliesToEvacuate::class)->refreshOpen($auth);
+            }
         }
 
         // CSWD: Monitoring and Final counts, for reading offline.

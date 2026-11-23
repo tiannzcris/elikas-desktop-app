@@ -83,6 +83,13 @@ class LayoutCheckSeeder extends Seeder
             'fetched_at' => now()->subMinutes(12),
         ]);
 
+        Purok::where('remote_id', 13)->update(['high_risk_flood' => true]);
+        $listed = [[301, 'Jose Reyes', 3, 11], [302, 'Maria Santos', 4, 13], [303, 'Ana Dela Cruz', 6, 13], [304, 'Pedro Bautista', 2, 12], [305, 'Rosa Garcia', 5, 13]];
+        foreach ([79, 80] as $eventId) {
+            ServerSnapshot::keep('families_to_evacuate.'.$eventId, ['families' => collect($listed)->map(fn ($r) => ['id' => $r[0], 'head' => $r[1], 'members_count' => $r[2],
+                'purok' => ['id' => $r[3], 'name' => 'Purok '.($r[3] - 10)], 'status' => $r[0] === 304 && $eventId === 79 ? 'checked_in' : 'expected', 'from_past_event' => $r[0] === 303])->all()]);
+        }
+
         if ($cswd) {
             ServerSnapshot::keep('monitoring.overview', ['evacuation_event' => ['id' => 79, 'name' => 'Typhoon Drill', 'status' => 'active', 'is_demo' => true],
                 'generated_at' => now()->subMinutes(5)->toIso8601String(),

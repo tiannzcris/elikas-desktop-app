@@ -36,6 +36,7 @@ class LocalAuth extends Model
             'operations.access', 'page.monitoring', 'puroks.view', 'families.re_enroll',
             'count_submissions.submit', 'box_relief.distribute', 'centers.edit', 'centers.set_status',
             'evacuees.manage', 'evacuees.transfer', 'transfers.request', 'transfers.receive',
+            'families_to_evacuate.manage', 'centers.set_location',
         ],
         'cswd_personnel' => [
             'operations.access', 'scope.all_barangays', 'page.monitoring', 'puroks.view',

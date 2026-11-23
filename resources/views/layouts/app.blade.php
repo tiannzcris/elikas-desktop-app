@@ -47,6 +47,11 @@
                         <a href="{{ route('ec-board.index') }}" class="nav-link @yield('nav-ec-board')">
                             <i class="ti ti-building-community" aria-hidden="true"></i> EC Board
                         </a>
+                        @if ($currentUser->can('families_to_evacuate.manage'))
+                            <a href="{{ route('families-to-evacuate.index') }}" class="nav-link @yield('nav-families-to-evacuate')">
+                                <i class="ti ti-list-check" aria-hidden="true"></i> Families to evacuate
+                            </a>
+                        @endif
                         <a href="{{ route('transfers.index') }}" class="nav-link @yield('nav-transfers')" data-nav-transfers>
                             <i class="ti ti-arrows-exchange" aria-hidden="true"></i> Transfers
                             @if ($transfersWaiting > 0)
