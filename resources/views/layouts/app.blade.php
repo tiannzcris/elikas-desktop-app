@@ -62,6 +62,11 @@
                                 <span class="ml-auto rounded-full bg-white/90 px-2 text-xs font-semibold text-navy">{{ $transfersWaiting }}</span>
                             @endif
                         </a>
+                        @if ($currentUser->can('box_relief.distribute'))
+                            <a href="{{ route('relief.index') }}" class="nav-link @yield('nav-relief')">
+                                <i class="ti ti-box" aria-hidden="true"></i> Relief boxes
+                            </a>
+                        @endif
                         @if ($currentUser->can('count_submissions.submit'))
                             <a href="{{ route('final-count.index') }}" class="nav-link @yield('nav-final-count')">
                                 <i class="ti ti-clipboard-check" aria-hidden="true"></i> Final count

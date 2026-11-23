@@ -70,9 +70,24 @@ switch the internet off (unplug, or turn off Wi-Fi).
       behalf of …. Reason: …".
 - [ ] On Incoming Typhoon the page shows the lock and no Submit.
 
-## 6. Relief boxes
+## 6. Relief boxes (official)
 
-- Not in 2.1.0 (waiting for the server's relief endpoints). Nothing to test.
+- [ ] Sidebar → Relief boxes shows the round, Need (with "Based on the registered count, not
+      yet validated" until the count is validated), Received, Given and Left to give.
+- [ ] Families are grouped per purok; "Priority: Infant / Pregnant / lactating / PWD / senior /
+      Child- or single-headed" labels show; one family has **Next in line** and the blue button.
+      "By name" sorts inside each purok.
+- [ ] A family from another barangay staying in your center shows "From <barangay>" and can get
+      a box. Your own family staying in another barangay's center is only under "Staying in
+      another barangay", with no Give button.
+- [ ] Give a box to a family that is not next while higher-priority families wait: the question
+      "Give a box to this family? N higher-priority families have not received a box yet.
+      Continue?" comes first; Cancel gives nothing.
+- [ ] **Offline**: give 3 boxes. Each shows "Given, waiting to sync", Left to give goes down and
+      Next in line moves on. Giving the same family twice is refused. When Left to give reaches 0,
+      no more Give buttons. Back online: they sync; on the web each family has one box only.
+- [ ] Unplug in the middle of a sync, then sync again: still one box per family on the web.
+- [ ] On Incoming Typhoon (monitored): the lock, no Give buttons.
 
 ## 7. Print and download (official)
 

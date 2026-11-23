@@ -15,6 +15,7 @@ use App\Http\Controllers\FinalCountController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PrivateHouseController;
+use App\Http\Controllers\ReliefController;
 use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SelectedEventController;
@@ -98,6 +99,11 @@ Route::middleware(OfficialOnly::class)->group(function () {
     // Waiting records to another computer (an encrypted file, e.g. on a USB drive).
     Route::post('/waiting-records/export', [WaitingRecordsController::class, 'export'])->name('waiting-records.export');
     Route::post('/waiting-records/import', [WaitingRecordsController::class, 'import'])->name('waiting-records.import');
+
+    // Relief boxes: the families of each round, Give box queued with client_ref.
+    Route::get('/relief', [ReliefController::class, 'index'])->name('relief.index');
+    Route::post('/relief/refresh', [ReliefController::class, 'refresh'])->name('relief.refresh');
+    Route::post('/relief/give', [ReliefController::class, 'give'])->name('relief.give');
 
     // Print and download: files made on this computer, officials only.
     Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');

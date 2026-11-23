@@ -97,6 +97,32 @@ class LayoutCheckSeeder extends Seeder
             'submissions' => [['id' => 41, 'status' => 'validated', 'families' => 40, 'persons' => 152, 'submitted_at' => now()->subHours(5)->toIso8601String(), 'submitted_on_behalf' => true,
                 'note' => 'Submitted by CSWD on behalf of Bacong. Reason: The official could not be reached during the night.']]]);
 
+        $fam = fn ($id, $head, $members, $tier, $label, $order, $extra = []) => $extra + ['id' => $id, 'from_barangay' => null, 'name' => $head, 'head_name' => $head,
+            'member_count' => $members, 'location' => 'inside_center', 'host_name' => null, 'may_give' => true, 'priority_tier' => $tier, 'priority_label' => $label,
+            'staying_in' => ['barangay' => ['id' => 4, 'name' => 'Bacong'], 'center' => ['id' => 101, 'name' => 'Bacong Elementary School'], 'private_house' => false, 'other_barangay' => false],
+            'given' => false, 'given_at' => null, 'priority_order' => $order, 'higher_priority_waiting' => 0, 'next_in_line' => false, 'can_give' => true];
+        ServerSnapshot::keep('relief.79', ['need_basis' => 'registered', 'rounds' => [['id' => 1, 'round_number' => 1, 'opened_at' => now()->subHours(6)->toIso8601String()]],
+            'families' => ['1' => [
+                'figures' => ['need' => 43, 'dispatched' => 40, 'in_transit' => 0, 'received' => 40, 'given' => 12, 'left_to_give' => 28],
+                'next_family_id' => 501,
+                'staying_elsewhere' => [['id' => 520, 'name' => 'Aquino', 'head_name' => 'Ramon Aquino', 'member_count' => 4,
+                    'staying_in' => ['barangay' => ['id' => 5, 'name' => 'Bonga'], 'center' => ['id' => 201, 'name' => 'Bonga Covered Court'], 'private_house' => false, 'other_barangay' => true],
+                    'gives_box' => ['id' => 5, 'name' => 'Bonga'], 'may_give' => false, 'given' => true, 'given_at' => now()->subHours(2)->toIso8601String()]],
+                'puroks' => [
+                    ['purok' => ['id' => 11, 'name' => 'Purok 1'], 'families' => [
+                        $fam(501, 'Maria Santos', 3, 1, 'Infant', 1),
+                        $fam(502, 'Jose Reyes', 4, 3, 'PWD / senior', 2),
+                        $fam(503, 'Rosa Garcia', 2, null, null, 3, ['given' => true, 'given_at' => now()->subHours(3)->toIso8601String()]),
+                        $fam(504, 'Pedro Bautista', 5, null, null, 4, ['location' => 'outside_center', 'host_name' => 'Juan Dela Cruz',
+                            'staying_in' => ['barangay' => ['id' => 4, 'name' => 'Bacong'], 'center' => null, 'private_house' => true, 'other_barangay' => false]]),
+                    ]],
+                    ['purok' => ['id' => 12, 'name' => 'Purok 2'], 'families' => [
+                        $fam(505, 'Ana Dela Cruz', 6, 2, 'Pregnant / lactating', 1),
+                        $fam(506, 'Lito Villanueva', 3, null, null, 2, ['from_barangay' => ['id' => 5, 'name' => 'Bonga']]),
+                    ]],
+                ],
+            ]]]);
+
         if ($cswd) {
             ServerSnapshot::keep('monitoring.overview', ['evacuation_event' => ['id' => 79, 'name' => 'Typhoon Drill', 'status' => 'active', 'is_demo' => true],
                 'generated_at' => now()->subMinutes(5)->toIso8601String(),

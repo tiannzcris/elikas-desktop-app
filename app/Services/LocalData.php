@@ -11,6 +11,7 @@ use App\Models\EcBoardEntry;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
+use App\Models\PendingHandout;
 use App\Models\PendingListCheckIn;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
@@ -25,28 +26,43 @@ use Illuminate\Support\Facades\DB;
  */
 class LocalData
 {
+    /**
+     * The queued records kept per event, besides EC Board entries and
+     * families (which point at each other). Each has evacuation_event_id,
+     * synced_at and sync_state. Deleted in this order (later ones may point
+     * at earlier ones' rows only through ids, never foreign keys).
+     *
+     * @return list<class-string<\Illuminate\Database\Eloquent\Model>>
+     */
+    public static function queueModels(): array
+    {
+        return [PendingCheckOut::class, PendingReEnrollment::class, PendingPrivateHouseFamily::class,
+            PendingListCheckIn::class, PendingHandout::class];
+    }
+
     /** Records on this device not yet accepted by the central server. */
     public function pendingCount(): int
     {
-        return EcBoardEntry::whereNull('synced_at')->count()
-            + Family::whereNull('synced_at')->where('created_via_ec_board', false)->count()
-            + PendingReEnrollment::whereNull('synced_at')->count()
-            + PendingCheckOut::whereNull('synced_at')->count()
-            + PendingPrivateHouseFamily::whereNull('synced_at')->count()
-            + PendingListCheckIn::whereNull('synced_at')->count();
+        return $this->count(fn ($q) => $q);
     }
 
     /** Records the server refused or that wait for a decision (the Sync page's Needs attention). */
     public function failedCount(): int
     {
-        return EcBoardEntry::whereNull('synced_at')->whereNotNull('sync_state')->count()
-            + Family::whereNull('synced_at')->where('created_via_ec_board', false)->whereNotNull('sync_state')->count()
-            + PendingReEnrollment::whereNull('synced_at')->whereNotNull('sync_state')->count()
-            + PendingCheckOut::whereNull('synced_at')->whereNotNull('sync_state')->count()
-            + PendingPrivateHouseFamily::whereNull('synced_at')->whereNotNull('sync_state')->count()
-            + PendingListCheckIn::whereNull('synced_at')->whereNotNull('sync_state')->count();
+        return $this->count(fn ($q) => $q->whereNotNull('sync_state'));
     }
 
+    /** Unsent records of every kind, narrowed by $scope. */
+    private function count(\Closure $scope): int
+    {
+        $total = $scope(EcBoardEntry::whereNull('synced_at'))->count()
+            + $scope(Family::whereNull('synced_at')->where('created_via_ec_board', false))->count();
+        foreach (self::queueModels() as $model) {
+            $total += $scope($model::whereNull('synced_at'))->count();
+        }
+
+        return $total;
+    }
     /** @return array{id: int, name: string, email: string}|null */
     public function queueOwner(): ?array
     {
@@ -79,22 +95,16 @@ class LocalData
         $this->forgetSentRecords();
         CenterFamilySnapshot::query()->delete();
         ReturningFamilySnapshot::query()->delete();
-        PendingReEnrollment::whereNotNull('synced_at')->delete();
-        PendingCheckOut::whereNotNull('synced_at')->delete();
-        PendingPrivateHouseFamily::whereNotNull('synced_at')->delete();
-        PendingListCheckIn::whereNotNull('synced_at')->delete();
+        foreach (self::queueModels() as $model) {
+            $model::whereNotNull('synced_at')->delete();
+        }
         ServerSnapshot::query()->delete();
     }
 
     /** Records of this event not yet accepted by the server (any kind). */
     public function unsentFor(EvacuationEvent $event): int
     {
-        return EcBoardEntry::where('evacuation_event_id', $event->id)->whereNull('synced_at')->count()
-            + Family::where('evacuation_event_id', $event->id)->whereNull('synced_at')->where('created_via_ec_board', false)->count()
-            + PendingReEnrollment::where('evacuation_event_id', $event->id)->whereNull('synced_at')->count()
-            + PendingCheckOut::where('evacuation_event_id', $event->id)->whereNull('synced_at')->count()
-            + PendingPrivateHouseFamily::where('evacuation_event_id', $event->id)->whereNull('synced_at')->count()
-            + PendingListCheckIn::where('evacuation_event_id', $event->id)->whereNull('synced_at')->count();
+        return $this->count(fn ($q) => $q->where('evacuation_event_id', $event->id));
     }
 
     /**
@@ -113,10 +123,9 @@ class LocalData
                 continue;
             }
             DB::transaction(function () use ($event) {
-                PendingCheckOut::where('evacuation_event_id', $event->id)->delete();
-                PendingReEnrollment::where('evacuation_event_id', $event->id)->delete();
-                PendingPrivateHouseFamily::where('evacuation_event_id', $event->id)->delete();
-                PendingListCheckIn::where('evacuation_event_id', $event->id)->delete();
+                foreach (self::queueModels() as $model) {
+                    $model::where('evacuation_event_id', $event->id)->delete();
+                }
                 EcBoardEntry::where('evacuation_event_id', $event->id)->delete();
                 Family::where('evacuation_event_id', $event->id)->get()->each->delete();
                 CenterFamilySnapshot::where('evacuation_event_id', $event->id)->delete();
@@ -136,10 +145,7 @@ class LocalData
     {
         return EcBoardEntry::where('evacuation_event_id', $event->id)->exists()
             || Family::where('evacuation_event_id', $event->id)->exists()
-            || PendingReEnrollment::where('evacuation_event_id', $event->id)->exists()
-            || PendingCheckOut::where('evacuation_event_id', $event->id)->exists()
-            || PendingPrivateHouseFamily::where('evacuation_event_id', $event->id)->exists()
-            || PendingListCheckIn::where('evacuation_event_id', $event->id)->exists()
+            || collect(self::queueModels())->contains(fn ($model) => $model::where('evacuation_event_id', $event->id)->exists())
             || CenterFamilySnapshot::where('evacuation_event_id', $event->id)->exists()
             || ReturningFamilySnapshot::where('evacuation_event_id', $event->id)->exists()
             || EvacuationCenterBreakdown::where('evacuation_event_id', $event->id)->exists()
@@ -151,7 +157,7 @@ class LocalData
     private static function snapshotKeys(EvacuationEvent $event): array
     {
         return ["private_houses.{$event->id}", "transfers.{$event->id}",
-            "families_to_evacuate.{$event->remote_id}", "final_count.{$event->remote_id}"];
+            "families_to_evacuate.{$event->remote_id}", "final_count.{$event->remote_id}", "relief.{$event->remote_id}"];
     }
 
     /** Sent EC Board entries and families, except households a waiting entry still points to. */

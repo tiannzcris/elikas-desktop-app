@@ -10,6 +10,7 @@ use App\Models\Evacuee;
 use App\Models\Family;
 use App\Models\LocalAuth;
 use App\Models\PendingCheckOut;
+use App\Models\PendingHandout;
 use App\Models\PendingListCheckIn;
 use App\Models\PendingPrivateHouseFamily;
 use App\Models\PendingReEnrollment;
@@ -98,6 +99,8 @@ class WaitingRecordsTransfer
                 'checkout' => ['center_remote_id' => $centers[$m->evacuation_center_id] ?? null,
                     'household_client_ref' => $m->family_remote_id ? null : $household($m->household_family_local_id),
                     'attributes' => ['family_remote_id' => $m->family_remote_id, 'family_label' => $m->family_label, 'status' => $m->status]],
+                'handout' => ['attributes' => ['round_remote_id' => $m->round_remote_id, 'round_number' => $m->round_number, 'family_remote_id' => $m->family_remote_id,
+                    'family_label' => $m->family_label, 'higher_priority_waiting' => $m->higher_priority_waiting]],
                 'checkin' => ['center_remote_id' => $m->evacuation_center_id ? ($centers[$m->evacuation_center_id] ?? null) : null,
                     'attributes' => ['listed_family_remote_id' => $m->listed_family_remote_id, 'family_label' => $m->family_label, 'members_count' => $m->members_count,
                         'host_name' => $m->host_name, 'host_purok_remote_id' => $m->host_purok_remote_id, 'host_address' => $m->host_address]],
@@ -209,7 +212,7 @@ class WaitingRecordsTransfer
             foreach ($payload['records'] as $r) {
                 $model = match ($r['kind']) {
                     'entry' => EcBoardEntry::class, 'family' => Family::class, 'returning' => PendingReEnrollment::class,
-                    'private' => PendingPrivateHouseFamily::class, 'checkout' => PendingCheckOut::class, 'checkin' => PendingListCheckIn::class,
+                    'private' => PendingPrivateHouseFamily::class, 'checkout' => PendingCheckOut::class, 'checkin' => PendingListCheckIn::class, 'handout' => PendingHandout::class,
                     default => null,
                 };
                 if ($model === null) {
