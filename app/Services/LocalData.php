@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AppState;
 use App\Models\CenterFamilySnapshot;
+use App\Models\DownloadLog;
 use App\Models\EvacuationCenterBreakdown;
 use App\Models\EvacuationCenterSectoralSnapshot;
 use App\Models\EvacuationEvent;
@@ -52,17 +53,25 @@ class LocalData
         return $this->count(fn ($q) => $q->whereNotNull('sync_state'));
     }
 
-    /** Unsent records of every kind, narrowed by $scope. */
-    private function count(\Closure $scope): int
+    /**
+     * Unsent records of every kind, narrowed by $scope. Saved files waiting
+     * for the server's activity log count too, unless the count is about one
+     * event (they keep the event's server id, not a local row).
+     */
+    private function count(\Closure $scope, bool $withDownloads = true): int
     {
         $total = $scope(EcBoardEntry::whereNull('synced_at'))->count()
             + $scope(Family::whereNull('synced_at')->where('created_via_ec_board', false))->count();
         foreach (self::queueModels() as $model) {
             $total += $scope($model::whereNull('synced_at'))->count();
         }
+        if ($withDownloads) {
+            $total += $scope(DownloadLog::whereNull('reported_at'))->count();
+        }
 
         return $total;
     }
+
     /** @return array{id: int, name: string, email: string}|null */
     public function queueOwner(): ?array
     {
@@ -104,7 +113,7 @@ class LocalData
     /** Records of this event not yet accepted by the server (any kind). */
     public function unsentFor(EvacuationEvent $event): int
     {
-        return $this->count(fn ($q) => $q->where('evacuation_event_id', $event->id));
+        return $this->count(fn ($q) => $q->where('evacuation_event_id', $event->id), false);
     }
 
     /**

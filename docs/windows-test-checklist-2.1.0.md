@@ -99,7 +99,13 @@ switch the internet off (unplug, or turn off Wi-Fi).
       lines), families to evacuate PDF and Excel: each opens (Edge for PDF, Excel/LibreOffice),
       shows the right data, and says "Generated offline, as of …. May not include records not yet synced."
 - [ ] Do the same **offline**: every file still works.
-- [ ] "Files saved from this computer" lists each one with where it went.
+- [ ] **Official EC Information Board (from the server)**, online: choose a center, Get from the
+      server → the Save dialog offers the server's file name (a practice event's starts with
+      `DEMO-not-for-submission_`); the workbook opens in Excel. Offline it says it needs a
+      connection; on Incoming Typhoon it shows the lock.
+- [ ] "Files saved from this computer" lists each one with where it went, "Waiting to sync" while
+      offline and "Reported" after a sync. The administrator's System logs show "File saved (app)"
+      once per file (also after an interrupted sync); a PDF printed from the browser shows as printed.
 - [ ] The CSWD account has no Print and download.
 
 ## 8. Data protection

@@ -64,7 +64,7 @@ class WaitingRecordsTransferTest extends TestCase
 
     private function wipeComputer(): void
     {
-        foreach (['pending_list_check_ins', 'pending_check_outs', 'pending_private_house_families', 'ec_board_entries', 'evacuees', 'families', 'evacuation_centers', 'evacuation_events', 'barangays', 'local_auth', 'server_snapshots', 'app_state'] as $table) {
+        foreach (['download_logs', 'pending_list_check_ins', 'pending_check_outs', 'pending_private_house_families', 'ec_board_entries', 'evacuees', 'families', 'evacuation_centers', 'evacuation_events', 'barangays', 'local_auth', 'server_snapshots', 'app_state'] as $table) {
             DB::table($table)->delete();
         }
     }

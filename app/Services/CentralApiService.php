@@ -83,6 +83,36 @@ class CentralApiService
         throw $this->failure($response);
     }
 
+    /**
+     * A file from the server (GET /reports/{id}/download): its bytes, and
+     * the file name the server gives (a practice event's starts with
+     * DEMO-not-for-submission_; keep it as it is).
+     *
+     * @return array{bytes: string, filename: ?string, content_type: ?string}
+     */
+    public function download(string $path, string $token, int $timeout = 60): array
+    {
+        try {
+            $response = Http::timeout($timeout)->withHeaders(DeviceHeaders::all())->withToken($token)
+                ->accept('*/*')->get($this->baseUrl().'/'.ltrim($path, '/'));
+        } catch (ConnectionException $e) {
+            throw new CentralApiException(self::OFFLINE_MESSAGE, CentralApiException::OFFLINE);
+        }
+        if (! $response->successful()) {
+            throw $this->failure($response);
+        }
+
+        $filename = null;
+        $disposition = (string) $response->header('Content-Disposition');
+        if (preg_match("/filename\\*=UTF-8''([^;]+)/i", $disposition, $m)) {
+            $filename = rawurldecode($m[1]);
+        } elseif (preg_match('/filename="?([^";]+)"?/i', $disposition, $m)) {
+            $filename = $m[1];
+        }
+
+        return ['bytes' => $response->body(), 'filename' => $filename ? basename($filename) : null, 'content_type' => $response->header('Content-Type') ?: null];
+    }
+
     private function failure(Response $response): CentralApiException
     {
         $status = $response->status();

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\CentralApiException;
 use App\Models\AppState;
+use App\Models\DownloadLog;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationEvent;
 use App\Models\Family;
@@ -94,7 +95,10 @@ class SyncService
         $handouts = PendingHandout::whereNull('synced_at')->with('evacuationEvent')
             ->get()->map(fn ($m) => ['key' => 'handout:'.$m->id, 'model' => $m, 'kind' => 'handout']);
 
-        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)->concat($checkIns)->concat($handouts)
+        // Files saved here, for the server's activity log.
+        $downloads = DownloadLog::whereNull('reported_at')->get()->map(fn ($m) => ['key' => 'download:'.$m->id, 'model' => $m, 'kind' => 'download']);
+
+        return $entries->concat($families)->concat($returning)->concat($privateHouses)->concat($checkOuts)->concat($checkIns)->concat($handouts)->concat($downloads)
             ->sortBy(fn ($item) => [$item['model']->created_at?->getTimestamp() ?? 0, $item['model']->id])
             ->values();
     }
@@ -279,6 +283,7 @@ class SyncService
             // upgrade are still sent so nothing already entered is lost.
             'family' => 'Family '.$model->displayName().' (registered before 2.0)',
             'private' => 'Private house: '.$model->label().' · '.Plural::of($model->personCount(), 'person', 'people').' (with '.$model->host_name.')',
+            'download' => 'File '.($model->action ?: 'saved').': '.$model->file_name,
             'handout' => 'Relief box: '.$model->family_label.($model->round_number ? ' (Round '.$model->round_number.')' : ''),
             'checkin' => 'Check-in: '.$model->family_label.' · '.Plural::of($model->members_count, 'person', 'people').' (listed family)',
             'checkout' => 'Check-out: '.$model->family_label.' ('.(PendingCheckOut::STATUSES[$model->status] ?? $model->status).')',
@@ -293,6 +298,7 @@ class SyncService
             'private' => 'Private house',
             'checkin' => $item['model']->destination(),
             'handout' => 'Relief boxes',
+            'download' => 'Activity log',
             default => $item['model']->evacuationCenter?->name ?? '',
         };
     }
@@ -304,6 +310,13 @@ class SyncService
         if ($item['kind'] === 'private') {
             $data = $this->api->addPrivateHouseFamily($auth->api_token, $model->barangay_remote_id, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
             $model->update(['remote_family_id' => $data['id'] ?? null, 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+
+            return;
+        }
+
+        if ($item['kind'] === 'download') {
+            $this->api->send('post', 'file-downloads', $auth->api_token, $model->toSyncPayload());
+            $model->update(['reported_at' => now(), 'sync_error' => null, 'sync_state' => null]);
 
             return;
         }

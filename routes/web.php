@@ -108,6 +108,7 @@ Route::middleware(OfficialOnly::class)->group(function () {
     // Print and download: files made on this computer, officials only.
     Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');
     Route::post('/downloads', [DownloadController::class, 'save'])->name('downloads.save');
+    Route::post('/downloads/official-ec-board', [DownloadController::class, 'official'])->name('downloads.official');
     Route::post('/puroks/{purok}/marks', [FamiliesToEvacuateController::class, 'markPurok'])->name('puroks.mark');
 
     Route::get('/evacuation-centers/{center}/ec-board', [EvacuationCenterController::class, 'ecBoard'])->name('evacuation-centers.ec-board');

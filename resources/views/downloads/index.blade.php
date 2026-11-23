@@ -22,6 +22,30 @@
     @if (! $event)
         <x-lock-notice :message="\App\Models\EvacuationEvent::NO_OPEN_EVENT" class="mb-6" />
     @else
+        {{-- The official board, made by the server (online). --}}
+        <section class="card card-body flex flex-col gap-3 mb-4" data-document="ec-board-official">
+            <h2 class="section-title">Official EC Information Board (from the server)</h2>
+            <p class="text-sm text-gray-700">The DSWD EC Information Board for one center, made by the E-LIKAS server with everything it has received (Excel). Needs a connection.</p>
+            @if (($officialLock = \App\Support\EventLock::reason($event, \App\Support\EventLock::EC_BOARDS)) && ! $event->isClosed())
+                <x-lock-notice :message="$officialLock" compact />
+            @else
+                <form method="POST" action="{{ route('downloads.official') }}" class="flex flex-wrap items-end gap-2"
+                    data-confirm-title="Save the official EC Information Board?" data-confirm="This file contains personal information. Keep it secure. You choose where it is saved; it is recorded." data-confirm-label="Save file">
+                    @csrf
+                    <div class="flex-1 min-w-[12rem]">
+                        <label for="official-center" class="label">Center</label>
+                        <select id="official-center" name="center" class="input" required>
+                            @foreach ($centers->where('approval_status', 'approved') as $c)
+                                <option value="{{ $c->id }}" @selected($selectedCenter === $c->id)>{{ $c->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-secondary" data-online-only data-save-document="ec-board-official"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Get from the server</button>
+                </form>
+            @endif
+        </section>
+
+        <h2 class="section-title mb-3">Made on this computer (offline too)</h2>
         <div class="grid gap-4 lg:grid-cols-2 mb-8">
             @foreach ($documents as $key => $doc)
                 <section class="card card-body flex flex-col gap-3" data-document="{{ $key }}">
@@ -67,13 +91,13 @@
         <div class="card-body">
             <div class="card-header">
                 <h2 id="recent-title" class="card-title">Files saved from this computer</h2>
-                <span class="text-sm text-gray-600">Recorded here; not yet reported to the server.</span>
+                <span class="text-sm text-gray-600">Each one is reported to the server's activity log with the next sync.</span>
             </div>
             @if ($recent->isEmpty())
                 <x-empty icon="ti-file-off" title="No file saved yet." compact />
             @else
                 <table class="data-table" data-download-log>
-                    <thead><tr><th>When</th><th>File</th><th>By</th><th>Where</th></tr></thead>
+                    <thead><tr><th>When</th><th>File</th><th>By</th><th>Where</th><th>Reported</th></tr></thead>
                     <tbody>
                         @foreach ($recent as $log)
                             <tr>
@@ -81,6 +105,7 @@
                                 <td class="text-gray-900 break-all">{{ $log->file_name }}</td>
                                 <td>{{ $log->user_name }}</td>
                                 <td class="text-sm text-gray-700 break-all">{{ $log->saved_to ?? 'Browser download' }}</td>
+                                <td>@if ($log->reported_at)<span class="badge badge-success">Reported</span>@elseif ($log->sync_state)<span class="badge badge-danger">Needs attention</span>@else<span class="badge badge-warning">Waiting to sync</span>@endif</td>
                             </tr>
                         @endforeach
                     </tbody>

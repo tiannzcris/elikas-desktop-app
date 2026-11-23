@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Barangay;
+use App\Models\DownloadLog;
 use App\Models\EcBoardEntry;
 use App\Models\EvacuationCenter;
 use App\Models\EvacuationEvent;
@@ -99,6 +100,8 @@ class WaitingRecordsTransfer
                 'checkout' => ['center_remote_id' => $centers[$m->evacuation_center_id] ?? null,
                     'household_client_ref' => $m->family_remote_id ? null : $household($m->household_family_local_id),
                     'attributes' => ['family_remote_id' => $m->family_remote_id, 'family_label' => $m->family_label, 'status' => $m->status]],
+                'download' => ['attributes' => collect($m->getAttributes())->only(['document', 'format', 'file_name', 'evacuation_event_remote_id', 'evacuation_center_remote_id',
+                    'user_remote_id', 'user_name', 'saved_to', 'generated_offline', 'file_type', 'action', 'report_remote_id'])->all()],
                 'handout' => ['attributes' => ['round_remote_id' => $m->round_remote_id, 'round_number' => $m->round_number, 'family_remote_id' => $m->family_remote_id,
                     'family_label' => $m->family_label, 'higher_priority_waiting' => $m->higher_priority_waiting]],
                 'checkin' => ['center_remote_id' => $m->evacuation_center_id ? ($centers[$m->evacuation_center_id] ?? null) : null,
@@ -212,7 +215,7 @@ class WaitingRecordsTransfer
             foreach ($payload['records'] as $r) {
                 $model = match ($r['kind']) {
                     'entry' => EcBoardEntry::class, 'family' => Family::class, 'returning' => PendingReEnrollment::class,
-                    'private' => PendingPrivateHouseFamily::class, 'checkout' => PendingCheckOut::class, 'checkin' => PendingListCheckIn::class, 'handout' => PendingHandout::class,
+                    'private' => PendingPrivateHouseFamily::class, 'checkout' => PendingCheckOut::class, 'checkin' => PendingListCheckIn::class, 'handout' => PendingHandout::class, 'download' => DownloadLog::class,
                     default => null,
                 };
                 if ($model === null) {
@@ -230,7 +233,7 @@ class WaitingRecordsTransfer
                 }
                 $attributes = ($r['attributes'] ?? []) + [
                     'client_ref' => $r['client_ref'],
-                    'evacuation_event_id' => $events[$r['event_remote_id']],
+                    'evacuation_event_id' => $r['event_remote_id'] !== null ? $events[$r['event_remote_id']] : null,
                 ];
                 if (array_key_exists('center_remote_id', $r)) {
                     $attributes['evacuation_center_id'] = $r['center_remote_id'] ? $centers[$r['center_remote_id']] : null;
