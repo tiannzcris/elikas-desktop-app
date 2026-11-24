@@ -161,4 +161,42 @@ class ReliefBoxesTest extends TestCase
         $this->assertSame('1 higher-priority family has not received a box yet. Continue?', BoxRelief::outOfPriorityQuestion(1));
         $this->assertSame('3 higher-priority families have not received a box yet. Continue?', BoxRelief::outOfPriorityQuestion(3));
     }
+    /**
+     * GET /box-relief/barangay as the backend returns it (BoxReliefController::barangay()
+     * with roundRow() and figuresFor()): two rounds, out of order here on purpose.
+     */
+    public function test_the_rounds_are_read_from_the_real_barangay_shape(): void
+    {
+        $round = fn (int $id, int $number, int $received) => [
+            'id' => $id, 'round_number' => $number, 'opened_at' => '2026-11-2'.$number.'T08:00:00+00:00',
+            'need' => 4, 'dispatched' => $received, 'in_transit' => 0, 'received' => $received, 'given' => 0, 'left_to_give' => $received,
+            'short' => max(0, 4 - $received), 'can_dispatch' => max(0, 4 - $received),
+            'dispatches' => [['id' => $id * 10, 'round_id' => $id, 'barangay_id' => 1, 'quantity' => $received, 'confirmed_quantity' => $received]],
+            'shortfall_requests' => [], 'totals_given' => [],
+        ];
+        Http::fake([
+            '*/box-relief/barangay*' => Http::response(['success' => true, 'message' => 'Request successful.', 'data' => [
+                'evacuation_event' => ['id' => 1, 'name' => 'Typhoon Ofel', 'status' => 'active'],
+                'barangay' => ['id' => 1, 'name' => 'Tuburan'],
+                'has_official_account' => true, 'can_act' => true, 'acting_on_behalf' => false, 'can_request_shortfall' => true,
+                'need' => 4, 'plan' => null, 'count_validated' => true, 'need_basis' => 'validated',
+                'counted_from_paper' => false, 'can_give_total' => false,
+                'rounds' => [$round(12, 2, 1), $round(11, 1, 3)],
+            ]]),
+            '*/box-relief/rounds/11/families*' => Http::response($this->families(3)),
+            '*/box-relief/rounds/12/families*' => Http::response(['data' => ['round' => ['id' => 12, 'round_number' => 2], 'figures' => ['need' => 4, 'received' => 1, 'given' => 0, 'left_to_give' => 1],
+                'next_family_id' => null, 'staying_elsewhere' => [], 'puroks' => []]]),
+        ]);
+
+        app(BoxRelief::class)->refresh(LocalAuth::current(), $this->event);
+
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/box-relief/barangay') && $r['evacuation_event_id'] === 1);
+        $view = app(BoxRelief::class)->forEvent($this->event);
+        $this->assertSame([11, 12], array_column($view['rounds'], 'id'), 'Ordered by round number.');
+        $this->assertSame(12, $view['round']['id'], 'The latest round is shown first.');
+        $this->assertSame('validated', $view['need_basis']);
+
+        $this->get(route('relief.index', ['round' => 11]))->assertSee('Round 1')->assertSee('Based on the validated count')->assertSee('Maria Dela Cruz');
+        $this->get(route('relief.index'))->assertSee('Round 2');
+    }
 }

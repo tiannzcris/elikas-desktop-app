@@ -20,9 +20,11 @@ use Illuminate\Support\Collection;
  * go down, and the suggested order (priority, Next in line, higher-priority
  * families waiting) is worked out again from the copy.
  *
- * The rounds themselves are read from GET /box-relief/barangay (rounds,
- * round, current_round or latest_round); the November 24 notes document the
- * family list and the give by round id, not where the ids come from.
+ * The rounds come from GET /box-relief/barangay?evacuation_event_id=:
+ * data.rounds[], ordered by round_number, each {id, round_number,
+ * opened_at, ...that round's figures, dispatches, shortfall_requests,
+ * totals_given}, and data.need_basis (registered or validated). Checked
+ * against the backend's BoxReliefController::barangay() and roundRow().
  */
 class BoxRelief
 {
@@ -50,7 +52,7 @@ class BoxRelief
 
         ServerSnapshot::keep(self::key($event), [
             'rounds' => $rounds,
-            'need_basis' => $barangay['need_basis'] ?? $barangay['barangay']['need_basis'] ?? null,
+            'need_basis' => $barangay['need_basis'] ?? null,
             'families' => $families,
         ]);
     }
@@ -72,9 +74,7 @@ class BoxRelief
     /** @return list<array{id: int, round_number: int|null}> rounds, newest last */
     public static function roundsFrom(array $barangay): array
     {
-        $rows = $barangay['rounds'] ?? array_values(array_filter([$barangay['round'] ?? null, $barangay['current_round'] ?? null, $barangay['latest_round'] ?? null]));
-
-        return collect($rows)->filter(fn ($r) => is_array($r) && ! empty($r['id']))
+        return collect($barangay['rounds'] ?? [])->filter(fn ($r) => is_array($r) && ! empty($r['id']))
             ->map(fn ($r) => ['id' => (int) $r['id'], 'round_number' => isset($r['round_number']) ? (int) $r['round_number'] : null, 'opened_at' => $r['opened_at'] ?? null])
             ->unique('id')->sortBy(fn ($r) => [$r['round_number'] ?? 0, $r['id']])->values()->all();
     }

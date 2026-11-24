@@ -78,13 +78,6 @@ final count reminders and counts submitted on behalf → Final count). The
 official's dashboard shows the server's to-do list, each center's facilities
 readiness and the latest alerts with their target (whole city or the barangay).
 
-## 2.1.0: to confirm with the backend
-
-- Relief rounds are read from `GET /box-relief/barangay` (`rounds`, `round`,
-  `current_round` or `latest_round`, each with `id` and `round_number`). The
-  November 24 notes document the family list and the give by round id, not
-  where an official's app finds the ids.
-
 ## Develop and test
 
     composer install && npm install
