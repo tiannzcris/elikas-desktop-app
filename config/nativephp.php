@@ -73,6 +73,36 @@ return [
         'storage/app/exports',
         // The migrate lock (App\Support\MigrationLock), made by local runs.
         'storage/app/migrate.lock',
+
+        // Not needed at runtime (2.1.1): notes, docs, tests and build-time
+        // tooling. Patterns match from the project root; fnmatch's "*" also
+        // crosses "/", so root files are named one by one rather than
+        // "*.md" (which would also strip vendor packages' files).
+        'ELIKAS_DESKTOP_APP_AUDIT.md',
+        'README.md',
+        'docs',
+        'tests',
+        'phpunit.xml',
+        '.phpunit.result.cache',
+        '.phpunit.cache',
+        'coverage',
+        'scripts',
+        '.claude',
+        '.vscode',
+        '.idea',
+        '.fleet',
+        '.editorconfig',
+        '.gitattributes',
+        '.gitignore',
+        '.env.example',
+        '*.log',
+        'node_modules',
+        // Front-end build configuration: the app loads public/build (its manifest), never these.
+        'package.json',
+        'package-lock.json',
+        'postcss.config.js',
+        'tailwind.config.js',
+        'vite.config.js',
     ],
 
     /**
