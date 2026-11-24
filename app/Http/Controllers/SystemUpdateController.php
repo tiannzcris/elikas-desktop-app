@@ -43,6 +43,9 @@ class SystemUpdateController extends Controller
         try {
             Artisan::call('migrate', ['--force' => true]);
         } catch (\Throwable $e) {
+            // Logged too: 2.1.0 showed this error on screen only.
+            report($e);
+
             return back()->withErrors([
                 'update' => 'The update failed: '.$e->getMessage().' Your data has not been changed -- you can safely try again.',
             ]);

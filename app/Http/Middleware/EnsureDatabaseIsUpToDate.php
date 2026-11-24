@@ -31,6 +31,18 @@ class EnsureDatabaseIsUpToDate
             return redirect()->route('system.update-required');
         }
 
+        // Encrypting the existing data had to wait for the running app (the
+        // key opens only here): do it now, once. A failure is logged and
+        // tried again at the next page; nothing is changed until it succeeds.
+        $encryption = app(\App\Security\LocalDataEncryption::class);
+        if ($encryption->pending()) {
+            try {
+                $encryption->protectExistingOrDefer('before-2.1.1-encryption');
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
         return $next($request);
     }
 }

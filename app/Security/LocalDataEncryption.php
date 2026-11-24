@@ -41,6 +41,51 @@ class LocalDataEncryption
 
     public function __construct(private LocalDataKey $key) {}
 
+    /** The flag set when encrypting had to wait for the running app. */
+    public const PENDING_FLAG = 'local_data_encryption_pending';
+
+    /**
+     * Backs up and encrypts whatever is still in plain text. Does nothing
+     * (and makes no backup) when nothing is. When this process cannot open
+     * the key (an artisan process with a key protected by Windows), it
+     * leaves the work to the running app instead of failing.
+     *
+     * @return array<string, int>|null values encrypted per table, or null when deferred
+     */
+    public function protectExistingOrDefer(string $backupLabel): ?array
+    {
+        if (! $this->key->usableHere()) {
+            $this->markPending(true);
+
+            return null;
+        }
+        if ($this->plainCount() === 0) {
+            $this->markPending(false);
+
+            return [];
+        }
+
+        $backup = $this->backup($backupLabel);
+        $counts = $this->encryptExisting();
+        $this->markPending(false);
+        \Illuminate\Support\Facades\Log::info('Local data encrypted at rest.', ['backup' => $backup, 'values' => array_sum($counts)]);
+
+        return $counts;
+    }
+
+    public function pending(): bool
+    {
+        return Schema::hasTable('app_state') && (bool) \App\Models\AppState::get(self::PENDING_FLAG, false);
+    }
+
+    private function markPending(bool $pending): void
+    {
+        if (! Schema::hasTable('app_state')) {
+            return;
+        }
+        $pending ? \App\Models\AppState::put(self::PENDING_FLAG, true) : \App\Models\AppState::forget(self::PENDING_FLAG);
+    }
+
     public function backupsPath(): string
     {
         return config('elikas.local_backups_path') ?: storage_path('app/backups');

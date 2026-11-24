@@ -56,7 +56,12 @@ class LocalDataKey
         }
 
         if (($stored['protected'] ?? 'none') === 'windows-account') {
-            $plain = $this->native() ? \Native\Laravel\Facades\System::decrypt($stored['key']) : null;
+            if (! $this->native()) {
+                throw new LocalDataKeyUnavailable(app()->runningInConsole()
+                    ? 'The key of this computer\'s data is protected by Windows and opens only inside the running app, not from artisan.'
+                    : 'The key of this computer\'s data could not be opened with this Windows account.');
+            }
+            $plain = \Native\Laravel\Facades\System::decrypt($stored['key']);
             $key = is_string($plain) ? base64_decode($plain, true) : false;
             if ($key === false || strlen($key) !== 32) {
                 throw new LocalDataKeyUnavailable('The key of this computer\'s data could not be opened with this Windows account.');
@@ -101,9 +106,24 @@ class LocalDataKey
         @chmod($this->path(), 0600);
     }
 
+    /**
+     * Whether Electron can protect the key now. Never from an artisan
+     * process: NativePHP runs `artisan migrate` at startup with spawnSync,
+     * which blocks Electron's main process -- the one that answers its API --
+     * so a call to System::encrypt() from a migration waits for an answer
+     * that cannot come (2.1.0 hung there on every first start). A key made
+     * by artisan is stored unprotected and protected at the app's first
+     * request, which runs while Electron is answering.
+     */
     private function native(): bool
     {
-        return (bool) config('nativephp-internal.running');
+        return (bool) config('nativephp-internal.running') && ! app()->runningInConsole();
+    }
+
+    /** Whether this key can be opened here (an artisan process cannot open a key protected by Windows). */
+    public function usableHere(): bool
+    {
+        return ! $this->exists() || $this->protection() !== 'windows-account' || $this->native();
     }
 
     private function canProtect(): bool

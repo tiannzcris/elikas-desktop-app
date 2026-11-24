@@ -167,4 +167,30 @@ class LocalDataEncryptionTest extends TestCase
     {
         $this->artisan('elikas:local-data', ['action' => 'status'])->expectsOutputToContain('Personal values still in plain text: 0')->assertSuccessful();
     }
+    public function test_encryption_that_had_to_wait_is_done_at_the_apps_first_page(): void
+    {
+        \App\Models\LocalAuth::create(['remote_user_id' => 1, 'name' => 'T', 'email' => 't@x', 'role' => 'barangay_official', 'barangay_id' => 4, 'api_token' => 't', 'logged_in_at' => now()]);
+        // Left in plain text by a migrate that could not open the key.
+        DB::table('families')->insert(['barangay_id' => $this->barangay->id, 'evacuation_event_id' => $this->event->id, 'displacement_type' => 'inside_center',
+            'name' => 'Rosalinda Magbanua', 'created_via_ec_board' => 1]);
+        \App\Models\AppState::put(LocalDataEncryption::PENDING_FLAG, true);
+        $encryption = app(LocalDataEncryption::class);
+        $this->assertTrue($encryption->pending());
+        $this->assertSame(1, $encryption->plainCount());
+
+        $this->get(route('dashboard'))->assertOk();
+
+        $this->assertFalse($encryption->pending());
+        $this->assertSame(0, $encryption->plainCount());
+        $this->assertStringNotContainsString('Rosalinda', $this->rawDatabase());
+        $this->assertSame('Rosalinda Magbanua', Family::first()->name);
+    }
+
+    public function test_nothing_in_plain_text_means_no_backup_and_no_key_yet(): void
+    {
+        config(['elikas.local_data_key_path' => sys_get_temp_dir().DIRECTORY_SEPARATOR.'elikas-nokey-'.uniqid().'.key']);
+        app(LocalDataKey::class)->reset();
+        $this->assertSame([], app(LocalDataEncryption::class)->protectExistingOrDefer('test'));
+        $this->assertFalse(app(LocalDataKey::class)->exists());
+    }
 }

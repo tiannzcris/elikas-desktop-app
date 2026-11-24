@@ -14,6 +14,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Only when missing: safe to run again (2.1.1).
+        if (Schema::hasTable('download_logs')) {
+            return;
+        }
         Schema::create('download_logs', function (Blueprint $table) {
             $table->id();
             $table->string('document', 40);

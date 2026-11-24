@@ -3,7 +3,6 @@
 use App\Security\LocalDataEncryption;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -11,8 +10,14 @@ use Illuminate\Support\Facades\Schema;
  *  - local_auth.password_hash: signing in again after inactivity works
  *    offline (a bcrypt hash of the password last used online);
  *  - local_auth.locked_at: signed out of the screen after inactivity;
- *  - personal data encrypted at rest: a backup first, then every value
- *    encrypted and checked (LocalDataEncryption::encryptExisting()).
+ *  - personal data encrypted at rest (LocalDataEncryption::protectExisting():
+ *    a backup first, then every value encrypted and checked).
+ *
+ * Safe to run again (2.1.1): in 2.1.0 this migration added the columns and
+ * then hung at the data key (see LocalDataKey::native()), so many devices
+ * have the columns without this migration being recorded. Each column is
+ * added only when missing. When the key cannot be opened in this process,
+ * the encryption is left to the running app (LocalDataEncryption::pending()).
  */
 return new class extends Migration
 {
@@ -22,16 +27,13 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::table('local_auth', function (Blueprint $table) {
-            $table->text('password_hash')->nullable();
-            $table->timestamp('locked_at')->nullable();
-        });
+        foreach (['password_hash' => 'text', 'locked_at' => 'timestamp'] as $column => $type) {
+            if (! Schema::hasColumn('local_auth', $column)) {
+                Schema::table('local_auth', fn (Blueprint $table) => $table->{$type}($column)->nullable());
+            }
+        }
 
-        $encryption = app(LocalDataEncryption::class);
-        $backup = $encryption->backup('before-2.1.0-encryption');
-        $counts = $encryption->encryptExisting();
-
-        Log::info('Local data encrypted at rest.', ['backup' => $backup, 'values' => array_sum($counts)]);
+        app(LocalDataEncryption::class)->protectExistingOrDefer('before-2.1.0-encryption');
     }
 
     public function down(): void

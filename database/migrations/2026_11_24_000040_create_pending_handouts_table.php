@@ -13,6 +13,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Only when missing: safe to run again (2.1.1).
+        if (Schema::hasTable('pending_handouts')) {
+            return;
+        }
         Schema::create('pending_handouts', function (Blueprint $table) {
             $table->id();
             $table->uuid('client_ref')->unique();

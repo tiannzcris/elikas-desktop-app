@@ -9,6 +9,18 @@ need: one barangay official account, one CSWD account, a second Windows
 computer (or a second Windows account) for part 9, a USB drive, and a way to
 switch the internet off (unplug, or turn off Wi-Fi).
 
+## 0b. 2.1.1: the first start (do this first)
+
+2.1.0 failed at its first start with "duplicate column name: password_hash". Check each case
+shows the app (login or dashboard) within about a minute, with no "update local data" error:
+
+- [ ] Fresh install (no `%APPDATA%\e-likas` folder): install 2.1.1 and open it once.
+- [ ] Upgrade from 2.0.2 with records waiting: they are all still on the Sync page afterwards.
+- [ ] Upgrade from a 2.1.0 that showed the error: install 2.1.1 over it; it opens normally and
+      the records are still there.
+- [ ] Open the app twice quickly (double-click twice): it still starts normally.
+- [ ] `%APPDATA%\e-likas\storage\logs` no longer fills with "no such table: cache".
+
 ## 0. Install and upgrade
 
 - [ ] On a computer with **2.0.2** and at least one record waiting to be sent, note
@@ -19,7 +31,7 @@ switch the internet off (unplug, or turn off Wi-Fi).
 - [ ] Account menu → Data and security says the key is protected with this Windows account.
 - [ ] Opening the database file (`nativephp.sqlite` in the app's data folder) with any SQLite
       viewer shows no readable names in `families`, `ec_board_entries` or `server_snapshots`.
-- [ ] Account menu → About says 2.1.0.
+- [ ] Account menu → About says 2.1.1.
 - [ ] A fresh install on a computer that never had E-LIKAS also works.
 
 ## 1. Compatibility

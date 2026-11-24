@@ -16,18 +16,25 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('download_logs', function (Blueprint $table) {
-            $table->uuid('client_ref')->nullable()->unique();
-            $table->string('file_type', 50)->nullable();
-            $table->string('action', 10)->default('saved');
-            $table->unsignedBigInteger('report_remote_id')->nullable();
-            $table->text('sync_error')->nullable();
-            $table->string('sync_state', 20)->nullable();
-        });
+        // Each column only when missing: safe to run again (2.1.1).
+        $columns = [
+            'client_ref' => fn (Blueprint $t) => $t->uuid('client_ref')->nullable()->unique(),
+            'file_type' => fn (Blueprint $t) => $t->string('file_type', 50)->nullable(),
+            'action' => fn (Blueprint $t) => $t->string('action', 10)->default('saved'),
+            'report_remote_id' => fn (Blueprint $t) => $t->unsignedBigInteger('report_remote_id')->nullable(),
+            'sync_error' => fn (Blueprint $t) => $t->text('sync_error')->nullable(),
+            'sync_state' => fn (Blueprint $t) => $t->string('sync_state', 20)->nullable(),
+        ];
+        foreach ($columns as $column => $add) {
+            if (! Schema::hasColumn('download_logs', $column)) {
+                Schema::table('download_logs', $add);
+            }
+        }
 
         $types = ['ec-board' => 'ec_information_board', 'family-list' => 'evacuees', 'relief-sheet' => 'relief_families',
             'families-to-evacuate' => 'families_to_evacuate', 'waiting-records' => 'waiting_records'];
-        foreach (DB::table('download_logs')->get(['id', 'document']) as $row) {
+        // Only rows without one yet.
+        foreach (DB::table('download_logs')->whereNull('client_ref')->get(['id', 'document']) as $row) {
             DB::table('download_logs')->where('id', $row->id)->update(['client_ref' => (string) Str::uuid(), 'file_type' => $types[$row->document] ?? 'other']);
         }
     }

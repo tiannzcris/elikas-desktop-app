@@ -15,11 +15,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('puroks', function (Blueprint $table) {
-            $table->boolean('high_risk_flood')->default(false);
-            $table->boolean('high_risk_landslide')->default(false);
-        });
+        // Each step only when missing: safe to run again (2.1.1).
+        foreach (['high_risk_flood', 'high_risk_landslide'] as $column) {
+            if (! Schema::hasColumn('puroks', $column)) {
+                Schema::table('puroks', fn (Blueprint $table) => $table->boolean($column)->default(false));
+            }
+        }
 
+        if (Schema::hasTable('pending_list_check_ins')) {
+            return;
+        }
         Schema::create('pending_list_check_ins', function (Blueprint $table) {
             $table->id();
             $table->uuid('client_ref')->unique();

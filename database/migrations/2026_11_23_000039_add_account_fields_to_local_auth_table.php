@@ -13,10 +13,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('local_auth', function (Blueprint $table) {
-            $table->string('username', 100)->nullable();
-            $table->boolean('must_change_password')->default(false);
-        });
+        // Each column only when missing: safe to run again (2.1.1).
+        if (! Schema::hasColumn('local_auth', 'username')) {
+            Schema::table('local_auth', fn (Blueprint $table) => $table->string('username', 100)->nullable());
+        }
+        if (! Schema::hasColumn('local_auth', 'must_change_password')) {
+            Schema::table('local_auth', fn (Blueprint $table) => $table->boolean('must_change_password')->default(false));
+        }
     }
 
     public function down(): void

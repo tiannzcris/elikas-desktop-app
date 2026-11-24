@@ -20,6 +20,18 @@ class AppServiceProvider extends ServiceProvider
         // never APP_KEY (the same in every installer).
         \Illuminate\Database\Eloquent\Model::encryptUsing(new \App\Security\LazyLocalEncrypter);
 
+        // One migrate at a time (App\Support\MigrationLock).
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Console\Events\CommandStarting::class, function ($event) {
+            if ($event->command === 'migrate') {
+                \App\Support\MigrationLock::acquire();
+            }
+        });
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Console\Events\CommandFinished::class, function ($event) {
+            if ($event->command === 'migrate') {
+                \App\Support\MigrationLock::release();
+            }
+        });
+
         // The shell's "waiting to be sent" figure (top bar, logout warning).
         View::composer('layouts.app', function ($view) {
             $view->with('pendingTotal', Schema::hasTable('app_state') ? app(LocalData::class)->pendingCount() : 0);
