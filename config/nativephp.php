@@ -71,6 +71,8 @@ return [
         'storage/app/local-data.key',
         'storage/app/backups',
         'storage/app/exports',
+        // The migrate lock (App\Support\MigrationLock), made by local runs.
+        'storage/app/migrate.lock',
     ],
 
     /**
