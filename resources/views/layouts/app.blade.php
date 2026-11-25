@@ -123,7 +123,7 @@
                         class="badge {{ $pendingTotal > 0 ? 'badge-warning' : 'badge-success' }} text-sm px-3 py-1" data-pending="{{ $pendingTotal }}">
                         {{ $pendingTotal > 0 ? \App\Support\Plural::of($pendingTotal, 'record', 'records').' waiting' : 'All sent' }}
                     </a>
-                    <form hidden data-auto-sync data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}" data-probe-url="{{ route('sync.probe') }}">@csrf</form>
+                    <form hidden data-auto-sync data-sent-url="{{ route('sync.index') }}" data-step-url="{{ route('sync.step') }}" data-retry-url="{{ route('sync.retry') }}" data-probe-url="{{ route('sync.probe') }}">@csrf</form>
                 @elseif ($currentUser ?? null)
                     <span id="connection-badge" class="badge badge-neutral text-sm px-3 py-1" role="status" aria-live="polite"></span>
                 @endif

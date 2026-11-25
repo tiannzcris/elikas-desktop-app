@@ -19,6 +19,7 @@ use App\Http\Controllers\ReliefController;
 use App\Http\Controllers\ReturningFamilyController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\SelectedEventController;
+use App\Http\Controllers\SentRecordController;
 use App\Http\Controllers\SupportController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SystemUpdateController;
@@ -82,6 +83,9 @@ Route::middleware(OfficialOnly::class)->group(function () {
     Route::post('/sync/all', [SyncController::class, 'all'])->name('sync.all');
     Route::post('/sync/returning/{returning}/decide', [SyncController::class, 'decide'])->name('sync.decide');
     Route::delete('/sync/returning/{returning}', [SyncController::class, 'forgetReturning'])->name('sync.forget-returning');
+    // Sync > Sent: correcting a registration already on the server (online only).
+    Route::get('/sync/sent/entries/{entry}/edit', [SentRecordController::class, 'edit'])->name('sync.sent.edit');
+    Route::patch('/sync/sent/entries/{entry}', [SentRecordController::class, 'update'])->name('sync.sent.update');
 
     Route::get('/ec-board', [EvacuationCenterController::class, 'ecBoardIndex'])->name('ec-board.index');
     Route::post('/events/families-arriving', [EventLifecycleController::class, 'familiesArriving'])->name('events.families-arriving');

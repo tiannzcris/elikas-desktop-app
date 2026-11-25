@@ -13,7 +13,15 @@ class SelectedEventController extends Controller
     public function update(Request $request, SelectedEvent $selected)
     {
         $event = $request->filled('event') ? EvacuationEvent::findOrFail($request->integer('event')) : null;
-        $selected->choose($event, LocalAuth::current());
+        $auth = LocalAuth::current();
+        $selected->choose($event, $auth);
+
+        // Every center's count and status is per event: reload them for the
+        // event now selected (only when the server just answered; offline,
+        // the next refresh brings them).
+        if ($auth && $selected->sent()) {
+            $selected->refreshCenterFigures($auth);
+        }
 
         $working = $selected->get();
 

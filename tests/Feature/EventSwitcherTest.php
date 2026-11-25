@@ -46,12 +46,17 @@ class EventSwitcherTest extends TestCase
 
     public function test_switching_tells_the_server_and_every_screen_follows(): void
     {
-        Http::fake(['*/selected-event' => Http::response(['data' => ['selected' => ['id' => 80], 'chosen' => true]])]);
+        Http::fake([
+            '*/selected-event' => Http::response(['data' => ['selected' => ['id' => 80], 'chosen' => true]]),
+            '*/evacuation-centers?detail=1&evacuation_event_id=80' => Http::response(['data' => []]),
+        ]);
 
         $this->from(route('dashboard'))->post(route('selected-event.update'), ['event' => $this->watch->id])
             ->assertRedirect(route('dashboard'))->assertSessionHas('status', 'Now working on "Incoming Storm".');
 
         Http::assertSent(fn ($r) => $r->method() === 'PUT' && $r['evacuation_event_id'] === 80);
+        // The centers' figures are reloaded for the event now selected.
+        Http::assertSent(fn ($r) => $r->method() === 'GET' && str_contains($r->url(), 'evacuation-centers?detail=1&evacuation_event_id=80'));
         $this->get(route('evacuation-centers.ec-board', $this->center))->assertSee('&quot;Incoming Storm&quot; is being monitored. Registering evacuees opens when CSWD starts the evacuation.', false)
             ->assertDontSee('Saves to:');
     }
@@ -79,7 +84,7 @@ class EventSwitcherTest extends TestCase
                 ['id' => 80, 'name' => 'Incoming Storm', 'event_type' => 'typhoon', 'status' => 'monitoring'],
             ]]),
             '*/selected-event' => Http::response(['data' => ['selected' => ['id' => 80, 'name' => 'Incoming Storm'], 'chosen' => true, 'open_count' => 2]]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
             '*/puroks*' => Http::response(['data' => []]),
             '*/families-to-evacuate*' => Http::response(['data' => ['families' => []]]),
             '*/count-submissions*' => Http::response(['data' => []]),

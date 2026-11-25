@@ -73,6 +73,36 @@ class SelectedEvent
         }
     }
 
+    /** Whether the server has the choice made here (false: made offline, still to send). */
+    public function sent(): bool
+    {
+        return empty(AppState::get(self::KEY)['unsent']);
+    }
+
+    /**
+     * Brings the cached figures of the centers up to date for the event
+     * now selected (GET evacuation-centers?detail=1&evacuation_event_id=):
+     * people here for it, everyone inside, the status and the note. Only
+     * centers already on this device are updated (the reference data
+     * refresh adds and removes centers). Returns false when the server
+     * could not be asked; the old figures stay.
+     */
+    public function refreshCenterFigures(LocalAuth $auth): bool
+    {
+        try {
+            $rows = $this->api->fetchCenters($auth->api_token, $this->get()?->remote_id);
+        } catch (CentralApiException $e) {
+            return false;
+        }
+        $known = \App\Models\EvacuationCenter::pluck('remote_id')->all();
+        \App\Models\EvacuationCenter::storeFromServer(
+            array_filter($rows, fn ($c) => in_array($c['id'] ?? null, $known)),
+            $auth->isBarangayOfficial() ? (int) $auth->barangay_id : null,
+        );
+
+        return true;
+    }
+
     /** Back to the server's default (at every login: a choice made before is not kept). */
     public function reset(): void
     {

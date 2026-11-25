@@ -194,8 +194,8 @@ class EcBoardEntryController extends Controller
 
     /**
      * Scoped to not-yet-synced entries only -- once synced, the central
-     * server is the source of truth, exactly matching FamilyController::
-     * edit()'s reasoning.
+     * server is the source of truth: a sent entry is corrected there,
+     * from Sync > Sent (SentRecordController).
      */
     public function edit(Request $request, EcBoardEntry $entry)
     {
@@ -205,8 +205,7 @@ class EcBoardEntryController extends Controller
         }
 
         if ($entry->isSynced()) {
-            return redirect()->route('evacuation-centers.ec-board', $entry->evacuation_center_id)
-                ->with('status', 'This entry has already synced -- it can no longer be edited from this device.');
+            return redirect()->route('sync.sent.edit', $entry);
         }
 
         if ($entry->evacuationEvent?->isClosed()) {
@@ -219,9 +218,10 @@ class EcBoardEntryController extends Controller
 
     public function update(AddEvacueeRequest $request, EcBoardEntry $entry)
     {
+        // Sent while the form was open: corrected on the server instead.
         if ($entry->isSynced()) {
-            return redirect()->route('evacuation-centers.ec-board', $entry->evacuation_center_id)
-                ->with('status', 'This entry has already synced -- it can no longer be edited from this device.');
+            return redirect()->route('sync.sent.edit', $entry)
+                ->with('status', 'This entry was sent in the meantime. Correct it here, on the server.');
         }
 
         $validated = $request->validated();

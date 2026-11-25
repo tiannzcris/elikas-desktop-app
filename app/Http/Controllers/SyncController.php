@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\CentralApiException;
 use App\Models\AppState;
 use App\Models\EvacuationCenter;
+use App\Models\EvacuationEvent;
 use App\Models\LocalAuth;
 use App\Models\PendingReEnrollment;
 use App\Services\CentralApiService;
@@ -14,7 +15,8 @@ use Illuminate\Http\Request;
 
 /**
  * The Sync page: what this device still has to send, what the server
- * refused, and the one-at-a-time sender the page drives (step()).
+ * refused, what it already sent (Sent), and the one-at-a-time sender the
+ * page drives (step()).
  */
 class SyncController extends Controller
 {
@@ -29,11 +31,23 @@ class SyncController extends Controller
             'blockedBy' => $sync->blockedBy($item),
         ];
 
+        $working = EvacuationEvent::working();
+
         return view('sync.index', [
             'currentUser' => LocalAuth::current(),
             'waiting' => $sync->waiting()->map($label),
             'attention' => $sync->needsAttention()->map($label),
             'lastSyncAt' => AppState::get('last_sync_at'),
+            // What this device sent for the selected event (newest first).
+            'working' => $working,
+            'sent' => $sync->sent($working)->map(fn (array $item) => $label($item) + [
+                'sentAt' => $item['model']->synced_at,
+                'sentBy' => $item['model']->sent_by,
+                // A registration is corrected on the server; the other kinds are shown where they live.
+                'editable' => $item['kind'] === 'entry' && $item['model']->remote_id,
+                'seeItAt' => $sync->seeItAt($item),
+            ]),
+            'webUrl' => app(CentralApiService::class)->webUrl(),
         ]);
     }
 

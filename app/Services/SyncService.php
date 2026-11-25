@@ -212,6 +212,10 @@ class SyncService
 
         try {
             $this->send($item, $auth);
+            // Who sent it, for Sync > Sent (saved files have no such list).
+            if ($item['kind'] !== 'download') {
+                $model->forceFill(['sent_by' => $auth->name])->save();
+            }
             AppState::put('last_sync_at', now()->toIso8601String());
 
             return ['status' => self::SENT, 'key' => $item['key'], 'label' => $label, 'remaining' => $this->remaining()];
@@ -277,6 +281,73 @@ class SyncService
         }
 
         return $summary;
+    }
+
+    /** Sync > Sent lists what went out in the last SENT_DAYS days, at most SENT_LIMIT records. */
+    public const SENT_DAYS = 14;
+
+    public const SENT_LIMIT = 200;
+
+    /**
+     * What this device sent for one event, newest first: every kind of
+     * record, as kept after it was accepted (synced_at, the server's ids,
+     * sent_by). Saved files are left out (they are not about people).
+     *
+     * @return Collection<int, array{key: string, model: Model, kind: string}>
+     */
+    public function sent(?EvacuationEvent $event): Collection
+    {
+        if (! $event) {
+            return collect();
+        }
+        $since = now()->subDays(self::SENT_DAYS);
+        $scope = fn ($query) => $query->whereNotNull('synced_at')->where('synced_at', '>=', $since)
+            ->where('evacuation_event_id', $event->id)->latest('synced_at')->limit(self::SENT_LIMIT);
+
+        $kinds = [
+            'entry' => [EcBoardEntry::class, ['evacuationCenter', 'household']],
+            'family' => [Family::class, ['evacuees', 'evacuationCenter']],
+            'returning' => [PendingReEnrollment::class, ['evacuationCenter']],
+            'private' => [PendingPrivateHouseFamily::class, []],
+            'checkout' => [PendingCheckOut::class, ['evacuationCenter']],
+            'listadd' => [PendingListAddition::class, []],
+            'checkin' => [PendingListCheckIn::class, ['evacuationCenter']],
+            'handout' => [PendingHandout::class, []],
+        ];
+
+        $all = collect();
+        foreach ($kinds as $kind => [$class, $with]) {
+            $query = $scope($class::query()->with($with));
+            // Households made with an EC Board entry went with that entry.
+            if ($kind === 'family') {
+                $query->where('created_via_ec_board', false);
+            }
+            $all = $all->concat($query->get()->map(fn ($m) => ['key' => $kind.':'.$m->id, 'model' => $m, 'kind' => $kind]));
+        }
+
+        return $all->sortByDesc(fn ($item) => [$item['model']->synced_at->getTimestamp(), $item['model']->id])
+            ->take(self::SENT_LIMIT)->values();
+    }
+
+    /**
+     * Where a sent record can be seen now, for the kinds the server has no
+     * correction for: [label, url or null, on the web?].
+     *
+     * @return array{0: string, 1: ?string, 2: bool}
+     */
+    public function seeItAt(array $item): array
+    {
+        $model = $item['model'];
+
+        return match ($item['kind']) {
+            'private' => ['Private houses', route('private-houses.index'), false],
+            'handout' => ['Relief boxes', route('relief.index'), false],
+            'listadd', 'checkin' => ['Families to evacuate', route('families-to-evacuate.index'), false],
+            'returning' => [$model->evacuationCenter ? 'EC Board of '.$model->evacuationCenter->name : 'EC Board',
+                $model->evacuationCenter ? route('evacuation-centers.ec-board', $model->evacuationCenter) : route('ec-board.index'), false],
+            // A check-out (and a registration from before 2.0) is on the family's page on the web.
+            default => ['Evacuees, on the web', null, true],
+        };
     }
 
     public function remaining(): int
@@ -406,7 +477,9 @@ class SyncService
         // A fresh read: a household sent earlier in this run is synced now.
         $model->unsetRelation('household');
         $result = $this->api->addEvacuee($auth->api_token, $model->evacuationCenter->remote_id, $model->toSyncPayload() + ['client_ref' => $model->client_ref]);
-        $model->update(['remote_id' => $result['evacuee_id'], 'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
+        // The household the server put the person in: a sent registration is corrected through it (Sync > Sent).
+        $model->update(['remote_id' => $result['evacuee_id'], 'family_remote_id' => $result['family_id'] ?? null,
+            'synced_at' => now(), 'sync_error' => null, 'sync_state' => null]);
 
         // The household this entry created gets the id the server just gave it.
         if ($model->originated_household && $model->household_family_local_id) {

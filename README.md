@@ -37,15 +37,30 @@ Screens follow the permissions from `/auth/login` and `/auth/me`, never the role
 - Sync sends one record per request, oldest first; a record waits for the
   family it belongs to. It runs by itself whenever the server answers, and with
   Sync now. Refused records and "same family?" questions wait on the Sync page.
+  Its Sent tab lists what this computer sent for the selected event (last 14
+  days, at most 200): what, where, when and by whom. A sent registration is
+  corrected there, online, on the server (`PATCH /evacuees/{id}`: sex and
+  sectoral flags; `PATCH /families/{id}/household`: head, single-headed, the
+  other head's sex and age, purok); the age group and the family's name have
+  no server correction yet. Other kinds say where they can be seen.
   "No open event" and "event closed" answers wait there too and are never
   resent by themselves; a closed event is read-only on the board.
 - The top bar holds the event switcher (the server remembers the selected event
-  per user; a choice made offline is sent later), the bell (transfer
+  per user; a choice made offline is sent later; a switch online reloads the
+  centers' figures for that event), the bell (transfer
   notifications open the Transfers screen from their href) and the chip.
 - The top-bar chip says how it stands: "Offline · 3 records waiting",
-  "Sending…", "All sent", "Needs attention".
+  "Sending…", "All sent", "Needs attention", and after an automatic send
+  "3 records sent. See Sync > Sent" for a few seconds.
+- Center figures follow the selected event
+  (`docs/backend/apps-api-2026-11-center-figures-per-event.md`): the count
+  and bar are the people here for that event, the status is the server's
+  `effective_status`, Full and "Ask another center for space" count everyone
+  inside (`total_occupancy`), plus unsent arrivals; the server's
+  `occupancy_note` ("87 people here for Typhoon Drill") shows under the center.
 - Logout revokes the token, keeps unsent records for the same account's next
-  login, and removes copies of server data.
+  login and the records sent in the last 14 days (Sync > Sent), and removes
+  copies of server data.
 
 ## Events: monitored, then active
 

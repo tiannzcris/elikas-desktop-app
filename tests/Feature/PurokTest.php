@@ -37,7 +37,7 @@ class PurokTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 4, 'name' => 'Bacong']]]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
             '*/puroks*' => Http::response(['data' => [['id' => 12, 'barangay_id' => 4, 'name' => 'Purok 3', 'families_count' => 0]]]),
         ]);
 

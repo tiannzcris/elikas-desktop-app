@@ -32,6 +32,7 @@
                 <div class="meter-fill {{ $meterColor }}" style="width: {{ $percent }}%"></div>
             </div>
         @endunless
+        @include('evacuation-centers._occupancy_note')
     </div>
     @if ($readiness = $readiness ?? null)
         @php [$readyLabel, $readyTone] = \App\Services\BarangayDashboard::READINESS[$readiness] ?? [\Illuminate\Support\Str::headline($readiness), 'badge-neutral']; @endphp

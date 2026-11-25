@@ -199,15 +199,32 @@ class CentralApiService
         return $this->send('get', 'auth/me', $token, [], 10)['data'] ?? [];
     }
 
-    /** Barangays, events and centers for the local cache. */
-    public function fetchReferenceData(string $token): array
+    /**
+     * Barangays, events and centers for the local cache. The centers'
+     * figures are for $eventRemoteId (the selected event; null: the one the
+     * server remembers for this user).
+     */
+    public function fetchReferenceData(string $token, ?int $eventRemoteId = null): array
     {
         return [
             'barangays' => $this->send('get', 'barangays', $token, [], 10)['data'] ?? [],
             'events' => $this->send('get', 'evacuation-events', $token, [], 10)['data'] ?? [],
-            // detail=1: capacity, people checked in and the status shown, in one answer.
-            'centers' => $this->send('get', 'evacuation-centers', $token, ['detail' => 1], 15)['data'] ?? [],
+            'centers' => $this->fetchCenters($token, $eventRemoteId),
         ];
+    }
+
+    /**
+     * The centers with their figures for one event (GET
+     * evacuation-centers?detail=1&evacuation_event_id=): capacity, people
+     * here for that event, everyone inside, the status shown and the note
+     * (docs/backend/apps-api-2026-11-center-figures-per-event.md).
+     */
+    public function fetchCenters(string $token, ?int $eventRemoteId = null): array
+    {
+        return $this->send('get', 'evacuation-centers', $token, array_filter([
+            'detail' => 1,
+            'evacuation_event_id' => $eventRemoteId,
+        ]), 15)['data'] ?? [];
     }
 
     /** @return list<array{id: int, barangay_id: int, name: string}> one barangay's puroks */

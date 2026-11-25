@@ -34,6 +34,12 @@
         </div>
     </div>
 
+    <div class="tabs mb-6" role="tablist" data-tabs>
+        <button type="button" class="tab" role="tab" data-tab="to-send">To send ({{ number_format($waiting->count() + $attention->count()) }})</button>
+        <button type="button" class="tab" role="tab" data-tab="sent">Sent ({{ number_format($sent->count()) }})</button>
+    </div>
+
+    <div data-tab-panel="to-send">
     @if ($attention->isNotEmpty())
         <section class="card mb-6" aria-labelledby="attention-title">
             <div class="card-body">
@@ -143,6 +149,51 @@
                                         Not sent yet: {{ $item['model']->sync_error }}
                                     @else
                                         Ready
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </div>
+    </section>
+    </div>
+
+    {{-- What this device sent for the selected event, newest first. A sent
+         registration is corrected on the server (online); other kinds have
+         no correction there and say where they can be seen. --}}
+    <section class="card" data-tab-panel="sent" aria-labelledby="sent-title" data-sent-list>
+        <div class="card-body">
+            <div class="card-header">
+                <h2 id="sent-title" class="card-title">Sent{{ $working ? ' for '.$working->name : '' }}</h2>
+            </div>
+            <p class="text-sm text-gray-600 mb-3">What this computer sent in the last {{ \App\Services\SyncService::SENT_DAYS }} days (at most {{ \App\Services\SyncService::SENT_LIMIT }}), newest first. It is on the server: CSWD sees it, and it counts in every figure.</p>
+            @if ($sent->isEmpty())
+                <x-empty icon="ti-send" title="Nothing sent for this event from this computer yet." text="Records go out by themselves whenever the server can be reached, and are listed here." compact />
+            @else
+                <table class="data-table">
+                    <thead><tr><th>Record</th><th>Where</th><th>Sent</th><th>By</th><th class="cell-actions"><span class="sr-only">Actions</span></th></tr></thead>
+                    <tbody>
+                        @foreach ($sent as $item)
+                            <tr data-sent-item="{{ $item['key'] }}">
+                                <td class="font-medium text-gray-900">{{ $item['label'] }}</td>
+                                <td>{{ $item['place'] }}</td>
+                                <td class="whitespace-nowrap"><time datetime="{{ $item['sentAt']->toIso8601String() }}" data-local-time>{{ \App\Support\Format::when($item['sentAt']) }}</time></td>
+                                <td>{{ $item['sentBy'] ?? '–' }}</td>
+                                <td class="cell-actions">
+                                    @if ($item['editable'])
+                                        <a href="{{ route('sync.sent.edit', $item['model']) }}" class="btn btn-secondary btn-sm" data-online-link data-offline-message="{{ \App\Http\Controllers\SentRecordController::OFFLINE }}" data-sent-edit-link>Edit</a>
+                                    @else
+                                        @php [$where, $url, $onWeb] = $item['seeItAt']; @endphp
+                                        <span class="text-sm text-gray-600" data-see-it-at>
+                                            See it in
+                                            @if ($url)
+                                                <a href="{{ $url }}" class="font-medium text-brand-800 underline underline-offset-2">{{ $where }}</a>
+                                            @else
+                                                {{ $where }}@if ($onWeb) <span class="text-gray-500">({{ $webUrl }})</span>@endif
+                                            @endif
+                                        </span>
                                     @endif
                                 </td>
                             </tr>

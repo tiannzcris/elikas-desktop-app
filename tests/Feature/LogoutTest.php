@@ -22,29 +22,32 @@ class LogoutTest extends TestCase
             'barangay_id' => 13, 'api_token' => "token-{$id}", 'logged_in_at' => now()]);
     }
 
-    private function entry(bool $sent): EcBoardEntry
+    private function entry(bool $sent, int $daysAgo = 0): EcBoardEntry
     {
         Barangay::firstOrCreate(['remote_id' => 13], ['name' => 'Binatagan']);
         $event = EvacuationEvent::firstOrCreate(['remote_id' => 1], ['name' => 'Typhoon', 'event_type' => 'typhoon', 'status' => 'active']);
         $center = EvacuationCenter::firstOrCreate(['remote_id' => 5], ['barangay_remote_id' => 13, 'name' => 'Hall', 'status' => 'active']);
 
         return EcBoardEntry::create(['evacuation_center_id' => $center->id, 'evacuation_event_id' => $event->id, 'sex' => 'female',
-            'age_bracket' => 'adult', 'synced_at' => $sent ? now() : null, 'remote_id' => $sent ? 99 : null]);
+            'age_bracket' => 'adult', 'synced_at' => $sent ? now()->subDays($daysAgo) : null, 'remote_id' => $sent ? 99 : null]);
     }
 
-    public function test_logout_revokes_the_token_keeps_waiting_records_and_drops_sent_ones(): void
+    public function test_logout_revokes_the_token_keeps_waiting_and_recently_sent_records_and_drops_older_ones(): void
     {
         Http::fake(['*/auth/logout' => Http::response(['success' => true])]);
         $this->signIn();
         $waiting = $this->entry(false);
-        $sent = $this->entry(true);
+        $sent = $this->entry(true, 2);
+        $old = $this->entry(true, 15);
 
         $this->post(route('logout'))->assertRedirect(route('login'));
 
         Http::assertSent(fn ($r) => str_ends_with($r->url(), '/auth/logout') && $r->hasHeader('Authorization', 'Bearer token-4'));
         $this->assertNull(LocalAuth::current());
         $this->assertDatabaseHas('ec_board_entries', ['id' => $waiting->id]);
-        $this->assertDatabaseMissing('ec_board_entries', ['id' => $sent->id]);
+        // Sync > Sent keeps the last 14 days.
+        $this->assertDatabaseHas('ec_board_entries', ['id' => $sent->id]);
+        $this->assertDatabaseMissing('ec_board_entries', ['id' => $old->id]);
         $this->assertSame(4, AppState::get('queue_owner')['id']);
     }
 

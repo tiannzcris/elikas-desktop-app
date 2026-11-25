@@ -26,7 +26,7 @@ class CenterApprovalTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 4, 'name' => 'Bacong'], ['id' => 5, 'name' => 'Other']]]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => [
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => [
                 ['id' => 1, 'barangay_id' => 4, 'name' => 'Gym', 'status' => 'active', 'approval_status' => 'approved'],
                 ['id' => 2, 'barangay_id' => 4, 'name' => 'New Hall', 'status' => 'active', 'approval_status' => 'pending'],
                 ['id' => 3, 'barangay_id' => 4, 'name' => 'Refused', 'status' => 'active', 'approval_status' => 'rejected'],

@@ -63,7 +63,7 @@
                             <select id="own-center" name="to_center_id" class="input" required>
                                 <option value="">Choose…</option>
                                 @foreach ($ownCenters as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }} · {{ $c->occupancyLabel() }}</option>
+                                    <option value="{{ $c->id }}">{{ $c->name }} · {{ $c->occupancyLabel(true) }}</option>
                                 @endforeach
                             </select>
                         </div>

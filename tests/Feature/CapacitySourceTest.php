@@ -29,7 +29,7 @@ class CapacitySourceTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 4, 'name' => 'Bacong']]]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => [
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => [
                 ['id' => 71, 'barangay' => ['id' => 4], 'name' => 'LWCES', 'status' => 'active', 'capacity_persons' => 112, 'current_occupancy' => 48, 'capacity_source' => 'estimated', 'capacity_basis' => 'peak_2025'],
                 ['id' => 72, 'barangay' => ['id' => 4], 'name' => 'Chapel', 'status' => 'active', 'capacity_persons' => null, 'current_occupancy' => 9, 'capacity_source' => 'unknown', 'capacity_basis' => null],
             ]]),

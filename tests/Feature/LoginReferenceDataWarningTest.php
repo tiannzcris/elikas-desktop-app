@@ -54,7 +54,7 @@ class LoginReferenceDataWarningTest extends TestCase
             '*/barangays' => Http::response(['data' => []]),
             '*/puroks*' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
         ]);
 
         $response = $this->post(route('login.submit'), ['email' => 't@example.com', 'password' => 'secret']);

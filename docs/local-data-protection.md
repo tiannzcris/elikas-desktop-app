@@ -75,6 +75,9 @@ value.
   window that was closed.
 - Records waiting to be sent stay, and so does the account, so they can be
   sent after signing in again.
+- At Log out, records already sent leave the computer, except those sent in
+  the last 14 days: Sync > Sent lists them (what, where, when, by whom) and
+  a sent registration can be corrected from there while online.
 - Signing in again works **offline**: the password is checked against a
   bcrypt hash of the password last used to sign in online (stored encrypted).
   After 5 wrong passwords in a row the offline check stops for 15 minutes.

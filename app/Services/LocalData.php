@@ -92,7 +92,9 @@ class LocalData
 
     /**
      * Called at logout: remembers who owns the queue and removes copies of
-     * personal data that are already safe on the server.
+     * personal data that are already safe on the server. Records this
+     * device sent in the last SyncService::SENT_DAYS days stay for Sync >
+     * Sent (what went where, and correcting a registration); older ones go.
      */
     public function closeSession(LocalAuth $auth): void
     {
@@ -102,11 +104,12 @@ class LocalData
             AppState::forget('queue_owner');
         }
 
-        $this->forgetSentRecords();
+        $before = now()->subDays(SyncService::SENT_DAYS);
+        $this->forgetSentRecords($before);
         CenterFamilySnapshot::query()->delete();
         ReturningFamilySnapshot::query()->delete();
         foreach (self::queueModels() as $model) {
-            $model::whereNotNull('synced_at')->delete();
+            $model::whereNotNull('synced_at')->where('synced_at', '<', $before)->delete();
         }
         ServerSnapshot::query()->delete();
     }
@@ -170,12 +173,20 @@ class LocalData
             "families_to_evacuate.{$event->remote_id}", "final_count.{$event->remote_id}", "relief.{$event->remote_id}", "barangay_dashboard.{$event->remote_id}"];
     }
 
-    /** Sent EC Board entries and families, except households a waiting entry still points to. */
-    public function forgetSentRecords(): void
+    /**
+     * Sent EC Board entries and families (all, or those sent before
+     * $before), except households an entry still kept points to.
+     */
+    public function forgetSentRecords(?\DateTimeInterface $before = null): void
     {
-        EcBoardEntry::whereNotNull('synced_at')->delete();
+        $sentBefore = fn ($query) => $query->whereNotNull('synced_at')->when($before, fn ($q) => $q->where('synced_at', '<', $before));
 
-        $stillNeeded = EcBoardEntry::whereNull('synced_at')->whereNotNull('household_family_local_id')->pluck('household_family_local_id');
-        Family::whereNotNull('synced_at')->whereNotIn('id', $stillNeeded)->get()->each->delete();
+        $sentBefore(EcBoardEntry::query())->delete();
+
+        $stillNeeded = EcBoardEntry::whereNotNull('household_family_local_id')->pluck('household_family_local_id');
+        Family::whereNotNull('synced_at')->whereNotIn('id', $stillNeeded)
+            // A household made with an EC Board entry goes with its last entry.
+            ->when($before, fn ($q) => $q->where(fn ($q) => $q->where('synced_at', '<', $before)->orWhere('created_via_ec_board', true)))
+            ->get()->each->delete();
     }
 }

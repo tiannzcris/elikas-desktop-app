@@ -29,7 +29,7 @@ class DemoEventTest extends TestCase
             '*/evacuation-events' => Http::response(['data' => [
                 ['id' => 9, 'name' => 'DEMO - Typhoon Drill', 'event_type' => 'typhoon', 'status' => 'active', 'is_demo' => true, 'start_date' => '2026-11-10'],
             ]]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('reference-data.refresh'));

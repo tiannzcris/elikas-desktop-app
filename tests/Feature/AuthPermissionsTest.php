@@ -27,7 +27,7 @@ class AuthPermissionsTest extends TestCase
             '*/auth/login' => Http::response(['data' => ['user' => $this->user(), 'token' => 't1']]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('login.submit'), ['email' => 'ana@example.com', 'password' => 'x'])->assertRedirect(route('dashboard'));
@@ -48,7 +48,7 @@ class AuthPermissionsTest extends TestCase
             '*/auth/me' => Http::response(['data' => $this->user(['barangay' => ['id' => 14, 'name' => 'Bagumbayan'], 'permissions' => ['operations.access']])]),
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('reference-data.refresh'));

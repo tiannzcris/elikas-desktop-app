@@ -29,7 +29,7 @@ class CenterStatusTest extends TestCase
             '*/auth/me' => Http::response(['data' => []]),
             '*/barangays' => Http::response(['data' => [['id' => 4, 'name' => 'Bacong']]]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => [['id' => 7, 'barangay' => ['id' => 4, 'name' => 'Bacong'],
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => [['id' => 7, 'barangay' => ['id' => 4, 'name' => 'Bacong'],
                 'name' => 'Gym', 'status' => 'on_standby', 'effective_status' => 'active', 'capacity_persons' => 120, 'current_occupancy' => 48]]]),
             '*/puroks*' => Http::response(['data' => []]),
         ]);

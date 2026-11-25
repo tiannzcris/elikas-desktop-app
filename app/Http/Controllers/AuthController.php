@@ -179,7 +179,10 @@ class AuthController extends Controller
             app(SelectedEvent::class)->push($auth);
         }
 
-        $data = $api->fetchReferenceData($token);
+        // The centers' figures are for the event this device works on.
+        $selected = app(SelectedEvent::class);
+        $eventRemoteId = $selected->get()?->remote_id;
+        $data = $api->fetchReferenceData($token, $eventRemoteId);
 
         $barangayRemoteIds = [];
         foreach ($data['barangays'] as $b) {
@@ -225,26 +228,14 @@ class AuthController extends Controller
         // official: their own barangay's; never a rejected one). Kept to
         // the official's own barangay here too, in case of an older server.
         $ownBarangay = LocalAuth::current()?->isBarangayOfficial() ? (int) LocalAuth::current()->barangay_id : null;
-        $centerRemoteIds = [];
-        foreach ($data['centers'] as $c) {
-            $barangayId = (int) ($c['barangay_id'] ?? $c['barangay']['id'] ?? 0);
-            if (($c['approval_status'] ?? 'approved') === 'rejected'
-                || ($ownBarangay && $barangayId !== $ownBarangay)) {
-                continue;
-            }
-            EvacuationCenter::updateOrCreate(['remote_id' => $c['id']], [
-                'barangay_remote_id' => $barangayId,
-                'name' => $c['name'],
-                'status' => $c['status'],
-                'approval_status' => $c['approval_status'] ?? 'approved',
-                'capacity_persons' => $c['capacity_persons'] ?? null,
-                'capacity_source' => $c['capacity_source'] ?? (empty($c['capacity_persons']) ? 'unknown' : 'official'),
-                'capacity_basis' => $c['capacity_basis'] ?? null,
-                'current_occupancy' => $c['current_occupancy'] ?? null,
-                'effective_status' => $c['effective_status'] ?? null,
-            ]);
-            $centerRemoteIds[] = $c['id'];
+        // The server's selection may differ from the one the centers were
+        // asked for (none known on this device yet, or chosen on the web):
+        // their figures must be for the event every screen now shows.
+        $nowSelected = $selected->get()?->remote_id;
+        if ($nowSelected !== $eventRemoteId) {
+            $data['centers'] = $api->fetchCenters($token, $nowSelected);
         }
+        $centerRemoteIds = EvacuationCenter::storeFromServer($data['centers'], $ownBarangay);
         $this->pruneStale(EvacuationCenter::class, $centerRemoteIds, 'evacuation_center_id', EcBoardEntry::class, 'evacuation_center_id');
 
         // The official's own barangay's puroks, for a new household offline.

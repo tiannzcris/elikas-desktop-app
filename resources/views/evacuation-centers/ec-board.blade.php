@@ -20,6 +20,7 @@
                     @if ($selectedEventClosed)<span class="badge badge-dark">Closed: read-only</span>@endif
                 @endif
             </p>
+            @include('evacuation-centers._occupancy_note')
         </div>
         <div class="page-actions items-end">
 
@@ -60,7 +61,7 @@
         <div class="callout callout-warning flex flex-wrap items-center justify-between gap-3 mb-6" role="status" data-needs-space>
             <span class="flex items-start gap-2">
                 <i class="ti ti-users-group shrink-0 mt-0.5" style="font-size: 18px;" aria-hidden="true"></i>
-                <span><span class="font-semibold">{{ $center->name }} is at {{ (int) floor($center->occupancyHere() * 100 / $center->capacity_persons) }}% of its capacity</span> ({{ $center->occupancyLabel() }}). Move some families to another center before it overflows.</span>
+                <span><span class="font-semibold">{{ $center->name }} is at {{ $center->percentTaken() }}% of its capacity</span> ({{ $center->occupancyLabel(true) }}{{ $center->occupancyTotal() !== $center->occupancyHere() ? ', everyone inside' : '' }}). Move some families to another center before it overflows.</span>
             </span>
             <form method="GET" action="{{ route('transfers.move', $center) }}">
                 <input type="hidden" name="ask" value="1">

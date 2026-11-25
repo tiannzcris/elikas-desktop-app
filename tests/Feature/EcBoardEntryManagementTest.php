@@ -263,7 +263,7 @@ class EcBoardEntryManagementTest extends TestCase
         Http::fake([
             '*/barangays' => Http::response(['data' => []]),
             '*/evacuation-events' => Http::response(['data' => []]),
-            '*/evacuation-centers?detail=1' => Http::response(['data' => []]),
+            '*/evacuation-centers?detail=1*' => Http::response(['data' => []]),
         ]);
 
         $this->post(route('reference-data.refresh'));
@@ -442,7 +442,7 @@ class EcBoardEntryManagementTest extends TestCase
         $this->assertDatabaseHas('ec_board_entries', ['id' => $entry->id]);
     }
 
-    public function test_edit_is_refused_for_an_already_synced_entry(): void
+    public function test_edit_of_an_already_synced_entry_goes_to_the_sent_correction(): void
     {
         [$barangay, $event, $center] = $this->seedBase();
         $entry = EcBoardEntry::create([
@@ -453,7 +453,8 @@ class EcBoardEntryManagementTest extends TestCase
 
         $response = $this->get(route('ec-board-entries.edit', $entry));
 
-        $response->assertRedirect(route('evacuation-centers.ec-board', $center));
+        // Corrected on the server from Sync > Sent, no longer refused.
+        $response->assertRedirect(route('sync.sent.edit', $entry));
     }
 
     public function test_delete_removes_a_pending_entry(): void

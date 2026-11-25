@@ -707,6 +707,25 @@ document.querySelectorAll('[data-sync-form]').forEach((form) => {
         chip.dataset.pending = String(result.last?.remaining ?? 0);
         state = result.last?.stop === 'auth' ? 'auth' : (result.refused > 0 ? 'attention' : null);
         render();
+        if (result.sent > 0) announceSent(result.sent);
+    }
+
+    // Records leave the waiting list once sent: say where they went
+    // ("3 records sent. See Sync > Sent"), for a few seconds, without
+    // hiding a refusal or an expired login.
+    let sentTimer = null;
+    function announceSent(count) {
+        if (state !== null) return;
+        clearTimeout(sentTimer);
+        const home = chip.getAttribute('href');
+        chip.setAttribute('href', `${form.dataset.sentUrl}#sent`);
+        setChip(`${plural(count)} sent. See Sync > Sent`, 'success');
+        chip.dataset.sentNotice = String(count);
+        sentTimer = setTimeout(() => {
+            chip.setAttribute('href', home);
+            delete chip.dataset.sentNotice;
+            render();
+        }, 10000);
     }
 
     setTimeout(attempt, 3000);
@@ -754,6 +773,15 @@ function updateOnlineOnly() {
 updateOnlineOnly();
 window.addEventListener('online', updateOnlineOnly);
 window.addEventListener('offline', updateOnlineOnly);
+
+// Links that need the central server (correcting a sent record) say why
+// instead of opening while offline.
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-online-link]');
+    if (!link || navigator.onLine) return;
+    e.preventDefault();
+    window.ELIKAS.confirm({ title: 'No internet connection', message: link.dataset.offlineMessage || '', confirmLabel: 'OK', cancelLabel: 'Close' });
+});
 
 // Esc closes an open "..." menu or the account menu and returns focus to its button.
 document.addEventListener('keydown', (e) => {
