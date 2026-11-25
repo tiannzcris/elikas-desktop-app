@@ -2,10 +2,16 @@
 
 Desktop companion to the E-LIKAS web system for barangay halls and the CSWDO
 office where the internet is weak. Laravel 12 inside NativePHP/Electron, local
-SQLite, talking to the central API (`/api/v1`). Version 2.1.1, aligned with the
-backend's API notes of November 22-23, 2026 (`docs/backend/`) and its design
+SQLite, talking to the central API (`/api/v1`). Version 2.2.0, aligned with the
+backend's API notes of November 22-26, 2026 (`docs/backend/`) and its design
 system. Screenshots at 1366x768: `docs/screenshots/2.1.0/`. Before a release,
 test with `docs/windows-test-checklist-2.1.0.md` (2.1.1: its section 0b first).
+
+2.2.0: center figures follow the selected event (count, status, Full, the
+"87 people here for Typhoon Drill" note), and Sync > Sent lists what this
+computer sent, with Edit to correct a sent registration on the server. Its
+first start runs one local migration (000044); the login and waiting records
+are kept (`RealMigrationTest`, 2.1.1 to 2.2.0).
 
 2.1.1 fixes the first start of 2.1.0, which failed with "duplicate column name:
 password_hash" on every computer (see "Migrations" below).
@@ -131,7 +137,7 @@ data and an unreachable server, never a device's own database:
     npm run build
     php artisan native:build win x64
 
-The installer lands in `dist/` (`E-LIKAS-2.1.1-setup.exe`). Upload it to the
+The installer lands in `dist/` (`E-LIKAS-2.2.0-setup.exe`). Upload it to the
 hosting as `downloads/E-LIKAS-Setup.exe` (the website's download link), and
 upload `docs/hosting/desktop-version.json` (with the new version in `latest`)
 to `downloads/desktop-version.json`: installed apps check it and show "A new
