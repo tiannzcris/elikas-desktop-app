@@ -204,6 +204,73 @@ class RealMigrationTest extends TestCase
         $this->assertStringContainsString('Personal values still in plain text: 0', $status->getOutput(), $status->getErrorOutput());
     }
 
+    /**
+     * 2.1.1 to 2.2.0: an installed 2.1.1 (every migration up to 000043) with
+     * a login and records waiting, then the first start of 2.2.0 runs only
+     * 000044 (center figures, who sent a record) and keeps everything.
+     */
+    public function test_a_2_1_1_database_upgrades_to_2_2_0_and_keeps_the_login_and_the_queue(): void
+    {
+        $new = '2026_11_25_000044_add_center_figures_and_sent_records';
+        $old = $this->dir.'/migrations-2.1.1';
+        mkdir($old);
+        foreach (glob(database_path('migrations/*.php')) as $file) {
+            if (basename($file, '.php') !== $new) {
+                copy($file, $old.'/'.basename($file));
+            }
+        }
+        touch($this->database());
+        $installed = $this->artisan_(['migrate', '--force', '--path='.$old, '--realpath']);
+        $installed->run();
+        $this->assertSame(0, $installed->getExitCode(), $installed->getOutput().$installed->getErrorOutput());
+        $this->assertNotContains('total_occupancy', $this->columns('evacuation_centers'));
+
+        // What 2.1.1 holds: the signed-in account, a center, an entry and a check-out waiting to be sent.
+        $pdo = $this->pdo();
+        $now = date('Y-m-d H:i:s');
+        $pdo->exec("insert into local_auth (remote_user_id, name, email, role, api_token, logged_in_at, created_at, updated_at)
+            values (12, 'Ana Cruz', 'ana@x', 'barangay_official', 'token-2.1.1', '{$now}', '{$now}', '{$now}')");
+        $pdo->exec("insert into app_state (key, value, created_at, updated_at) values ('selected_event', '{\"remote_id\":48,\"unsent\":false}', '{$now}', '{$now}')");
+        $pdo->exec("insert into barangays (remote_id, name, created_at, updated_at) values (4, 'Bacong', '{$now}', '{$now}')");
+        $pdo->exec("insert into evacuation_events (remote_id, name, event_type, status, created_at, updated_at) values (48, 'Typhoon Drill', 'typhoon', 'active', '{$now}', '{$now}')");
+        $pdo->exec("insert into evacuation_centers (remote_id, barangay_remote_id, name, status, capacity_persons, current_occupancy, effective_status, created_at, updated_at)
+            values (7, 4, 'LWCES (B)', 'active', 1088, 87, 'active', '{$now}', '{$now}')");
+        $pdo->exec("insert into ec_board_entries (evacuation_center_id, evacuation_event_id, sex, age_bracket, client_ref, created_at, updated_at)
+            values (1, 1, 'female', 'adult', 'a0000000-0000-4000-8000-000000000001', '{$now}', '{$now}')");
+        $pdo->exec("insert into pending_check_outs (client_ref, evacuation_center_id, evacuation_event_id, family_remote_id, family_label, status, created_at, updated_at)
+            values ('a0000000-0000-4000-8000-000000000002', 1, 1, 77, 'Reyes', 'returned_home', '{$now}', '{$now}')");
+        $before = $this->rowCounts();
+        $login = $pdo->query('select remote_user_id, name, api_token from local_auth')->fetch(\PDO::FETCH_ASSOC);
+
+        $upgrade = $this->migrate();
+
+        $this->assertStringContainsString($new, $upgrade->getOutput());
+        $this->assertFullyMigrated();
+        $this->assertNoCallToElectron();
+        foreach (['total_occupancy', 'occupancy_note'] as $column) {
+            $this->assertContains($column, $this->columns('evacuation_centers'));
+        }
+        $this->assertContains('sent_by', $this->columns('pending_check_outs'));
+        $this->assertContains('family_remote_id', $this->columns('ec_board_entries'));
+        // Every row kept; the login and the waiting records as they were.
+        $after = $this->rowCounts();
+        foreach ($before as $table => $rows) {
+            if ($table !== 'migrations') {
+                $this->assertSame($rows, $after[$table] ?? null, "Rows of {$table} changed.");
+            }
+        }
+        $pdo = $this->pdo();
+        $this->assertSame($login, $pdo->query('select remote_user_id, name, api_token from local_auth')->fetch(\PDO::FETCH_ASSOC));
+        $this->assertSame(0, (int) $pdo->query('select count(*) from ec_board_entries where synced_at is not null')->fetchColumn());
+        $this->assertSame(0, (int) $pdo->query('select count(*) from pending_check_outs where synced_at is not null')->fetchColumn());
+        $this->assertSame([87, 'active'], array_values($pdo->query('select current_occupancy, effective_status from evacuation_centers')->fetch(\PDO::FETCH_NUM)));
+
+        // A second start changes nothing.
+        $schema = $this->schema();
+        $this->migrate();
+        $this->assertSame($schema, $this->schema());
+    }
+
     public function test_a_2_1_0_database_left_half_migrated_by_the_failure_migrates(): void
     {
         $this->useSample('db-2.1.0-fresh-failed');
