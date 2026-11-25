@@ -39,10 +39,11 @@ Screens follow the permissions from `/auth/login` and `/auth/me`, never the role
   Sync now. Refused records and "same family?" questions wait on the Sync page.
   Its Sent tab lists what this computer sent for the selected event (last 14
   days, at most 200): what, where, when and by whom. A sent registration is
-  corrected there, online, on the server (`PATCH /evacuees/{id}`: sex and
-  sectoral flags; `PATCH /families/{id}/household`: head, single-headed, the
-  other head's sex and age, purok); the age group and the family's name have
-  no server correction yet. Other kinds say where they can be seen.
+  corrected there, online, on the server (`PATCH /evacuees/{id}`: sex,
+  sectoral flags and the age group, `age_bracket_override`, unless a birthdate
+  is on file; `PATCH /families/{id}/household`: the family's name, head,
+  single-headed, the other head's sex and age, purok). The age group and the
+  name go only when changed. Other kinds say where they can be seen.
   "No open event" and "event closed" answers wait there too and are never
   resent by themselves; a closed event is read-only on the board.
 - The top bar holds the event switcher (the server remembers the selected event

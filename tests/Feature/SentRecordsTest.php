@@ -172,6 +172,97 @@ class SentRecordsTest extends TestCase
             ->assertSessionHasErrors(['sent' => "The person was corrected, but not the family. This family already has a head on file -- choose another member to reassign it; it can't be left with no head."]);
     }
 
+    public function test_the_age_group_and_the_family_name_are_editable_and_sent_when_changed(): void
+    {
+        $entry = $this->sentEntry();
+        Http::fake([
+            '*/families/77' => Http::response(['data' => $this->family()]),
+            '*/evacuees/501' => Http::response(['data' => ['id' => 501]]),
+            '*/families/77/household' => Http::response(['data' => ['id' => 77]]),
+        ]);
+
+        $this->get(route('sync.sent.edit', $entry))->assertOk()
+            ->assertSee('name="age_bracket"', false)->assertSee('<option value="adult" selected', false)
+            ->assertSee('name="family_name"', false)->assertSee('value="Reyes"', false)
+            ->assertDontSee('Ask CSWD')->assertDontSee("can't be corrected");
+
+        $this->patch(route('sync.sent.update', $entry), [
+            'sex' => 'female', 'is_pregnant' => '1', 'head_is_self' => '1',
+            'age_bracket' => 'senior_citizen', 'family_name' => '  Reyes-Santos ',
+            'original' => ['head_id' => '501', 'age_bracket' => 'adult', 'name' => 'Reyes'],
+        ])->assertSessionHas('status', 'Corrected on the server.');
+
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), '/evacuees/501')
+            && $r['age_bracket_override'] === 'senior_citizen');
+        Http::assertSent(fn ($r) => $r->method() === 'PATCH' && str_ends_with($r->url(), '/families/77/household')
+            && $r['name'] === 'Reyes-Santos' && $r['head_of_family_evacuee_id'] === 501);
+        // The copy listed under Sent follows.
+        $entry->refresh();
+        $this->assertSame(['senior_citizen', 'Reyes-Santos'], [$entry->age_bracket, $entry->new_household_head_name]);
+        $this->get(route('sync.index'))->assertSee('Senior citizen, female · Reyes-Santos');
+    }
+
+    public function test_an_unchanged_age_group_and_name_are_not_sent(): void
+    {
+        $entry = $this->sentEntry();
+        Http::fake(['*/evacuees/501' => Http::response(['data' => ['id' => 501]])]);
+
+        $this->patch(route('sync.sent.update', $entry), [
+            'sex' => 'female', 'head_is_self' => '1', 'age_bracket' => 'adult', 'family_name' => 'Reyes',
+            'original' => ['head_id' => '501', 'age_bracket' => 'adult', 'name' => 'Reyes'],
+        ])->assertSessionHas('status', 'Corrected on the server.');
+
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/evacuees/501') && ! array_key_exists('age_bracket_override', $r->data()));
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/household'));
+    }
+
+    public function test_a_cleared_family_name_gets_the_servers_answer(): void
+    {
+        $entry = $this->sentEntry();
+        Http::fake([
+            '*/evacuees/501' => Http::response(['data' => ['id' => 501]]),
+            '*/families/77/household' => Http::response(['success' => false, 'message' => 'The given data was invalid.',
+                'errors' => ['name' => ['The family name cannot be blank.']]], 422),
+        ]);
+
+        $this->from(route('sync.sent.edit', $entry))->patch(route('sync.sent.update', $entry), [
+            'sex' => 'female', 'head_is_self' => '1', 'family_name' => '',
+            'original' => ['head_id' => '501', 'name' => 'Reyes'],
+        ])->assertRedirect(route('sync.sent.edit', $entry))
+            ->assertSessionHasErrors(['sent' => 'The person was corrected, but not the family. The family name cannot be blank.']);
+
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/household') && array_key_exists('name', $r->data()) && $r['name'] === null);
+        $this->assertSame('Reyes', $entry->fresh()->new_household_head_name);
+    }
+
+    public function test_the_servers_422_on_the_age_group_is_shown_and_an_unknown_one_never_leaves(): void
+    {
+        $entry = $this->sentEntry();
+        Http::fake(['*/evacuees/501' => Http::response(['success' => false, 'message' => 'The given data was invalid.',
+            'errors' => ['age_bracket_override' => ['The selected age bracket override is invalid.']]], 422)]);
+
+        $this->from(route('sync.sent.edit', $entry))->patch(route('sync.sent.update', $entry), [
+            'sex' => 'female', 'age_bracket' => 'teenage', 'original' => ['head_id' => '501', 'age_bracket' => 'adult'],
+        ])->assertSessionHasErrors(['sent' => 'The selected age bracket override is invalid.']);
+        $this->assertSame('adult', $entry->fresh()->age_bracket);
+
+        $this->from(route('sync.sent.edit', $entry))->patch(route('sync.sent.update', $entry), [
+            'sex' => 'female', 'age_bracket' => 'elder', 'original' => ['head_id' => '501', 'age_bracket' => 'adult'],
+        ])->assertSessionHasErrors('age_bracket');
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_birthdate_on_file_decides_the_age_group(): void
+    {
+        $entry = $this->sentEntry();
+        $family = $this->family();
+        $family['members'][0]['date_of_birth'] = '1990-05-01';
+        Http::fake(['*/families/77' => Http::response(['data' => $family])]);
+
+        $this->get(route('sync.sent.edit', $entry))->assertOk()
+            ->assertSee('Set by the birthdate on file.')->assertDontSee('name="age_bracket"', false);
+    }
+
     public function test_offline_the_edit_is_refused(): void
     {
         $entry = $this->sentEntry();

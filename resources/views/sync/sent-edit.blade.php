@@ -41,14 +41,28 @@
                 <input type="hidden" name="original[head_sex]" value="{{ $isHead ? '' : ($family['head_sex'] ?? '') }}">
                 <input type="hidden" name="original[head_is_minor]" value="{{ $isHead ? '' : $triState($family['is_child_headed'] ?? null) }}">
                 <input type="hidden" name="original[purok_id]" value="{{ $family['purok_id'] ?? '' }}">
+                <input type="hidden" name="original[age_bracket]" value="{{ $person['age_bracket'] ?? '' }}">
+                <input type="hidden" name="original[name]" value="{{ $family['name'] ?? '' }}">
 
                 <fieldset class="entry-section">
                     <legend class="entry-section-title">Who is this person?</legend>
                     <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-3">
                         <div>
-                            <p class="label-sm">Age group</p>
-                            <p class="input bg-gray-50 text-gray-700" data-age-group>{{ $ageBrackets[$person['age_bracket'] ?? ''] ?? ($person['age_bracket'] ?? 'Not recorded') }}</p>
-                            <p class="help">Can't be corrected from the app yet. Ask CSWD to correct it on the web.</p>
+                            <label for="sent-age" class="label-sm">Age group</label>
+                            @if (! empty($person['date_of_birth']))
+                                {{-- A known birthdate decides the age group on the server. --}}
+                                <p id="sent-age" class="input bg-gray-50 text-gray-700" data-age-group>{{ $ageBrackets[$person['age_bracket'] ?? ''] ?? ($person['age_bracket'] ?? 'Not recorded') }}</p>
+                                <p class="help">Set by the birthdate on file.</p>
+                            @else
+                                <select id="sent-age" name="age_bracket" class="input" data-age-group>
+                                    @if (empty($person['age_bracket']))
+                                        <option value="">Not recorded</option>
+                                    @endif
+                                    @foreach ($ageBrackets as $key => $label)
+                                        <option value="{{ $key }}" @selected(old('age_bracket', $person['age_bracket'] ?? '') === $key)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
                         <div>
                             <label for="sent-sex" class="label-sm">Sex</label>
@@ -62,8 +76,12 @@
 
                 <fieldset class="entry-section">
                     <legend class="entry-section-title">Family</legend>
-                    <p class="text-sm text-gray-900 font-medium" data-family-name>{{ $family['name'] ?? ($family['head_of_family']['full_name'] ?? 'Family #'.$family['id']) }}</p>
-                    <p class="help mb-3">{{ $family['barangay']['name'] ?? '' }}{{ ! empty($family['purok']['name']) ? ' · '.$family['purok']['name'] : '' }}. The family's name can't be corrected from the app yet.</p>
+                    <div class="mb-3">
+                        <label for="sent-family-name" class="label-sm">Family name</label>
+                        <input id="sent-family-name" type="text" name="family_name" maxlength="150" class="input" data-family-name
+                            value="{{ old('family_name', $family['name'] ?? '') }}" placeholder="{{ $family['head_of_family']['full_name'] ?? 'e.g. Juan Dela Cruz' }}">
+                        <p class="help">{{ $family['barangay']['name'] ?? '' }}{{ ! empty($family['purok']['name']) ? ' · '.$family['purok']['name'] : '' }}</p>
+                    </div>
 
                     <label class="flex items-center gap-2 text-sm text-gray-700 mb-3">
                         <input type="checkbox" name="head_is_self" value="1" @checked($headSelf)> This person is the family head

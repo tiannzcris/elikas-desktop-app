@@ -127,3 +127,16 @@ their numbers do not come from a staff endpoint for the selected event.
      stored `status` (`EvacuationCenterModel.fromStaffJson` reads
      `json['status']`). Read `effective_status`.
   3. Show `occupancy_note`.
+
+## 5. Correcting a sent registration (added November 26, 2026)
+
+For the apps' Sync > Sent "Edit". Both fields are optional additions;
+requests without them work as before.
+
+| Endpoint | New field | Rules |
+| --- | --- | --- |
+| `PATCH /evacuees/{id}` | `age_bracket_override` | One of the seven age groups (`EvacuationCenterQuickCount::AGE_BRACKETS`: `infant`, `toddler`, `preschooler`, `school_age`, `teenage`, `adult`, `senior_citizen`). 422 otherwise. A birthdate, once known, still decides `age_bracket`. When the person is the family's head and has no birthdate, the family's "head is a minor" follows the new age group, as at registration. |
+| `PATCH /families/{id}/household` | `name` | The household's name as registered. Left out: kept. Trimmed; never blank; max 150. The change is written in the activity log ("name changed from … to …"). |
+
+Same permissions and barangay rules as before (`evacuees.manage`, own
+barangay for officials).

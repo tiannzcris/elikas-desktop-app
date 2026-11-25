@@ -17,8 +17,9 @@ use Illuminate\Http\Request;
  *  - the person: PATCH /evacuees/{id} (sex and the sectoral flags);
  *  - the family: PATCH /families/{id}/household (who the head is, single-
  *    headed, the head's sex and age when the head is someone else, purok).
- * The server has no correction for an age group set at the EC Board or for
- * a family's name: those are shown, not edited (docs/backend: to ask for).
+ * The age group (age_bracket_override) and the family's name go with them,
+ * only when changed (docs/backend/apps-api-2026-11-center-figures-per-event.md 5).
+ * A known birthdate decides the age group on the server, so it is not offered then.
  */
 class SentRecordController extends Controller
 {
@@ -61,6 +62,9 @@ class SentRecordController extends Controller
 
         $validated = $request->validate([
             'sex' => ['required', 'in:male,female'],
+            'age_bracket' => ['nullable', 'in:'.implode(',', array_keys(EcBoardEntry::AGE_BRACKETS))],
+            // Blank is left to the server, which refuses it in its own words.
+            'family_name' => ['nullable', 'string', 'max:150'],
             'head_is_self' => ['nullable', 'boolean'],
             'is_single_headed' => ['nullable', 'in:0,1'],
             'head_sex' => ['nullable', 'in:male,female'],
@@ -77,6 +81,11 @@ class SentRecordController extends Controller
             $person[$flag] = $request->boolean($flag)
                 && ! ($validated['sex'] === 'male' && in_array($flag, EcBoardEntry::FEMALE_ONLY_FLAGS, true));
         }
+        // The age group only when it changed (a birthdate on file leaves the field out).
+        $ageBracket = $validated['age_bracket'] ?? null;
+        if ($ageBracket !== null && $ageBracket !== ($validated['original']['age_bracket'] ?? null)) {
+            $person['age_bracket_override'] = $ageBracket;
+        }
 
         try {
             $this->api->send('patch', "evacuees/{$entry->remote_id}", $auth->api_token, $person);
@@ -85,7 +94,8 @@ class SentRecordController extends Controller
         }
 
         // The person is saved on the server: the copy listed under Sent follows.
-        $entry->update(['sex' => $person['sex']] + collect($person)->except('sex')->all());
+        $entry->update(collect($person)->except('age_bracket_override')->all()
+            + (isset($person['age_bracket_override']) ? ['age_bracket' => $person['age_bracket_override']] : []));
 
         $household = $this->householdChanges($request, $entry, $validated);
         if ($household !== null) {
@@ -93,6 +103,13 @@ class SentRecordController extends Controller
                 $this->api->send('patch', "families/{$this->familyId($entry)}/household", $auth->api_token, $household);
             } catch (CentralApiException $e) {
                 return $this->refused($e, 'The person was corrected, but not the family. ');
+            }
+            // The household's name as listed under Sent follows the server.
+            if (array_key_exists('name', $household) && $household['name'] !== null) {
+                if ($entry->new_household_head_name) {
+                    $entry->update(['new_household_head_name' => $household['name']]);
+                }
+                $entry->household?->update(['name' => $household['name']]);
             }
         }
 
@@ -132,6 +149,15 @@ class SentRecordController extends Controller
         ];
         if ($request->has('purok_id')) {
             $before['purok_id'] = isset($original['purok_id']) && $original['purok_id'] !== '' ? (int) $original['purok_id'] : null;
+        }
+
+        // The name only when it changed; cleared, it goes as null and the
+        // server says why it can't be blank.
+        $name = trim((string) ($validated['family_name'] ?? ''));
+        $originalName = trim((string) ($original['name'] ?? ''));
+        if ($name !== $originalName) {
+            $payload['name'] = $name === '' ? null : $name;
+            $before['name'] = $originalName === '' ? null : $originalName;
         }
 
         return $payload == $before ? null : $payload;
