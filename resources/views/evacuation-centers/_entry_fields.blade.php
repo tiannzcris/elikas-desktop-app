@@ -67,7 +67,7 @@
         </div>
         {{-- Shown whenever this person is being recorded as the household
              head, right under the two answers that then describe the head. --}}
-        <p class="entry-head-note mt-2 items-start gap-1.5 text-xs text-brand-800" style="display: none;">
+        <p class="entry-head-note mt-2 items-start gap-1.5 text-xs text-ink-2" style="display: none;">
             <i class="ti ti-user-check shrink-0 mt-px" style="font-size: 14px;" aria-hidden="true"></i>
             <span>This person's age group and sex will be used for the family head.</span>
         </p>
@@ -83,11 +83,11 @@
             <input type="hidden" name="household_type" value="new">
             <p class="text-xs text-gray-600 mb-2">This person was added with a new family -- you can correct its details below.</p>
         @else
-            <div class="bg-gray-100 border border-gray-200 rounded-lg p-0.5 grid grid-cols-2 text-sm mb-3" role="radiogroup" aria-label="Family">
-                <label class="entry-mode-option cursor-pointer text-center rounded-md px-2 py-1.5 font-medium text-gray-700 hover:text-gray-900 has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-700">
+            <div class="bg-paper-2 border border-gray-300 p-1 gap-1 grid grid-cols-2 text-sm mb-3" role="radiogroup" aria-label="Family">
+                <label class="entry-mode-option cursor-pointer text-center px-2 py-1.5 font-medium text-gray-700 hover:text-ink has-[:checked]:bg-white has-[:checked]:text-ink has-[:checked]:font-semibold has-[:checked]:ring-2 has-[:checked]:ring-ink has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-hydro">
                     <input type="radio" name="household_type" value="existing" class="household-type-radio sr-only" @checked($mode === 'existing')> Already here
                 </label>
-                <label class="entry-mode-option cursor-pointer text-center rounded-md px-2 py-1.5 font-medium text-gray-700 hover:text-gray-900 has-[:checked]:bg-brand has-[:checked]:text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-700">
+                <label class="entry-mode-option cursor-pointer text-center px-2 py-1.5 font-medium text-gray-700 hover:text-ink has-[:checked]:bg-white has-[:checked]:text-ink has-[:checked]:font-semibold has-[:checked]:ring-2 has-[:checked]:ring-ink has-[:focus-visible]:outline has-[:focus-visible]:outline-[3px] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-hydro">
                     <input type="radio" name="household_type" value="new" class="household-type-radio sr-only" @checked($mode === 'new')> New family
                 </label>
             </div>
@@ -191,7 +191,7 @@
          (dashed inset) so these answers can't be mistaken for this
          person's own. --}}
     <div class="entry-head-section entry-section" role="group" aria-label="About the actual family head" style="display: none;">
-        <div class="border border-dashed border-gray-400 bg-gray-50 rounded-lg p-3">
+        <div class="border border-dashed border-gray-400 bg-gray-50 p-3">
             <p class="text-xs font-semibold text-gray-800">About the actual family head</p>
             <p class="text-xs text-gray-600 mt-0.5 mb-2">Someone other than the person you're adding. Used until they're added and linked.</p>
             <div class="grid grid-cols-2 gap-3">
@@ -220,7 +220,7 @@
          Unticked means "not recorded", not "no". Pregnant/lactating are
          hidden and cleared for a male evacuee. --}}
     <div class="entry-section">
-        <details class="entry-sectoral border border-gray-200 rounded-lg" @if ($flagsSet) open @endif>
+        <details class="entry-sectoral border border-gray-300" @if ($flagsSet) open @endif>
             <summary class="cursor-pointer select-none px-3 py-2.5 text-sm text-gray-700">
                 Sectoral details <span class="text-gray-600">(optional)</span>
                 <span class="entry-sectoral-count badge badge-info ml-1" @if (! $flagsSet) style="display: none;" @endif>{{ $flagsSet }} ticked</span>
@@ -240,7 +240,7 @@
          modal), so the read-back and the save button stay in view however
          many questions are open above them. --}}
     <div class="sticky bottom-0 z-10 bg-white mt-4 pt-3 pb-4 border-t border-gray-200">
-        <div class="rounded-lg bg-brand-50 border border-brand-100 px-3 py-2.5 mb-3" aria-live="polite">
+        <div class="bg-brand-50 border border-brand-100 px-3 py-2.5 mb-3" aria-live="polite">
             <p class="text-xs font-semibold text-gray-900 mb-1">Will be recorded</p>
             <ul class="entry-summary text-xs text-gray-800 space-y-0.5"></ul>
         </div>

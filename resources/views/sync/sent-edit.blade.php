@@ -113,7 +113,7 @@
                 </fieldset>
 
                 <div class="entry-section" role="group" aria-label="About the actual family head" data-other-head>
-                    <div class="border border-dashed border-gray-400 bg-gray-50 rounded-lg p-3">
+                    <div class="border border-dashed border-gray-400 bg-gray-50 p-3">
                         <p class="text-xs font-semibold text-gray-800">About the actual family head</p>
                         <p class="text-xs text-gray-600 mt-0.5 mb-2">Only when the head is someone else and not yet registered.</p>
                         <div class="grid grid-cols-2 gap-3">

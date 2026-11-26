@@ -54,8 +54,12 @@ class CenterStatusTest extends TestCase
         $this->assertSame('full', $nearlyFull->displayStatus());
         $this->assertSame('closed', $closed->displayStatus());
 
+        // The web's state symbols (public/js/map-symbols.js): on standby is a
+        // white disc in a blue ring, full the red disc cross-hatched, each
+        // beside its words.
         $this->get(route('ec-board.index'))->assertOk()
-            ->assertSee('data-center-status="on_standby"', false)->assertSee('badge-info', false)
-            ->assertSee('data-center-status="full"', false)->assertSee('badge-danger', false);
+            ->assertSee('data-center-status="on_standby"', false)->assertSee('stroke="#2563EB" stroke-width="3.5"', false)->assertSee('On standby')
+            ->assertSee('data-center-status="full"', false)->assertSee('fill="#DC2626"', false)->assertSee('fill="url(#sym-cross)"', false)
+            ->assertSee('id="sym-cross"', false);
     }
 }

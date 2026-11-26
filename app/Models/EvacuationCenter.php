@@ -54,13 +54,13 @@ class EvacuationCenter extends Model
     /** At this share of capacity a center with people inside shows as full (server: FULL_AT_PERCENT). */
     public const FULL_AT_PERCENT = 90;
 
-    /** Status labels and chip tones, as on the web (active green, nearly full amber, standby blue, full red, closed dark gray). */
+    /** Status labels; each is shown beside its state symbol (components/center-symbol), as on the web. */
     public const STATUSES = [
-        'active' => ['Active', 'badge-success'],
-        'on_standby' => ['On standby', 'badge-info'],
-        'nearly_full' => ['Nearly full', 'badge-warning'],
-        'full' => ['Full', 'badge-danger'],
-        'closed' => ['Closed', 'badge-dark'],
+        'active' => 'Active',
+        'on_standby' => 'On standby',
+        'nearly_full' => 'Nearly full',
+        'full' => 'Full',
+        'closed' => 'Closed',
     ];
 
     /*

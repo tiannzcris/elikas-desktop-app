@@ -24,7 +24,7 @@
         <form method="GET" action="{{ route('transfers.move', $center) }}" class="card card-body flex flex-col gap-4 max-w-3xl" data-family-picker>
             <h2 class="section-title">{{ $asking ? 'Which families should move to make space?' : 'Choose the families to move' }}</h2>
             <p class="text-sm text-gray-700">{{ $center->name }}: {{ $center->occupancyLabel() }} people inside. Families still waiting to sync can't be moved until they are sent.</p>
-            <fieldset class="flex flex-col divide-y divide-gray-100 border border-gray-200 rounded-lg">
+            <fieldset class="flex flex-col divide-y divide-gray-100 border border-gray-200">
                 <legend class="sr-only">Families here</legend>
                 @foreach ($pickFrom as $f)
                     <label class="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
@@ -43,7 +43,7 @@
     @else
         <ul class="flex flex-wrap gap-2 mb-6 text-sm text-gray-800">
             @foreach ($families as $f)
-                <li class="rounded-md bg-white px-2 py-1 ring-1 ring-gray-200">{{ $f['label'] }} · {{ $f['here'] }} here</li>
+                <li class="bg-white px-2 py-1 ring-1 ring-gray-200">{{ $f['label'] }} · {{ $f['here'] }} here</li>
             @endforeach
         </ul>
 
@@ -92,7 +92,7 @@
                             <fieldset class="flex flex-col gap-2">
                                 <legend class="label">Centers with room, nearest first</legend>
                                 @foreach ($suggestions as $s)
-                                    <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50" data-suggestion>
+                                    <label class="flex items-start gap-3 border border-gray-200 px-3 py-2.5 hover:bg-gray-50" data-suggestion>
                                         <input type="radio" name="to_center_remote_id" value="{{ $s['evacuation_center']['id'] }}" class="mt-1" required @checked($loop->first)>
                                         <span class="min-w-0 flex-1">
                                             <span class="font-medium text-gray-900">{{ $s['evacuation_center']['name'] }}</span>

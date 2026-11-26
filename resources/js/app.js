@@ -226,7 +226,7 @@ function openEcBoardEntryModal(url) {
     backdrop.className = 'fixed inset-0 z-40 flex items-start justify-center overflow-y-auto py-10 px-4';
     backdrop.style.background = 'rgba(17, 24, 39, 0.5)';
     backdrop.setAttribute('data-dynamic-modal-backdrop', '');
-    backdrop.innerHTML = '<div class="bg-white rounded-xl px-6 py-5 text-sm text-gray-600 mt-10">Loading...</div>';
+    backdrop.innerHTML = '<div class="bg-white border-2 border-ink px-6 py-5 text-sm text-gray-600 mt-10">Loading...</div>';
     document.body.appendChild(backdrop);
 
     backdrop.addEventListener('click', (e) => {
@@ -252,7 +252,7 @@ function openEcBoardEntryModal(url) {
             backdrop.querySelector('select:not([disabled]), input:not([type=hidden]):not([disabled])')?.focus();
         })
         .catch(() => {
-            backdrop.innerHTML = '<div class="bg-white rounded-xl p-6 text-sm text-red-700 mt-10">Could not load the form. Please try again.</div>';
+            backdrop.innerHTML = '<div class="bg-white border-2 border-ink p-6 text-sm text-red-700 mt-10">Could not load the form. Please try again.</div>';
         });
 }
 
@@ -824,7 +824,7 @@ document.addEventListener('keydown', (e) => {
         toggle.setAttribute('aria-label', data.unread ? `Notifications, ${data.unread} unread` : 'Notifications');
         list.innerHTML = data.notifications.length
             ? data.notifications.map((n) => `
-                <a href="${esc(n.open)}" class="menu-item flex-col items-start gap-0.5 ${n.read ? '' : 'bg-blue-50'}" role="menuitem" data-notification>
+                <a href="${esc(n.open)}" class="menu-item flex-col items-start gap-0.5 ${n.read ? '' : 'bg-hydro-tint'}" role="menuitem" data-notification>
                     <span class="font-semibold text-gray-900">${esc(n.title)}</span>
                     <span class="text-sm text-gray-700 whitespace-normal">${esc(n.message)}</span>
                     ${n.in_app ? '' : '<span class="text-xs text-gray-500">Opens on the web</span>'}

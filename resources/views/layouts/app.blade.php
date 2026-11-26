@@ -12,6 +12,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex flex-col h-screen overflow-hidden">
+    @include('partials._state_patterns')
     @include('partials._api_target_banner')
     <div class="flex flex-1 min-h-0">
     @php
@@ -23,17 +24,18 @@
     @endphp
 
     @if($currentUser ?? null)
-        {{-- Same sidebar as the web dashboard: solid logo navy, the logo
-             mark on a white circle (its dark arms would vanish against the
-             navy otherwise), and links grouped under plain labels. --}}
-        <aside id="sidebar" class="w-60 shrink-0 h-full flex flex-col bg-navy px-3 py-4">
+        {{-- Same sidebar as the web staff pages (map sheet): green-grey ink,
+             the logo mark on a paper circle (full circles stay round), links
+             grouped under map-caps labels, the active page an inverted
+             paper block. --}}
+        <aside id="sidebar" class="w-60 shrink-0 h-full flex flex-col bg-sidebar px-3 py-4">
             <div class="flex items-center gap-3 px-2 mb-6">
-                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shrink-0">
+                <div class="w-12 h-12 rounded-full bg-paper flex items-center justify-center shrink-0">
                     <img src="{{ asset('images/elikas-logo-mark.png') }}" alt="" class="w-[78%] h-[78%] object-contain">
                 </div>
                 <div class="leading-tight min-w-0">
-                    <p class="text-white font-semibold text-base tracking-tight">E-LIKAS</p>
-                    <p class="text-xs text-[#C7D7F0]">Offline Companion</p>
+                    <p class="font-label font-extrabold uppercase text-white text-[1.375rem] leading-none">E-LIKAS</p>
+                    <p class="mt-1 font-label font-semibold uppercase tracking-[.14em] text-[0.75rem] leading-tight text-sidebar-label">Offline Companion</p>
                 </div>
             </div>
 
@@ -59,7 +61,7 @@
                         <a href="{{ route('transfers.index') }}" class="nav-link @yield('nav-transfers')" data-nav-transfers>
                             <i class="ti ti-arrows-exchange" aria-hidden="true"></i> Transfers
                             @if ($transfersWaiting > 0)
-                                <span class="ml-auto rounded-full bg-white/90 px-2 text-xs font-semibold text-navy">{{ $transfersWaiting }}</span>
+                                <span class="nav-count">{{ $transfersWaiting }}</span>
                             @endif
                         </a>
                         @if ($currentUser->can('box_relief.distribute'))
@@ -78,7 +80,7 @@
                         <a href="{{ route('sync.index') }}" class="nav-link @yield('nav-sync')">
                             <i class="ti ti-cloud-upload" aria-hidden="true"></i> Sync
                             @if ($pendingTotal > 0)
-                                <span class="ml-auto rounded-full bg-amber-400 px-2 text-xs font-semibold text-gray-900" data-nav-pending>{{ $pendingTotal }}</span>
+                                <span class="nav-count nav-count-pending" data-nav-pending>{{ $pendingTotal }}</span>
                             @endif
                         </a>
                     </div>
@@ -95,7 +97,7 @@
                         <a href="{{ route('transfers.index') }}" class="nav-link @yield('nav-transfers')" data-nav-transfers>
                             <i class="ti ti-arrows-exchange" aria-hidden="true"></i> Transfers
                             @if ($transfersWaiting > 0)
-                                <span class="ml-auto rounded-full bg-white/90 px-2 text-xs font-semibold text-navy">{{ $transfersWaiting }}</span>
+                                <span class="nav-count">{{ $transfersWaiting }}</span>
                             @endif
                         </a>
                     </div>
@@ -105,7 +107,7 @@
     @endif
 
     <div class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between gap-4 shrink-0">
+        <header class="h-16 bg-paper border-b border-ink px-6 flex items-center justify-between gap-4 shrink-0">
             <div class="flex items-center gap-4 text-sm text-gray-600">
                 <span id="live-clock" class="flex items-center gap-1.5"><i class="ti ti-calendar" style="font-size: 15px;" aria-hidden="true"></i></span>
                 @if (($currentUser ?? null)?->hasOperationsAccess())
@@ -132,7 +134,7 @@
                     <div class="relative" data-bell data-feed-url="{{ route('notifications.feed') }}" data-read-url="{{ route('notifications.read') }}">
                         <button type="button" class="btn-icon relative" data-bell-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Notifications">
                             <i class="ti ti-bell" style="font-size: 20px;" aria-hidden="true"></i>
-                            <span class="absolute -top-0.5 -right-0.5 min-w-[1.25rem] rounded-full bg-red-600 px-1 text-xs font-semibold text-white" data-bell-count hidden></span>
+                            <span class="absolute -top-0.5 -right-0.5 min-w-[1.25rem] bg-ink px-1 text-center text-xs font-semibold leading-5 tabular-nums text-paper" data-bell-count hidden></span>
                         </button>
                         <div class="menu-list w-96" role="menu" data-bell-list hidden>
                             <p class="px-3 py-2 text-sm text-gray-600" data-bell-empty>No notifications.</p>
@@ -141,15 +143,15 @@
                 @endif
                 @if($currentUser ?? null)
                     <div class="relative">
-                        <button type="button" id="user-menu-btn" class="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-gray-100" aria-haspopup="menu">
-                            <div class="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white text-xs font-semibold shrink-0">{{ $initials }}</div>
+                        <button type="button" id="user-menu-btn" class="flex items-center gap-2.5 px-1.5 py-1 hover:bg-paper-2" aria-haspopup="menu">
+                            <div class="w-9 h-9 rounded-full bg-ink flex items-center justify-center text-white text-xs font-semibold shrink-0">{{ $initials }}</div>
                             <div class="text-left leading-tight">
-                                <p class="text-sm font-semibold text-gray-900">{{ $currentUser->name }}</p>
+                                <p class="text-sm font-semibold text-ink">{{ $currentUser->name }}</p>
                                 <p class="text-xs text-gray-600">{{ $currentUser->roleLabel() }}</p>
                             </div>
                             <i class="ti ti-chevron-down text-gray-500" style="font-size: 15px;" aria-hidden="true"></i>
                         </button>
-                        <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-52 card shadow-lg overflow-hidden z-50 py-1" role="menu">
+                        <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-52 border-2 border-ink bg-white shadow-lg overflow-hidden z-50 py-1" role="menu">
                             @if ($currentUser->can('support.report'))
                                 <a href="{{ route('support.index', ['from' => request()->path()]) }}" class="menu-item" role="menuitem">
                                     <i class="ti ti-message-report" aria-hidden="true"></i> Report a problem
@@ -183,7 +185,7 @@
             </div>
             {{-- "A new version is available" (app.js, update notice). Hidden until a
                  check finds a newer version on the hosting. --}}
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200 bg-blue-50 px-6 py-2.5 text-sm text-blue-900"
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-hydro bg-hydro-tint px-6 py-2.5 text-sm text-ink"
                 role="status" data-update-banner data-check-url="{{ route('app-version.check') }}" hidden>
                 <span class="flex items-center gap-2">
                     <i class="ti ti-download" style="font-size: 16px;" aria-hidden="true"></i>

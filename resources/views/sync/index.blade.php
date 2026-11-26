@@ -189,7 +189,7 @@
                                         <span class="text-sm text-gray-600" data-see-it-at>
                                             See it in
                                             @if ($url)
-                                                <a href="{{ $url }}" class="font-medium text-brand-800 underline underline-offset-2">{{ $where }}</a>
+                                                <a href="{{ $url }}" class="link">{{ $where }}</a>
                                             @else
                                                 {{ $where }}@if ($onWeb) <span class="text-gray-500">({{ $webUrl }})</span>@endif
                                             @endif

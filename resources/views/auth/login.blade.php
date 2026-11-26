@@ -6,85 +6,78 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite('resources/css/app.css')
 </head>
-<body class="min-h-screen flex bg-gray-50">
-    <main class="flex-1 flex items-center justify-center p-8">
-        <div class="login-card w-full max-w-sm">
-            @include('partials._api_target_banner', ['bannerClass' => 'rounded-lg mb-6'])
+<body class="min-h-screen flex flex-col bg-paper text-ink">
+    {{-- No bulletin band here: the desktop is often offline at login, so it
+         could not promise live status (DESIGN.md, Band Is Live Rule). --}}
+    @include('partials._api_target_banner')
+    <div class="flex-1 grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <main class="flex items-center justify-center px-6 py-10 sm:px-8">
+            <div class="login-card w-full max-w-[26rem]">
+                <x-sheet-brand class="mb-10" />
 
-            <div class="flex items-center gap-3 mb-8">
-                <img src="{{ asset('images/elikas-logo-mark.png') }}" alt="" class="w-12 h-12 shrink-0">
-                <div class="leading-tight">
-                    <p class="text-lg font-semibold tracking-tight text-navy">E-LIKAS</p>
-                    <p class="text-xs text-gray-600">Staff portal &middot; Offline Companion</p>
-                </div>
-            </div>
+                <h1 class="font-label font-extrabold uppercase text-[3rem] leading-[0.95] text-ink">Welcome back</h1>
+                <p class="text-[15px] text-ink-2 mt-3 mb-7">Log in to the E-LIKAS offline companion.</p>
 
-            <h1 class="text-2xl leading-8 font-semibold tracking-tight text-gray-900">Welcome back</h1>
-            <p class="text-sm text-gray-600 mt-1 mb-6">Log in to the E-LIKAS offline companion.</p>
+                @if ($errors->has('locked'))
+                    {{-- 423: five failed sign-ins in a row; the server says until when. --}}
+                    <div class="callout callout-lock flex items-start gap-2 mb-4" role="alert" data-account-locked>
+                        <i class="ti ti-lock shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                        <span><span class="font-semibold block">Account locked</span>{{ $errors->first('locked') }}</span>
+                    </div>
+                @elseif ($errors->has('maintenance'))
+                    <div class="callout callout-warning flex items-start gap-2 mb-4" role="alert" data-maintenance>
+                        <i class="ti ti-tool shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                        <span><span class="font-semibold block">The server is under maintenance</span>{{ $errors->first('maintenance') }} Try again later.</span>
+                    </div>
+                @elseif ($errors->any())
+                    <div class="callout callout-danger flex items-start gap-2 mb-4" role="alert">
+                        <i class="ti ti-alert-circle shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
+                        {{ $errors->first() }}
+                    </div>
+                @endif
 
-            @if ($errors->has('locked'))
-                {{-- 423: five failed sign-ins in a row; the server says until when. --}}
-                <div class="callout callout-lock flex items-start gap-2 mb-4" role="alert" data-account-locked>
-                    <i class="ti ti-lock shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
-                    <span><span class="font-semibold block">Account locked</span>{{ $errors->first('locked') }}</span>
-                </div>
-            @elseif ($errors->has('maintenance'))
-                <div class="callout callout-warning flex items-start gap-2 mb-4" role="alert" data-maintenance>
-                    <i class="ti ti-tool shrink-0 mt-0.5" style="font-size: 16px;" aria-hidden="true"></i>
-                    <span><span class="font-semibold block">The server is under maintenance</span>{{ $errors->first('maintenance') }} Try again later.</span>
-                </div>
-            @elseif ($errors->any())
-                <div class="callout callout-danger flex items-start gap-2 mb-4" role="alert">
-                    <i class="ti ti-alert-circle shrink-0 mt-0.5" style="font-size: 14px;" aria-hidden="true"></i>
-                    {{ $errors->first() }}
-                </div>
-            @endif
-
-            <form method="POST" action="{{ route('login.submit') }}" class="card p-5 flex flex-col gap-4">
-                @csrf
-                <div>
-                    <label for="email" class="label">Email or username</label>
-                    <div class="relative">
-                        <i class="ti ti-user absolute left-3 top-1/2 text-gray-500" style="font-size: 16px; transform: translateY(-50%);" aria-hidden="true"></i>
+                <form method="POST" action="{{ route('login.submit') }}" class="flex flex-col gap-5">
+                    @csrf
+                    <div>
+                        <label for="email" class="label-caps">Email or username</label>
                         <input type="text" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="username" spellcheck="false" autocapitalize="off"
-                            class="input pl-9 py-2.5">
+                            class="input border-[1.5px] border-ink-2 py-3">
                     </div>
-                </div>
-                <div>
-                    <label for="password" class="label">Password</label>
-                    <div class="relative">
-                        <i class="ti ti-lock absolute left-3 top-1/2 text-gray-500" style="font-size: 16px; transform: translateY(-50%);" aria-hidden="true"></i>
-                        <input type="password" name="password" id="password" required autocomplete="current-password"
-                            class="input pl-9 pr-10 py-2.5">
-                        <button type="button" id="toggle-password" aria-label="Show password" aria-pressed="false"
-                            class="absolute right-1 top-1/2 btn-icon" style="transform: translateY(-50%);">
-                            <i class="ti ti-eye" id="toggle-password-icon" style="font-size: 16px;" aria-hidden="true"></i>
-                        </button>
+                    <div>
+                        <label for="password" class="label-caps">Password</label>
+                        <div class="relative">
+                            <input type="password" name="password" id="password" required autocomplete="current-password"
+                                class="input border-[1.5px] border-ink-2 py-3 pr-12">
+                            <button type="button" id="toggle-password" aria-label="Show password" aria-pressed="false"
+                                class="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-ink-2 hover:text-ink">
+                                <i class="ti ti-eye" id="toggle-password-icon" style="font-size: 20px;" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <button type="submit" class="btn btn-primary w-full py-2.5 mt-1">
-                    <i class="ti ti-login-2" style="font-size: 15px;" aria-hidden="true"></i> Log in
-                </button>
-            </form>
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 w-full bg-brand text-white font-label font-bold uppercase tracking-[.12em] text-[1.1875rem] py-4 transition-colors hover:bg-brand-dark">
+                        Log in
+                    </button>
+                </form>
 
-            <p class="help mt-6">Your E-LIKAS staff account, the same as on the web.</p>
-        </div>
-    </main>
-
-    {{-- Institutional panel, the same as the web login: Ligao City Hall
-         behind the logo navy, with the city seal and the CSWDO logo. --}}
-    <aside class="hidden md:block flex-1 relative overflow-hidden">
-        <div class="absolute -inset-4" style="background-image: url('{{ asset('images/ligao-city-hall.jpg') }}'); background-size: cover; background-position: center; filter: blur(5px);"></div>
-        <div class="absolute inset-0" style="background: linear-gradient(160deg, rgba(7,58,97,0.92), rgba(9,71,118,0.80));"></div>
-        <div class="relative h-full flex flex-col items-center justify-center text-center px-8">
-            <div class="flex items-center gap-5 mb-8">
-                <img src="{{ asset('images/ligao-city-seal.jpg') }}" alt="Official Seal of the City Government of Ligao" class="w-20 h-20 rounded-full ring-4 ring-white/25 shadow-lg object-cover">
-                <img src="{{ asset('images/cswdo-ligao-logo.jpg') }}" alt="CSWDO Ligao City logo" class="w-20 h-20 rounded-full ring-4 ring-white/25 shadow-lg object-cover">
+                <p class="mt-8 pt-4 border-t border-ink text-sm text-ink-2">Your E-LIKAS staff account, the same as on the web.</p>
             </div>
-            <p class="text-white font-semibold text-4xl tracking-tight mb-2">E-LIKAS</p>
-            <p class="text-sm text-[#C7D7F0]">Electronic Ligao Kaligtasan Sistema</p>
-        </div>
-    </aside>
+        </main>
+
+        {{-- Partner plate, as on the web's staff login: Ligao City Hall in a
+             neatline frame, with the city seal and the CSWDO logo -- worded
+             as a partnership, not as the office that runs the system. --}}
+        <aside class="hidden md:flex flex-col justify-center gap-6 border-l border-ink bg-paper-2 px-10 py-10 lg:px-14">
+            <figure class="neatline bg-paper">
+                <img src="{{ asset('images/ligao-city-hall.jpg') }}" alt="Ligao City Hall" class="block w-full h-auto">
+                <figcaption class="caption px-3 py-2 border-t-2 border-ink">Ligao City Hall, Albay</figcaption>
+            </figure>
+            <div class="flex items-center gap-4">
+                <img src="{{ asset('images/ligao-city-seal.jpg') }}" alt="Official Seal of the City Government of Ligao" class="w-16 h-16 rounded-full object-cover shrink-0">
+                <img src="{{ asset('images/cswdo-ligao-logo.jpg') }}" alt="CSWDO Ligao City logo" class="w-16 h-16 rounded-full object-cover shrink-0">
+                <p class="text-[15px] text-ink-2 max-w-[22rem]">E-LIKAS is a capstone project, in partnership with CSWDO Ligao City.</p>
+            </div>
+        </aside>
+    </div>
 
     <script>
         requestAnimationFrame(() => document.querySelector('.login-card')?.classList.add('in'));

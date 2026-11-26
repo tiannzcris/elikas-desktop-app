@@ -6,15 +6,17 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite('resources/css/app.css')
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center bg-navy">
+<body class="min-h-screen flex flex-col bg-paper text-ink">
     @include('partials._api_target_banner')
-    <div class="update-card w-full max-w-md bg-white rounded-xl shadow-xl p-8 mt-4">
-        <div class="flex flex-col items-center text-center mb-6">
-            <div class="icon-chip w-14 h-14 rounded-xl mb-3">
-                <i class="ti ti-database-cog" style="font-size: 26px;" aria-hidden="true"></i>
+    <div class="flex-1 flex items-center justify-center p-6">
+    <main class="update-card title-block max-w-md">
+        <x-sheet-brand class="mb-6" />
+        <div class="flex flex-col items-start mb-6 border-t border-ink pt-5">
+            <div class="icon-chip w-12 h-12 mb-3">
+                <i class="ti ti-database-cog" style="font-size: 24px;" aria-hidden="true"></i>
             </div>
-            <h1 class="text-lg font-semibold text-gray-900 mb-1">This app needs to update its local data</h1>
-            <p class="text-sm text-gray-600">
+            <h1 class="font-label font-extrabold uppercase text-[1.75rem] leading-[0.95] text-ink mb-2">This app needs to update its local data</h1>
+            <p class="text-sm text-ink-2">
                 A newer version of this app was installed, and it needs to prepare
                 {{ \App\Support\Plural::of($pendingCount, 'change', 'changes') }} on this device's local data before continuing.
             </p>
@@ -36,11 +38,12 @@
             </button>
         </form>
 
-        <p class="text-xs text-gray-600 text-center mt-6">
+        <p class="text-xs text-ink-2 mt-6">
             This only touches this device's own local copy of its data -- nothing
             is sent anywhere, and no internet connection is needed. It normally
             takes less than a second. Your existing records are not deleted.
         </p>
+    </main>
     </div>
 
     <script>

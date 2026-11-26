@@ -78,7 +78,7 @@
                 <ul class="divide-y divide-gray-100">
                     @foreach ($group['families'] as $fam)
                         @php $name = $fam['head_name'] ?? $fam['name'] ?? 'Family #'.$fam['id']; @endphp
-                        <li class="px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 {{ $fam['next_in_line'] ? 'bg-blue-50' : '' }}" data-relief-family="{{ $fam['id'] }}">
+                        <li class="px-5 py-2.5 flex flex-wrap items-center justify-between gap-3 {{ $fam['next_in_line'] ? 'bg-hydro-tint' : '' }}" data-relief-family="{{ $fam['id'] }}">
                             <div class="min-w-0">
                                 <p class="font-semibold text-sm text-gray-900 flex flex-wrap items-center gap-2">
                                     {{ $name }}

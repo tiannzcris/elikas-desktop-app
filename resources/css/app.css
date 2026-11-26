@@ -1,29 +1,37 @@
 @import '@tabler/icons-webfont/dist/tabler-icons.min.css';
-/* Public Sans, bundled (this app runs offline) -- the same typeface as the
-   web dashboard. */
+/* Fonts, bundled (this app runs offline) -- the web's three faces:
+   Public Sans for reading, Barlow Condensed for map caps (titles, labels,
+   tabs, table heads), Source Serif 4 italic for captions. */
 @import '@fontsource/public-sans/400.css';
 @import '@fontsource/public-sans/500.css';
 @import '@fontsource/public-sans/600.css';
 @import '@fontsource/public-sans/700.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
+@import '@fontsource/source-serif-4/500-italic.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* The E-LIKAS design system, shared with the web dashboard: the same
-   tokens (tailwind.config.js) and the same component classes below, so
-   the two apps read as one system. The web dashboard's
-   docs/design-system.md is the written source of truth for every value
-   and the contrast ratio behind each pairing. */
+/* The E-LIKAS "Ligao Map Sheet" (elikas-backend DESIGN.md), as the web's
+   staff pages use it (elikas-backend resources/css/tailwind/app.css):
+   paper and ink, square corners, sienna as the one action colour, map caps
+   for titles, labels, tabs and table heads, an ink sidebar with an
+   inverted paper block for the active page. Tokens: tailwind.config.js.
+   Desktop-only classes are marked; class names are kept so pages and
+   app.js follow without changes. */
 @layer base {
-    /* Web design system 3: root 16px, body and inputs 15/24. */
-    body { @apply font-sans text-base text-gray-800 bg-gray-50 antialiased; }
-    ::placeholder { color: #6B7280; opacity: 1; }
+    body { @apply font-sans text-base text-ink bg-paper antialiased; overflow-wrap: break-word; }
+    p, li, dd { text-wrap: pretty; }
+    ::selection { background: #F2E4DA; color: #17241D; }
+    ::placeholder { color: #6B7A70; opacity: 1; }
     /* The hidden attribute always hides, even on an element with a display
        utility such as flex (the update banner showed on every page in 2.0.2). */
     [hidden] { display: none !important; }
-    input[type="checkbox"], input[type="radio"] { accent-color: #2563EB; }
-    :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }
+    input[type="checkbox"], input[type="radio"] { accent-color: #9C4F27; }
+    :focus-visible { outline: 3px solid #22689F; outline-offset: 2px; }
     #sidebar :focus-visible { outline-color: #FFFFFF; }
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
@@ -31,128 +39,179 @@
 }
 
 @layer components {
-    /* Copied from the web's resources/views/partials/design-system.blade.php
-       (docs/design-system.md section 5) so both apps read as one system.
-       Desktop-only additions are marked. */
+    /* Page header: the title (and at most one short line) on the left, the
+       page's one primary action on the right. No kicker above the title. */
     .page-header { @apply flex flex-wrap items-center justify-between gap-4 mb-6; }
-    .page-title { @apply text-2xl font-bold tracking-tight text-gray-900; }
+    .page-title { @apply font-label font-extrabold uppercase text-ink text-[2.125rem] leading-[0.95]; text-wrap: balance; }
     .page-subtitle { @apply mt-1 text-base text-gray-600 max-w-2xl; }
     .page-actions { @apply flex flex-wrap items-center gap-2; }
-    .back-link { @apply inline-flex items-center gap-1 mb-2 text-sm font-medium text-gray-600 hover:text-gray-900; }
-    .section { @apply mb-8; }
-    .section-title { @apply text-lg font-semibold text-gray-900; }
+    .back-link { @apply inline-flex items-center gap-1 mb-2 text-sm font-medium text-gray-600 hover:text-ink; }
 
-    .card { @apply bg-white border border-gray-200 rounded-xl; }
+    /* Sections and cards: white plates ruled in ink-grey, no shadow. */
+    .section { @apply mb-8; }
+    .section-title { @apply font-label font-bold uppercase tracking-[.06em] text-ink text-[1.3125rem] leading-tight; }
+    .card { @apply bg-white border border-gray-300; }
     .card-body { @apply p-4 sm:p-6; }
     .card-header { @apply flex flex-wrap items-center justify-between gap-3 mb-4; }
-    .card-title { @apply text-base font-semibold text-gray-900; }
-    .icon-chip { @apply w-9 h-9 rounded-lg bg-brand-50 text-brand-700 flex items-center justify-center shrink-0; }
+    .card-title { @apply font-label font-bold uppercase tracking-[.08em] text-ink text-[1.0625rem] leading-tight; }
+    .icon-chip { @apply w-9 h-9 border border-ink bg-paper text-ink flex items-center justify-center shrink-0; }
     /* Desktop: a whole card that opens something. */
-    .card-link { @apply transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:border-brand; }
+    .card-link { @apply transition-colors hover:border-ink hover:bg-paper-2 focus-visible:border-ink; }
 
-    .stat-strip { @apply grid bg-white border border-gray-200 rounded-xl overflow-hidden; }
-    .stat { @apply relative min-w-0 px-4 py-4 sm:px-6; box-shadow: 1px 0 0 0 #E5E7EB, 0 1px 0 0 #E5E7EB; }
-    .stat-label { @apply flex items-center gap-1.5 text-sm font-medium text-gray-600; }
-    .stat-value { @apply mt-1 text-2xl font-semibold tabular-nums text-gray-900; }
+    /* Stat strip: one ruled plate of figures. Each cell draws its own
+       right/bottom hairline; the container clips the outer ones. */
+    .stat-strip { @apply grid bg-white border-2 border-ink overflow-hidden; }
+    .stat { @apply relative min-w-0 px-4 py-4 sm:px-6; box-shadow: 1px 0 0 0 #C2CCC0, 0 1px 0 0 #C2CCC0; }
+    .stat-label { @apply flex items-center gap-1.5 font-label font-semibold uppercase tracking-[.1em] text-[0.8125rem] leading-tight text-gray-600; }
+    .stat-value { @apply mt-1 font-label font-bold text-[2rem] leading-none tabular-nums text-ink; }
     .stat-note { @apply mt-0.5 text-sm text-gray-600; }
     .stat-alert .stat-value { @apply text-red-700; }
     .stat-alert .stat-label::before { content: ''; @apply w-2 h-2 rounded-full bg-red-600 shrink-0; }
-    a.stat { @apply hover:bg-gray-50; }
+    a.stat { @apply hover:bg-paper-2; }
     /* Desktop: amber = waiting on this device, not yet sent. */
     .stat-pending { @apply bg-amber-50; }
     .stat-pending .stat-value { @apply text-amber-800; }
     a.stat-pending { @apply hover:bg-amber-100; }
 
-    .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-semibold leading-5 whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 2.5rem; }
+    /* Buttons: square, 2px border; sienna is the only "do this". */
+    .btn { @apply inline-flex items-center justify-center gap-2 border-2 border-transparent px-4 py-2 text-sm font-semibold leading-5 whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed; min-height: 2.5rem; }
     .btn-sm { @apply px-3 py-1.5 text-sm leading-5; min-height: 2.25rem; }
     .btn-primary { @apply bg-brand text-white hover:bg-brand-dark; }
-    .btn-secondary { @apply bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900; }
-    .btn-neutral { @apply bg-gray-800 text-white hover:bg-gray-900; }
+    .btn-secondary { @apply bg-white text-ink border-ink hover:bg-paper-2; }
+    .btn-neutral { @apply bg-ink text-white hover:bg-gray-800; }
     .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
-    .btn-danger-secondary { @apply bg-white text-red-700 border-red-200 hover:bg-red-50 hover:border-red-300; }
-    .btn-attention { @apply bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100; }
-    .btn-ghost { @apply text-gray-700 hover:bg-gray-100 hover:text-gray-900; }
-    .btn-icon { @apply inline-flex items-center justify-center w-9 h-9 shrink-0 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors; }
+    .btn-danger-secondary { @apply bg-white text-red-700 border-red-700 hover:bg-red-50; }
+    .btn-attention { @apply bg-amber-50 text-amber-900 border-amber-700 hover:bg-amber-100; }
+    .btn-ghost { @apply text-gray-700 hover:bg-paper-2 hover:text-ink; }
+    .btn-icon { @apply inline-flex items-center justify-center w-9 h-9 shrink-0 text-gray-600 hover:bg-paper-2 hover:text-ink transition-colors; }
     .btn-icon-danger { @apply hover:bg-red-50 hover:text-red-700; }
-    .link { @apply font-medium text-brand hover:text-brand-dark hover:underline underline-offset-2; }
-    .link-danger { @apply font-medium text-red-700 hover:underline underline-offset-2; }
+    .link { @apply font-semibold text-brand underline decoration-1 underline-offset-4 hover:text-brand-dark; }
+    .link-danger { @apply font-medium text-red-700 underline decoration-1 underline-offset-4; }
 
-    /* "..." menu (web .menu; .menu-list here because .modal pages use .menu-wrap). */
-    .menu-list { @apply absolute right-0 top-full z-40 mt-1 w-52 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg; }
-    .menu-item { @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-gray-50; min-height: 2.5rem; }
+    /* "..." menu (an overlay, so it keeps a shadow). Desktop: .menu-list,
+       because .modal pages use .menu-wrap. */
+    .menu-list { @apply absolute right-0 top-full z-40 mt-1 w-52 border-2 border-ink bg-white py-1 text-left shadow-lg; }
+    .menu-item { @apply flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-paper-2; min-height: 2.5rem; }
     .menu-item i { font-size: 16px; @apply text-gray-500; }
     .menu-item-danger { @apply text-red-700 hover:bg-red-50; }
     .menu-item-danger i { @apply text-red-600; }
-    .menu-divider { @apply my-1 border-t border-gray-100; }
+    .menu-divider { @apply my-1 border-t border-gray-200; }
 
-    .tabs { @apply flex flex-wrap gap-x-1 mb-6 border-b border-gray-200; }
-    .tab { @apply -mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:border-gray-300; }
-    .tab[aria-selected="true"] { @apply border-brand text-brand-700; }
-    .tab-count { @apply rounded-full bg-gray-100 px-2 text-xs font-semibold text-gray-700; }
+    /* Tabs: map caps, a sienna underline on the selected one. */
+    .tabs { @apply flex flex-wrap gap-x-1 mb-6 border-b border-ink; }
+    .tab { @apply -mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-[3px] border-transparent px-3 py-2.5 font-label font-semibold uppercase tracking-[.08em] text-[0.9375rem] text-gray-600 hover:text-ink hover:border-gray-400; }
+    .tab[aria-selected="true"], .tab.tab-active { @apply border-brand text-ink; }
+    .tab-count { @apply bg-gray-100 px-1.5 font-sans text-xs font-semibold normal-case tracking-normal text-gray-700; }
 
-    .label { @apply block mb-1 text-sm font-medium text-gray-800; }
+    /* Forms: white fields, square, ink on focus. */
+    .label { @apply block mb-1 text-sm font-semibold text-ink; }
     .label-sm { @apply block mb-1 text-sm font-medium text-gray-700; }
     .help { @apply mt-1 text-sm text-gray-600; }
-    .input { @apply w-full rounded-lg border border-field bg-white px-3 py-2 text-base text-gray-900 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-600; min-height: 2.5rem; }
+    .input { @apply w-full border border-field bg-white px-3 py-2 text-base text-ink transition-colors focus:border-ink focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-600; min-height: 2.5rem; }
     .input-sm { @apply px-2.5 py-1.5 text-sm; min-height: 2.25rem; }
     .input[aria-invalid="true"] { @apply border-red-600 focus:border-red-600 focus:ring-red-600/25; }
     .field-error { @apply mt-1 flex items-start gap-1 text-sm font-medium text-red-700; }
     .form-grid { @apply grid gap-4 sm:grid-cols-2; }
-    .form-actions { @apply flex flex-wrap items-center justify-end gap-2 pt-4 mt-6 border-t border-gray-200; }
+    .form-actions { @apply flex flex-wrap items-center justify-end gap-2 pt-4 mt-6 border-t border-ink; }
 
-    .badge { @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold leading-5 whitespace-nowrap ring-1 ring-inset; }
+    /* Badges: status colours only, square. */
+    .badge { @apply inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold leading-5 whitespace-nowrap ring-1 ring-inset; }
     .badge-neutral { @apply bg-gray-100 text-gray-700 ring-gray-500/20; }
     .badge-success { @apply bg-green-50 text-green-800 ring-green-600/20; }
     .badge-warning { @apply bg-amber-50 text-amber-800 ring-amber-600/30; }
     .badge-danger { @apply bg-red-50 text-red-700 ring-red-600/20; }
     .badge-info { @apply bg-blue-50 text-blue-700 ring-blue-600/20; }
-    /* Closed center: dark gray, as on the web map. */
-    .badge-dark { @apply bg-gray-700 text-white ring-gray-700; }
+    /* Barangay situation (GIS status), the web's four colours: each its own. */
+    .badge-barangay-watch { @apply bg-barangay-watch text-barangay-watch-text ring-barangay-watch-text/30; }
+    .badge-barangay-flooding { @apply bg-barangay-flooding text-ink ring-ink/30; }
+    .badge-barangay-preemptive { @apply bg-barangay-preemptive text-white ring-barangay-preemptive; }
+    .badge-barangay-forced { @apply bg-barangay-forced text-white ring-barangay-forced; }
 
-    .callout { @apply rounded-lg border px-4 py-3 text-base; }
-    .callout-danger { @apply bg-red-50 border-red-200 text-red-800; }
-    .callout-warning { @apply bg-amber-50 border-amber-200 text-amber-900; }
-    .callout-info { @apply bg-blue-50 border-blue-200 text-blue-900; }
-    .callout-success { @apply bg-green-50 border-green-200 text-green-900; }
-    /* One lock design for everything an event's state holds back (closed,
-       being monitored, no open event): slate, a lock, the server's words. */
-    .callout-lock { @apply bg-slate-50 border-slate-300 text-slate-900; }
-    .badge-lock { @apply bg-slate-100 text-slate-800 ring-slate-500/30; }
+    /* Center state: the web's symbol (shape + pattern + colour) beside its
+       words (components/center-symbol, components/center-status). */
+    .center-state { @apply inline-flex items-center gap-1.5 text-sm font-semibold leading-5 text-ink whitespace-nowrap; }
+    .center-symbol { display: block; flex-shrink: 0; }
 
+    /* Callouts: a 2px frame, no side stripe (block, not flex: form-error
+       boxes hold several <p>s). */
+    .callout { @apply border-2 px-4 py-3 text-base; }
+    .callout-danger { @apply bg-red-50 border-red-700 text-red-800; }
+    .callout-warning { @apply bg-amber-50 border-amber-700 text-amber-900; }
+    .callout-info { @apply bg-hydro-tint border-hydro text-ink; }
+    .callout-success { @apply bg-green-50 border-green-700 text-green-900; }
+    /* Desktop: one lock design for everything an event's state holds back
+       (closed, being monitored, no open event): the paper fold, a lock,
+       the server's words. */
+    .callout-lock { @apply bg-paper-2 border-ink-2 text-ink; }
+    .badge-lock { @apply bg-paper-2 text-ink ring-ink-2/40; }
+
+    /* Empty states */
     .empty-state { @apply flex flex-col items-center justify-center gap-2 px-6 py-12 text-center; }
     .empty-state > i { font-size: 32px; @apply text-gray-400; }
     .empty-state p { @apply text-base text-gray-700 max-w-md; }
-    .empty-title { @apply text-base font-semibold text-gray-900; }
+    .empty-title { @apply text-base font-semibold text-ink; }
     .empty-text { @apply text-sm text-gray-600 max-w-sm; }
 
+    /* Tables: map-caps heads over a 2px ink rule, hairline rows. */
     .data-table { @apply relative w-full text-sm; }
-    .data-table thead th { @apply bg-gray-50 px-4 py-2.5 text-left text-sm font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap; }
-    .data-table tbody td { @apply px-4 py-3 text-gray-800 border-b border-gray-100 align-middle; }
+    .data-table thead th { @apply bg-paper px-4 py-2.5 text-left font-label font-semibold uppercase tracking-[.08em] text-[0.8125rem] text-gray-700 border-b-2 border-ink whitespace-nowrap; }
+    .data-table tbody td { @apply px-4 py-3 text-ink border-b border-gray-200 align-middle; }
     .data-table tbody tr:last-child td { @apply border-b-0; }
     .data-table .num { @apply text-right tabular-nums; }
     .data-table thead th.num { @apply text-right; }
+    .data-table tfoot td, .data-table tr.row-total td { @apply px-4 py-3 border-t-2 border-ink font-bold text-ink; }
     .data-table td.cell-actions { @apply text-right whitespace-nowrap; }
     /* Desktop: a table flush with its card's edges. */
     .card > .data-table thead th:first-child, .card > .data-table td:first-child { @apply pl-6; }
 
-    .meter { @apply w-full h-2 rounded-full bg-gray-100 overflow-hidden; }
-    .meter-fill { @apply h-full rounded-full; }
+    /* Meters: square bars. */
+    .meter { @apply w-full h-2 bg-gray-200 overflow-hidden; }
+    .meter-fill { @apply h-full; }
 
-    .modal-backdrop, .board-modal-backdrop { @apply fixed inset-0 z-50 items-center justify-center bg-gray-900/50 p-4; }
-    .modal { @apply w-full rounded-xl bg-white shadow-xl; }
-    .modal-header { @apply flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4; }
-    .modal-title { @apply text-lg font-semibold text-gray-900; }
-    .modal-footer { @apply flex flex-wrap justify-end gap-2 border-t border-gray-200 px-6 py-4; }
+    /* Modals (an overlay, so it keeps a shadow). */
+    .modal-backdrop, .board-modal-backdrop { @apply fixed inset-0 z-50 items-center justify-center bg-ink/60 p-4; }
+    .modal { @apply w-full border-2 border-ink bg-white shadow-xl; }
+    .modal-header { @apply flex items-start justify-between gap-4 border-b-2 border-ink px-6 py-4; }
+    .modal-title { @apply font-label font-extrabold uppercase text-ink text-[1.5rem] leading-none; }
+    .modal-footer { @apply flex flex-wrap justify-end gap-2 border-t border-gray-300 px-6 py-4; }
 
+    /* Definition list: map-caps labels over values. */
     .dl-grid { @apply grid gap-x-6 gap-y-4 sm:grid-cols-2; }
-    .dl-grid dt { @apply text-sm text-gray-600; }
-    .dl-grid dd { @apply mt-0.5 text-base font-medium text-gray-900; }
+    .dl-grid dt { @apply font-label font-semibold uppercase tracking-[.1em] text-[0.8125rem] text-gray-600; }
+    .dl-grid dd { @apply mt-0.5 text-base font-medium text-ink; }
 
-    .nav-link { @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium leading-5 text-[#C7D7F0] transition-colors hover:bg-white/10 hover:text-white; }
+    /* Sidebar: green-grey ink (bg-sidebar), map-caps group labels, the
+       active page an inverted paper block (no side stripe). */
+    .nav-link { @apply relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium leading-5 text-sidebar-text transition-colors hover:bg-white/10 hover:text-white; }
     .nav-link i { font-size: 18px; width: 18px; text-align: center; }
-    .nav-link.active { @apply bg-white/15 text-white font-semibold; }
-    .nav-link.active::before { content: ''; @apply absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-blue-300; }
-    .nav-group-label { @apply px-3 mb-1 text-xs font-semibold text-[#A8C2E8]; }
+    .nav-link.active { @apply bg-paper text-ink font-semibold hover:bg-paper hover:text-ink; }
+    /* Waiting on the event's state (the web's locks.js): dimmed, with a lock
+       at the end. Not used by the desktop sidebar yet -- its pages show the
+       lock callout instead -- kept so an active + locked item can never
+       turn unreadable on the paper block. */
+    .nav-link.nav-link-locked { @apply text-sidebar-text/60 hover:text-sidebar-text; }
+    /* Active and locked at once (e.g. EC Board while the event is only
+       monitored): muted ink, 6.5:1 on paper. */
+    .nav-link.active.nav-link-locked { @apply text-gray-600 hover:text-gray-600; }
+    .nav-link [data-lock-icon] { width: auto; font-size: 14px; }
+    .nav-group-label { @apply px-3 mb-1 font-label font-semibold uppercase tracking-[.14em] text-[0.75rem] text-sidebar-label; }
+    /* Desktop: a count beside a link (transfers waiting, records waiting). */
+    .nav-count { @apply ml-auto min-w-[1.5rem] px-1.5 text-center text-xs font-semibold leading-5 tabular-nums bg-paper text-ink; }
+    .nav-count-pending { @apply bg-amber-400 text-ink; }
+    .nav-link.active .nav-count { @apply bg-ink text-paper; }
+    .nav-link.active .nav-count-pending { @apply bg-amber-400 text-ink; }
+
+    /* The neatline: a double rule round an image plate (2px ink, a 1px ink
+       outline 5px outside it), the web's .neatline. */
+    .neatline { @apply relative border-2 border-ink; outline: 1px solid #17241D; outline-offset: 5px; }
+    /* A sheet outside the app shell (signed out, use the web, update
+       required): a title block on paper, framed in ink. */
+    .title-block { @apply w-full border-2 border-ink bg-paper p-6 sm:p-8; }
+    /* Field labels on those sheets, in map caps as on the web login. */
+    .label-caps { @apply block mb-1.5 font-label font-semibold uppercase tracking-[.12em] text-[0.8125rem] text-ink; }
+
+    /* Caption: the cartographer's annotation (italic serif, hydro blue). */
+    .caption { @apply font-caption italic font-medium text-[15px] leading-snug text-hydro; }
 }
 
 main.page-transition { opacity: 0; transition: opacity 200ms ease; }
@@ -171,25 +230,24 @@ main.page-transition.in { opacity: 1; }
 }
 .login-card.in { opacity: 1; transform: translateY(0); }
 
-/* Add evacuee's sections: a hairline between each and a plain heading --
-   the grouping itself is the structure (same as the web dashboard's). The
-   legend is floated so it sits inside the section like any other heading. */
-.entry-section { min-width: 0; border-top: 1px solid #F3F4F6; padding-top: 0.75rem; margin-top: 0.75rem; }
+/* Add evacuee's sections: a hairline between each and a map-caps heading --
+   the grouping itself is the structure. The legend is floated so it sits
+   inside the section like any other heading. */
+.entry-section { min-width: 0; border-top: 1px solid #DCE3D3; padding-top: 0.75rem; margin-top: 0.75rem; }
 /* Add evacuee (event fixed by the board, so only a hidden input comes
    first): no rule above the first section. */
 [data-entry-fields] > input[type="hidden"]:first-child + .entry-section { border-top: 0; padding-top: 0; margin-top: 0; }
-/* Each section of a long form reads as a clear step heading. */
-.entry-section-title { float: left; width: 100%; margin-bottom: 0.5rem; font-size: 0.9375rem; line-height: 1.5rem; font-weight: 600; color: #111827; }
+.entry-section-title { float: left; width: 100%; margin-bottom: 0.5rem; font-family: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif; font-size: 1.0625rem; line-height: 1.5rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #17241D; }
 .entry-section-title + * { clear: both; }
 
 /* Page-level section headings (Registered families' Not yet synced /
-   Synced split) -- a plain semibold label with a count pill beside it. */
-.section-heading { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.95rem; font-weight: 600; color: #111827; }
+   Synced split): a map-caps label with a square count beside it. */
+.section-heading { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; font-family: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif; font-size: 1.0625rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #17241D; }
 .section-heading i { font-size: 17px; }
-.section-count { font-size: 0.75rem; font-weight: 500; line-height: 1rem; padding: 0.125rem 0.5rem; border-radius: 0.375rem; background: #F3F4F6; color: #374151; box-shadow: inset 0 0 0 1px rgba(107, 114, 128, 0.2); }
+.section-count { font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 600; line-height: 1rem; letter-spacing: 0; text-transform: none; padding: 0.125rem 0.5rem; background: #E8ECE2; color: #38463E; box-shadow: inset 0 0 0 1px rgba(95, 110, 100, 0.25); }
 .section-count-pending { background: #FFFBEB; color: #92400E; box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.3); }
 /* The barangay name above each group of cards. */
-.group-label { margin-bottom: 0.5rem; font-size: 0.75rem; line-height: 1rem; font-weight: 600; color: #4B5563; }
+.group-label { margin-bottom: 0.5rem; font-family: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif; font-size: 0.8125rem; line-height: 1rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #4C5B51; }
 
 /* EC Information Board: one ruled sheet -- header figures, Age & Sex, then
    Sectoral -- with both tables sharing one column grid so the numbers line
@@ -197,33 +255,33 @@ main.page-transition.in { opacity: 1; }
    amber "On this device" column is this device's unsynced additions, kept
    beside the server's figures, never added into them. */
 .ecb-sheet { overflow: hidden; }
-.ecb-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #E5E7EB; border-bottom: 1px solid #E5E7EB; }
+.ecb-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #17241D; border-bottom: 1px solid #C2CCC0; }
 .ecb-strip > div { padding: 0.625rem 1.25rem; }
-.ecb-strip > div + div { border-left: 1px solid #E5E7EB; }
-.ecb-strip-label { font-size: 0.75rem; font-weight: 500; color: #4B5563; }
-.ecb-strip-value { font-size: 1.25rem; font-weight: 600; color: #111827; font-variant-numeric: tabular-nums; }
+.ecb-strip > div + div { border-left: 1px solid #C2CCC0; }
+.ecb-strip-label { font-family: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif; font-size: 0.8125rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #4C5B51; }
+.ecb-strip-value { font-family: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif; font-size: 1.625rem; line-height: 1.1; font-weight: 700; color: #17241D; font-variant-numeric: tabular-nums; }
 .ecb-strip-pending { background: #FFFBEB; }
 .ecb-strip-pending .ecb-strip-value { color: #92400E; }
 
 .ecb-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
 .ecb-table col.ecb-num { width: 4.75rem; }
 .ecb-table col.ecb-pending-col { width: 6.5rem; }
-.ecb-table th, .ecb-table td { padding: 0.4rem 1.25rem 0.4rem 0.75rem; text-align: right; color: #1F2937; }
-.ecb-table th:first-child, .ecb-table td:first-child { padding-left: 1.25rem; text-align: left; color: #4B5563; }
-.ecb-table thead tr { background: #F9FAFB; border-bottom: 1px solid #E5E7EB; }
-.ecb-table th { font-size: 0.75rem; font-weight: 600; color: #4B5563; }
-.ecb-table th:first-child { color: #1F2937; }
-.ecb-table tbody tr + tr { border-top: 1px solid #F3F4F6; }
-.ecb-table tfoot tr { border-top: 2px solid #D1D5DB; }
-.ecb-table tfoot td, .ecb-table tfoot td:first-child { font-weight: 700; color: #111827; }
-.ecb-table-follow { border-top: 2px solid #D1D5DB; }
+.ecb-table th, .ecb-table td { padding: 0.4rem 1.25rem 0.4rem 0.75rem; text-align: right; color: #17241D; }
+.ecb-table th:first-child, .ecb-table td:first-child { padding-left: 1.25rem; text-align: left; color: #4C5B51; }
+.ecb-table thead tr { background: #F3F5EF; border-bottom: 2px solid #17241D; }
+.ecb-table th { font-family: "Barlow Condensed", "Arial Narrow", ui-sans-serif, sans-serif; font-size: 0.8125rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #38463E; }
+.ecb-table th:first-child { color: #17241D; }
+.ecb-table tbody tr + tr { border-top: 1px solid #DCE3D3; }
+.ecb-table tfoot tr { border-top: 2px solid #17241D; }
+.ecb-table tfoot td, .ecb-table tfoot td:first-child { font-weight: 700; color: #17241D; }
+.ecb-table-follow { border-top: 2px solid #17241D; }
 .ecb-table .ecb-pending { background: #FFFBEB; border-left: 1px solid #FDE68A; line-height: 1.1; }
-.ecb-table th.ecb-pending { color: #92400E; font-weight: 600; }
+.ecb-table th.ecb-pending { color: #92400E; }
 .ecb-pending-total { display: block; font-weight: 700; color: #92400E; }
 .ecb-pending-split { display: block; font-size: 0.6875rem; color: #92400E; }
 .ecb-table td.ecb-pending-none { color: #B45309; }
-.ecb-notes { border-top: 1px solid #E5E7EB; padding: 0.75rem 1.25rem; font-size: 0.75rem; color: #4B5563; display: flex; flex-direction: column; gap: 0.25rem; }
-.ecb-pending-key { font-weight: 600; color: #92400E; background: #FEF3C7; border-radius: 4px; padding: 0 0.3rem; }
-.ecb-asof { padding: 0 1.25rem 0.625rem; font-size: 0.8125rem; font-weight: 600; color: #374151; }
-.ecb-asof time { font-weight: 500; color: #1F2937; }
-.ecb-asof .local-time-age { font-weight: 400; color: #4B5563; }
+.ecb-notes { border-top: 1px solid #C2CCC0; padding: 0.75rem 1.25rem; font-size: 0.75rem; color: #4C5B51; display: flex; flex-direction: column; gap: 0.25rem; }
+.ecb-pending-key { font-weight: 600; color: #92400E; background: #FEF3C7; padding: 0 0.3rem; }
+.ecb-asof { padding: 0 1.25rem 0.625rem; font-size: 0.8125rem; font-weight: 600; color: #38463E; }
+.ecb-asof time { font-weight: 500; color: #17241D; }
+.ecb-asof .local-time-age { font-weight: 400; color: #4C5B51; }

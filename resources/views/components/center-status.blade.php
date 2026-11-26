@@ -1,8 +1,8 @@
 @props(['center'])
-{{-- A center's status chip, as on the web: active green, on standby blue,
-     full red, closed dark gray (EvacuationCenter::displayStatus()). --}}
+{{-- A center's state as on the web: its symbol (components/center-symbol)
+     beside its words (EvacuationCenter::STATUSES, from displayStatus()). --}}
 @php
     $status = $center->displayStatus();
-    [$label, $tone] = \App\Models\EvacuationCenter::STATUSES[$status] ?? [\Illuminate\Support\Str::headline($status), 'badge-neutral'];
+    $label = \App\Models\EvacuationCenter::STATUSES[$status] ?? \Illuminate\Support\Str::headline($status);
 @endphp
-<span {{ $attributes->merge(['class' => "badge {$tone} shrink-0"]) }} data-center-status="{{ $status }}">{{ $label }}</span>
+<span {{ $attributes->merge(['class' => 'center-state shrink-0']) }} data-center-status="{{ $status }}"><x-center-symbol :status="$status" />{{ $label }}</span>

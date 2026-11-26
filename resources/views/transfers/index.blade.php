@@ -82,7 +82,7 @@
                     {{-- Privacy: only each family's head and number of members. --}}
                     <ul class="flex flex-wrap gap-2 text-sm text-gray-800">
                         @foreach ($row['family_list'] ?? [] as $f)
-                            <li class="rounded-md bg-gray-50 px-2 py-1 ring-1 ring-gray-200">{{ $f['head'] ?? 'Family' }} · {{ \App\Support\Plural::of($f['members'] ?? 0, 'member', 'members') }}</li>
+                            <li class="bg-gray-50 px-2 py-1 ring-1 ring-gray-200">{{ $f['head'] ?? 'Family' }} · {{ \App\Support\Plural::of($f['members'] ?? 0, 'member', 'members') }}</li>
                         @endforeach
                     </ul>
 

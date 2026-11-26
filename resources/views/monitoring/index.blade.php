@@ -152,7 +152,8 @@
                     <x-empty icon="ti-circle-check" title="Every barangay is at Normal." text="Evacuation orders are recorded on the web (GIS map)." compact />
                 @else
                     @php
-                        $tone = ['watch' => 'badge-warning', 'flooding_reported' => 'badge-warning', 'preemptive_evacuation' => 'badge-danger', 'forced_evacuation' => 'badge-dark'];
+                        // The web's four barangay colours, each its own (never shared with another state).
+                        $tone = ['watch' => 'badge-barangay-watch', 'flooding_reported' => 'badge-barangay-flooding', 'preemptive_evacuation' => 'badge-barangay-preemptive', 'forced_evacuation' => 'badge-barangay-forced'];
                         $at = fn ($t) => \App\Support\Format::when($t);
                     @endphp
                     <table class="data-table" data-orders>

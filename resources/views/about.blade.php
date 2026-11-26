@@ -15,7 +15,7 @@
     <div class="card card-body flex flex-col sm:flex-row gap-8 items-start">
         <img src="{{ asset('images/elikas-logo-mark.png') }}" alt="E-LIKAS logo" class="w-28 h-28 shrink-0" data-about-logo>
         <div class="min-w-0 flex-1">
-            <p class="text-2xl font-bold tracking-tight text-navy">E-LIKAS</p>
+            <p class="font-label font-extrabold uppercase text-[2rem] leading-none text-ink">E-LIKAS</p>
             <p class="text-base text-gray-700">Electronic Ligao Kaligtasan Sistema · Offline Companion for Windows</p>
 
             <dl class="dl-grid mt-6">

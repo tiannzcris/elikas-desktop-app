@@ -17,7 +17,7 @@
                 Barangay {{ $barangayName }}
                 @if ($events->first())
                     <span aria-hidden="true">·</span> <x-event-name :event="$events->first()" />
-                    @if ($selectedEventClosed)<span class="badge badge-dark">Closed: read-only</span>@endif
+                    @if ($selectedEventClosed)<span class="badge badge-lock"><i class="ti ti-lock" aria-hidden="true"></i> Closed: read-only</span>@endif
                 @endif
             </p>
             @include('evacuation-centers._occupancy_note')

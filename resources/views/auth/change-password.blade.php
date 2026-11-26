@@ -22,18 +22,18 @@
         <div>
             <label for="current-password" class="label">{{ $currentUser->must_change_password ? 'Temporary password' : 'Current password' }}</label>
             <input id="current-password" type="password" name="current_password" class="input" required autofocus autocomplete="current-password" @error('current_password') aria-invalid="true" @enderror>
-            @error('current_password')<p class="text-sm text-red-700 mt-1">{{ $message }}</p>@enderror
+            @error('current_password')<p class="field-error">{{ $message }}</p>@enderror
         </div>
         <div>
             <label for="new-password" class="label">New password</label>
             <input id="new-password" type="password" name="password" class="input" required minlength="{{ \App\Http\Controllers\PasswordController::MIN_LENGTH }}" autocomplete="new-password" @error('password') aria-invalid="true" @enderror>
             <p class="help">At least {{ \App\Http\Controllers\PasswordController::MIN_LENGTH }} characters, different from the current one.</p>
-            @error('password')<p class="text-sm text-red-700 mt-1">{{ $message }}</p>@enderror
+            @error('password')<p class="field-error">{{ $message }}</p>@enderror
         </div>
         <div>
             <label for="new-password-2" class="label">New password again</label>
             <input id="new-password-2" type="password" name="password_confirmation" class="input" required autocomplete="new-password">
         </div>
-        <div class="flex justify-end"><button type="submit" class="btn btn-primary" data-online-only>Change password</button></div>
+        <div class="form-actions mt-2"><button type="submit" class="btn btn-primary" data-online-only>Change password</button></div>
     </form>
 @endsection

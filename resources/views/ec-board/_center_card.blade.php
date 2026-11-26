@@ -8,10 +8,10 @@
     $capacity = $unknown ? null : (int) $center->capacity_persons;
     $percent = $capacity ? min(100, (int) round(100 * $inside / $capacity)) : null;
     $meterColor = match (true) {
-        $percent === null => 'bg-gray-300',
-        $percent >= 90 => 'bg-red-600',
-        $percent >= 70 => 'bg-amber-500',
-        default => 'bg-green-700',
+        $percent === null => 'bg-gray-400',
+        $percent >= 90 => 'bg-center-full',
+        $percent >= 70 => 'bg-center-nearly-full',
+        default => 'bg-center-active',
     };
 @endphp
 <a href="{{ route('evacuation-centers.ec-board', $center) }}" class="card card-link card-body flex flex-col gap-3" data-center-card>
@@ -21,9 +21,9 @@
     </div>
     <div>
         <p class="flex flex-wrap items-baseline gap-x-2" data-occupancy>
-            <span class="text-2xl font-semibold tabular-nums text-gray-900">{{ number_format($inside) }} / {{ $unknown ? '–' : number_format($capacity) }}</span>
+            <span class="font-label font-bold text-[2rem] leading-none tabular-nums text-ink">{{ number_format($inside) }} / {{ $unknown ? '–' : number_format($capacity) }}</span>
             @if ($center->capacityEstimated())
-                <span class="text-sm font-semibold text-gray-700 underline decoration-dotted underline-offset-2" title="{{ $center->capacityTooltip() }}" data-capacity-est>est.</span>
+                <span class="text-sm font-semibold text-gray-700 underline decoration-dotted underline-offset-4" title="{{ $center->capacityTooltip() }}" data-capacity-est>est.</span>
             @endif
             <span class="text-sm text-gray-600">{{ $unknown ? 'people inside · capacity unknown' : 'people inside · '.$percent.'%' }}</span>
         </p>

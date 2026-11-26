@@ -10,7 +10,7 @@
         <i class="ti ti-calendar-event" aria-hidden="true"></i>
         <span class="text-gray-600 font-medium">Event:</span>
         <span class="truncate" data-working-event>{{ $working?->name ?? 'None open' }}</span>
-        @if ($working?->isClosed())<span class="badge badge-dark">Closed</span>@endif
+        @if ($working?->isClosed())<span class="badge badge-lock"><i class="ti ti-lock" aria-hidden="true"></i> Closed</span>@endif
         <i class="ti ti-chevron-down text-gray-500" aria-hidden="true"></i>
     </button>
     <div class="menu-list left-0 right-auto w-80" role="menu" data-menu-list hidden>

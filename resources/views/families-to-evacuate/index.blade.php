@@ -108,7 +108,7 @@
                     @if (empty($past))
                         <p class="text-sm text-gray-600 mt-3">No family from past events matches "{{ $search }}".</p>
                     @else
-                        <ul class="mt-3 divide-y divide-gray-100 border border-gray-100 rounded-lg" data-past-results>
+                        <ul class="mt-3 divide-y divide-gray-100 border border-gray-100" data-past-results>
                             @foreach ($past as $pf)
                                 @php $pfName = $pf['head'] ?? $pf['name'] ?? ('Family #'.$pf['id']); @endphp
                                 <li class="px-4 py-2 flex flex-wrap items-center justify-between gap-3">
