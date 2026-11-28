@@ -1,5 +1,11 @@
 # Center capacity and transfers: API reference for the desktop and mobile apps (18 November 2026)
 
+> **Update, 22 November 2026:** the CSV capacity import was removed:
+> `POST /evacuation-centers/capacity-import` and the permission
+> `centers.import_capacity` no longer exist (the call is refused). Official
+> capacities come from barangay edits approved by CSWD. Ignore the parts
+> below about the import.
+
 This is the complete reference for two server changes that the desktop
 (NativePHP) and mobile (Flutter) apps must handle:
 

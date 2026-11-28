@@ -27,7 +27,7 @@ server, so the web and the apps share it.
 
 ```json
 {
-  "selected": { "id": 79, "name": "DEMO - Typhoon Drill", "event_type": "typhoon", "typhoon_category": "Typhoon", "status": "active", "is_demo": true, "start_date": "2026-11-17" },
+  "selected": { "id": 79, "name": "Typhoon Drill", "event_type": "typhoon", "typhoon_category": "Typhoon", "status": "active", "is_demo": true, "start_date": "2026-11-17" },
   "chosen": false,
   "open_count": 2,
   "open_events": [ { "...same fields..." } ],
@@ -118,7 +118,7 @@ Query: `evacuation_event_id` (default: the selected event), `barangay_id`
 
 ```json
 {
-  "evacuation_event": { "id": 79, "name": "DEMO - Typhoon Drill", "status": "active", "...": "..." },
+  "evacuation_event": { "id": 79, "name": "Typhoon Drill", "status": "active", "...": "..." },
   "barangays": [ { "barangay": { "id": 13, "name": "Binatagan" }, "families": 5, "persons": 18 } ],
   "families": [
     { "id": 3601, "label": "Rosa Santos", "member_count": 3, "host_name": "Carmen Reyes", "host_address": "Zone 3",
@@ -328,11 +328,12 @@ reports (`POST /reports/*` answer 422 for a demo event, as before).
 
 ## 9. Demo data (server commands, not API)
 
-- `php artisan demo:reset --force`: removes every demo event and seeds
-  "DEMO - Past Typhoon" (closed), "DEMO - Typhoon Drill" (active) and "DEMO -
-  Incoming Typhoon" (monitoring).
-- `php artisan demo:mark --event-ids=19,20 --force`: marks test events as
-  demo (name gets "DEMO - ") so purge/reset remove them.
+- `php artisan demo:reset --force`: removes every demo event and seeds the
+  practice events "Typhoon Drill" (active) and "Incoming Typhoon"
+  (monitoring). Since November 23 there is no "DEMO - Past Typhoon" and no
+  name has a "DEMO - " prefix (see `apps-api-2026-11-22.md`).
+- `php artisan demo:mark --event-ids=19,20 --force`: flags test events
+  is_demo (the name is left as it is) so purge/reset remove them.
 
 ---
 

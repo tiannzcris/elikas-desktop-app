@@ -1,5 +1,11 @@
 # Center capacity and transfers between barangays: API changes for the desktop and Flutter apps (18 November 2026)
 
+> **Update, 22 November 2026:** the CSV capacity import was removed:
+> `POST /evacuation-centers/capacity-import` and the permission
+> `centers.import_capacity` no longer exist (the call is refused). Official
+> capacities come from barangay edits approved by CSWD. Ignore the parts
+> below about the import.
+
 Two parts: center capacity (section 1) and moving evacuees when a center is
 full (section 2). The checklist is at the end.
 
@@ -108,7 +114,7 @@ Row:
   "from_center": {"id": 71, "name": "LWCES (B)"}, "to_center": {"id": 141, "name": "DA Building"},
   "from_barangay": {"id": 13, "name": "Binatagan"}, "to_barangay": {"id": 49, "name": "Tomolin"},
   "families": 1, "persons": 4,
-  "family_list": [ { "head": "Bea Demo-Bituin", "members": 4 } ],
+  "family_list": [ { "head": "Maria Santos", "members": 4 } ],
   "note": null, "requested_by": {"id": 4, "name": "…"}, "requested_at": "…",
   "decided_by": null, "decided_at": null, "decided_as": null, "decline_reason": null,
   "escalated_at": null, "waiting_minutes": 3, "may_decide": true }
